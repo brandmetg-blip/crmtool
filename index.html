@@ -772,6 +772,7 @@
               <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:0 0 auto">
                 <button onClick="{{ r.togglePosted }}" title="Mark as posted" style="{{ r.postedCheckStyle }}">{{ r.postedCheck }}</button>
                 <span style="{{ r.postedLabelStyle }}">Posted on</span>
+                <sc-if value="{{ r.posted }}" hint-placeholder-val="{{ false }}"><input type="date" value="{{ r.postedDateValue }}" onChange="{{ r.onPostedDate }}" title="The actual date this went live — defaults to today" style="{{ r.postedDateStyle }}"/></sc-if>
                 <div style="display:flex;flex-wrap:wrap;gap:5px"><sc-for list="{{ r.platChips }}" as="p" hint-placeholder-count="2"><button onClick="{{ p.toggle }}" title="{{ p.name }}" style="{{ p.style }}"><sc-if value="{{ p.isFb }}" hint-placeholder-val="{{ true }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12z"/></svg></sc-if><sc-if value="{{ p.isIg }}" hint-placeholder-val="{{ false }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg></sc-if>{{ p.label }}</button></sc-for></div>
               </div>
               </sc-if>
@@ -1414,7 +1415,7 @@
         <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">FOLLOWERS</div><input onInput="{{ onFollowers }}" value="{{ fFollowers }}" placeholder="e.g. 12500" style="{{ fieldStyle }}"/><div style="font-size:11px;color:#5e5e66;margin-top:5px">Sets phase automatically — <span style="color:#9bbdf5;font-weight:600">{{ followerBand }}</span> followers. You can still override the phase below.</div></div>
         <div style="display:flex;gap:14px"><div style="flex:1"><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">PHASE</div><div style="display:flex;gap:6px"><sc-for list="{{ phaseOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div></div>
         <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">STATUS</div><div style="display:flex;gap:6px"><sc-for list="{{ statusOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div>
-        <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">PLATFORM LINKS</div><div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ platFields }}" as="p" hint-placeholder-count="6"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:11.5px;color:#a1a1aa;width:74px;flex:0 0 auto;font-weight:600">{{ p.label }}</span><input onInput="{{ p.onInput }}" value="{{ p.value }}" placeholder="profile URL or handle" style="{{ fieldStyle }}"/></div></sc-for></div></div>
+        <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">PLATFORM LINKS</div><div style="display:flex;flex-direction:column;gap:8px"><sc-for list="{{ platFields }}" as="p" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:10px"><span style="width:9px;height:9px;border-radius:3px;flex:0 0 auto;background:{{ p.color }}"></span><span style="font-size:11.5px;color:#a1a1aa;width:78px;flex:0 0 auto;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.label }}</span><input onInput="{{ p.onInput }}" value="{{ p.value }}" placeholder="profile URL or handle" style="{{ fieldStyle }}"/><sc-if value="{{ p.isCustom }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ p.onRemove }}" title="Remove this platform everywhere" style="width:34px;height:38px;flex:0 0 auto;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#7a7a82;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="border-color:rgba(240,88,78,0.4);color:#f0584e">&#10005;</button></sc-if></div></sc-for><div style="display:flex;gap:7px;margin-top:2px"><input value="{{ fNewPlat }}" onInput="{{ onNewPlat }}" onKeyDown="{{ onNewPlatKey }}" placeholder="Add a platform — e.g. TikTok, YouTube" style="{{ fieldStyle }}"/><button type="button" onClick="{{ addPlatform }}" style="height:38px;padding:0 15px;flex:0 0 auto;background:rgba(52,224,138,0.12);border:1px solid rgba(52,224,138,0.3);border-radius:9px;color:#34e08a;font-size:12.5px;font-weight:700;cursor:pointer" style-hover="background:rgba(52,224,138,0.2)">Add</button></div><div style="font-size:11px;color:#5e5e66;line-height:1.45">Platforms are shared across accounts — new ones appear in posting, the Daily Builder, analytics &amp; the dashboard.</div></div></div>
         <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">META BUSINESS SUITE LINK</div><input data-k="meta" onInput="{{ onField }}" value="{{ fMeta }}" placeholder="https://business.facebook.com/…" style="{{ fieldStyle }}"/></div>
         <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">NOTES</div><textarea data-k="notes" onInput="{{ onField }}" value="{{ fNotes }}" rows="2" placeholder="Anything the team should know" style="{{ areaStyle }}"></textarea></div>
         <div style="display:flex;gap:10px"><sc-if value="{{ canDelete }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ deleteAccount }}" data-id="{{ editId }}" style="height:42px;padding:0 16px;background:transparent;border:1px solid rgba(240,88,78,0.3);border-radius:10px;color:#f0584e;font-size:13px;font-weight:700;cursor:pointer">Delete</button></sc-if><button type="submit" style="{{ submitBtnStyle }}">Save account</button></div>
@@ -1523,10 +1524,13 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;}}">
 class Component extends DCLogic {
   PHASE_TARGET = { P1: 3, P2: 5, P3: 6, P4: 9 };
-  PLATFORMS = ['facebook','instagram'];
-  PLAT_LABEL = { facebook:'FB', instagram:'IG' };
-  PLAT_NAME = { facebook:'Facebook', instagram:'Instagram' };
-  PLAT_COLOR = { facebook:'#5b8def', instagram:'#e879b9' };
+  DEFAULT_PLATFORMS = [{ id:'facebook', name:'Facebook', label:'FB', color:'#5b8def' }, { id:'instagram', name:'Instagram', label:'IG', color:'#e879b9' }];
+  PLAT_PALETTE = ['#9a7bff','#5bd5ef','#f0b341','#e879b9','#34e08a','#f0584e','#f97b5a','#6ee7b7'];
+  get platformDefs(){ const db=this.state&&this.state.db; const arr=(db&&Array.isArray(db.platforms)&&db.platforms.length)?db.platforms:this.DEFAULT_PLATFORMS; return arr; }
+  get PLATFORMS(){ return this.platformDefs.map(p=>p.id); }
+  get PLAT_LABEL(){ const m={}; this.platformDefs.forEach(p=>{ m[p.id]=p.label||p.name; }); return m; }
+  get PLAT_NAME(){ const m={}; this.platformDefs.forEach(p=>{ m[p.id]=p.name; }); return m; }
+  get PLAT_COLOR(){ const m={}; this.platformDefs.forEach(p=>{ m[p.id]=p.color||'#8b8b93'; }); return m; }
   PROD_TIERS = ['Assembly','Scratch','Repost'];
   C = { green:'#34e08a', amber:'#f0b341', red:'#f0584e', blue:'#5b8def', gray:'#8b8b93', violet:'#9a7bff', text:'#ededf0', muted:'#8b8b93' };
   KEY = 'slate_crm_v2';
@@ -1547,12 +1551,17 @@ class Component extends DCLogic {
     const sid=await Promise.resolve(this.loadSession()); const u=sid&&(db.team||[]).find(t=>t.id===sid);
     this.setState({ db, ready:true, date:T, plannerMonth:T.slice(0,7), selectedDate:T,
       userId: u?u.id:null, role: u?u.role:null, tab: u?(u.role==='Admin'?'dashboard':(u.role==='Editor'?'builder':'mywork')):'dashboard' });
+    this._liveDb = db;
+    this._onBeforeUnload = ()=>this._flushPersist(); window.addEventListener('beforeunload', this._onBeforeUnload);
     // Live sync: when any user changes anything on the server, refetch (debounced).
     if(this.store && this.store.subscribe){ this._unsub = this.store.subscribe(()=>this.scheduleReload()); }
   }
-  componentWillUnmount(){ if(this._unsub){ this._unsub(); } clearTimeout(this._reloadT); }
-  scheduleReload(){ clearTimeout(this._reloadT); this._reloadT=setTimeout(()=>this.reloadFromStore(), 250); }
-  async reloadFromStore(){ if(!this.store||!this.store.loadData) return; try{ const fresh=await Promise.resolve(this.store.loadData()); if(fresh) this.setState({ db:this.migrate(fresh) }); }catch(e){ console.error('[app] live reload failed', e); } }
+  componentWillUnmount(){ this._flushPersist(); if(this._onBeforeUnload) window.removeEventListener('beforeunload', this._onBeforeUnload); if(this._unsub){ this._unsub(); } clearTimeout(this._reloadT); clearTimeout(this._persistT); }
+  scheduleReload(){ clearTimeout(this._reloadT); this._reloadT=setTimeout(()=>this.reloadFromStore(), 400); }
+  async reloadFromStore(){ if(!this.store||!this.store.loadData) return;
+    // Never clobber in-flight local work: defer while a write is pending, an edit just happened, or a form is open.
+    if(this._persistT || this._persisting || this._flushNext || (this._localEditAt && (Date.now()-this._localEditAt)<1800) || this.state.modal){ return this.scheduleReload(); }
+    try{ const fresh=await Promise.resolve(this.store.loadData()); if(fresh){ const m=this.migrate(fresh); this._liveDb=m; this.setState({ db:m }); } }catch(e){ console.error('[app] live reload failed', e); } }
   migrate(db){
     if(!db.dailyMetrics){ db.dailyMetrics=this.seedMetrics(); }
     (db.accounts||[]).forEach(a=>{ if(a.avatar===undefined) a.avatar=null; if(a.repostCount===undefined) a.repostCount=0; if(!Array.isArray(a.followersHistory)||!a.followersHistory.length){ a.followersHistory=this.seedFollowerHistory(a); } });
@@ -1564,6 +1573,8 @@ class Component extends DCLogic {
       if(en.type===undefined) en.type='Product'; if(en.prod===undefined) en.prod='Assembly'; if(en.videoLink===undefined) en.videoLink=''; if(en.posted===undefined) en.posted=false; if(!Array.isArray(en.platforms)) en.platforms=[]; if(en.postId===undefined) en.postId=null;
       if(en.hookKind===undefined) en.hookKind='text'; if(en.hookLink===undefined) en.hookLink=''; if(!en.bodyKind) en.bodyKind='text'; if(en.bodyLink===undefined) en.bodyLink=''; if(en.refVideo===undefined) en.refVideo=''; if(en.win===undefined) en.win=false; if(en.wonAt===undefined) en.wonAt=null; });
     if(!db.assetLinks){ db.assetLinks={ baseImages:'', hooks:'', bodies:'' }; }
+    if(!Array.isArray(db.platforms)||!db.platforms.length){ db.platforms=this.DEFAULT_PLATFORMS.map(p=>({...p})); }
+    else { db.platforms=db.platforms.map(p=>({ id:p.id, name:p.name||p.id, label:p.label||(p.name||p.id).slice(0,2).toUpperCase(), color:p.color||'#8b8b93' })); }
     if(!db.slots||typeof db.slots!=='object'||Array.isArray(db.slots)){ db.slots={}; }
     // normalize slots to new shape { id, prod, conceptId } (migrate old concept/custom blocks)
     Object.keys(db.slots).forEach(ch=>{ const arr=db.slots[ch]; if(!Array.isArray(arr)){ db.slots[ch]=[]; return; }
@@ -1684,7 +1695,24 @@ class Component extends DCLogic {
   // — that's what makes concurrent editing safe. This is the ONLY place data crosses the boundary.
   load(){ return this.store ? this.store.loadData() : null; }
   save(db){ if(this.store) this.store.persist(null, db); } // full save (rarely used)
-  commit(mut){ this.setState(s=>{ const prev=s.db; const db=structuredClone(prev); mut(db); if(this.store) this.store.persist(prev, db); return { db }; }); }
+  commit(mut){
+    const prev = this._liveDb || this.state.db;
+    const db = structuredClone(prev);
+    mut(db);
+    this._liveDb = db;
+    if(this._flushPrev === undefined) this._flushPrev = prev; // diff baseline for this batch
+    this._flushNext = db;
+    this._localEditAt = Date.now();
+    this.setState({ db });
+    this._schedulePersist();
+  }
+  _schedulePersist(){ clearTimeout(this._persistT); this._persistT = setTimeout(()=>this._flushPersist(), 500); }
+  _flushPersist(){
+    clearTimeout(this._persistT); this._persistT = null;
+    const prev = this._flushPrev, next = this._flushNext;
+    this._flushPrev = undefined; this._flushNext = null;
+    if(this.store && next){ this._persisting = true; try{ Promise.resolve(this.store.persist(prev, next)).catch(()=>{}).finally(()=>{ this._persisting = false; }); }catch(e){ this._persisting = false; } }
+  }
 
   // ---------- date helpers ----------
   todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
@@ -1773,6 +1801,21 @@ class Component extends DCLogic {
   closeModal(){ this.setState({ modal:null }); }
   setForm(patch){ this.setState(s=>({ form:{...s.form,...patch} })); }
   togglePlatform(p){ this.setState(s=>{ const cur=s.form.platforms||[]; return { form:{...s.form, platforms: cur.includes(p)?cur.filter(x=>x!==p):[...cur,p]} }; }); }
+  addPlatform(name){ name=(name||'').trim(); if(!name) return; const exists=(this.state.db.platforms||[]).some(p=>p.name.toLowerCase()===name.toLowerCase()); if(exists){ this.setForm({ newPlat:'' }); return; }
+    const id='plat_'+(name.toLowerCase().replace(/[^a-z0-9]+/g,'')||'p').slice(0,14)+'_'+Math.random().toString(36).slice(2,6);
+    const label=(name.replace(/[^A-Za-z0-9]/g,'').slice(0,2)||name.slice(0,2)).toUpperCase();
+    this.commit(db=>{ if(!Array.isArray(db.platforms)) db.platforms=this.DEFAULT_PLATFORMS.map(p=>({...p})); const used=db.platforms.map(p=>p.color); const color=this.PLAT_PALETTE.find(c=>!used.includes(c))||this.PLAT_PALETTE[db.platforms.length%this.PLAT_PALETTE.length]; db.platforms.push({ id, name, label, color }); });
+    this.setState(s=>({ form:{ ...s.form, plats:{ ...(s.form&&s.form.plats), [id]:'' }, newPlat:'' } }));
+  }
+  removePlatform(id){ if(id==='facebook'||id==='instagram') return; if(!confirm('Remove this platform everywhere — its links, posting toggles and history references will be cleared. Continue?')) return;
+    this.commit(db=>{ db.platforms=(db.platforms||[]).filter(p=>p.id!==id);
+      (db.accounts||[]).forEach(a=>{ if(a.platforms) delete a.platforms[id]; });
+      (db.dailyEntries||[]).forEach(e=>{ if(Array.isArray(e.platforms)) e.platforms=e.platforms.filter(x=>x!==id); });
+      (db.posts||[]).forEach(p=>{ if(Array.isArray(p.platforms)) p.platforms=p.platforms.filter(x=>x!==id); });
+      (db.team||[]).forEach(m=>{ (m.assignments||[]).forEach(as=>{ if(Array.isArray(as.platforms)) as.platforms=as.platforms.filter(x=>x!==id); }); });
+    });
+    this.setState(s=>{ const plats={...(s.form&&s.form.plats)}; delete plats[id]; return { form:{ ...s.form, plats } }; });
+  }
   onField(e){ this.setForm({ [e.currentTarget.dataset.k]: e.target.value }); }
   openLogPost(e){ const vis=this.visibleAccounts(); const id=(e&&e.currentTarget&&e.currentTarget.dataset.id)||this.state.drillId||(vis[0]&&vis[0].id)||(this.state.db?this.state.db.accounts[0].id:null); const a=this.state.db.accounts.find(x=>x.id===id); let plats=this.PLATFORMS.filter(p=>a&&a.platforms&&a.platforms[p]); if(!this.isAdmin()){ const ap=this.assignedPlatforms(id); if(ap.length) plats=plats.filter(p=>ap.includes(p)); } this.setState({ modal:{ type:'log', accountId:id }, form:{ type:'Product', concept:(this.state.db.concepts[0]||{}).name||'', prod:'Assembly', platforms: plats.length?plats.slice(0,1):['facebook'], split:false } }); }
   openAddAccount(){ if(!this.isAdmin()) return; this.openAccount(null); }
@@ -1849,7 +1892,7 @@ class Component extends DCLogic {
   syncEntryPost(db, en){
     if(en.postId){ const i=(db.posts||[]).findIndex(p=>p.id===en.postId); if(i>=0) db.posts.splice(i,1); en.postId=null; }
     if(en.posted && (en.platforms||[]).length){ const acc=(db.accounts||[]).find(a=>a.character===en.character); const c=(db.concepts||[]).find(x=>x.id===en.conceptId); const pid=this.uid('p'); en.postId=pid;
-      db.posts.push({ id:pid, accountId:acc?acc.id:null, date:en.date, type:en.type||'Product', concept:c?c.name:'', conceptId:en.conceptId, conceptVarId:en.conceptVarId||'', hookVarId:en.hookVarId||'', bodyVarId:en.bodyVarId||'', prod:en.prod||'Assembly', platforms:(en.platforms||[]).slice(), done:true, fromEntry:en.id, createdAt:Date.now() }); }
+      db.posts.push({ id:pid, accountId:acc?acc.id:null, date:en.postedDate||en.date, type:en.type||'Product', concept:c?c.name:'', conceptId:en.conceptId, conceptVarId:en.conceptVarId||'', hookVarId:en.hookVarId||'', bodyVarId:en.bodyVarId||'', prod:en.prod||'Assembly', platforms:(en.platforms||[]).slice(), done:true, fromEntry:en.id, createdAt:Date.now() }); }
   }
   acctReposts(id){ return (this.state.db.posts||[]).filter(p=>p.accountId===id&&p.prod==='Repost').length; }
   acctLastRepost(id){ const ds=(this.state.db.posts||[]).filter(p=>p.accountId===id&&p.prod==='Repost').map(p=>p.date).sort(); return ds.length?ds[ds.length-1]:null; }
@@ -1912,7 +1955,7 @@ class Component extends DCLogic {
   clearAxisVideo(conceptId, axis, id){ this.commit(db=>{ const c=db.concepts.find(x=>x.id===conceptId); const it=c&&(c[axis]||[]).find(x=>x.id===id); if(it){ it.video=''; it.videoKind=''; } }); }
 
   exportData(){ const blob=new Blob([JSON.stringify(this.state.db,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='slate-backup-'+this.todayStr()+'.json'; a.click(); URL.revokeObjectURL(url); }
-  importData(e){ const file=e.target.files[0]; if(!file) return; const r=new FileReader(); r.onload=()=>{ try{ const db=JSON.parse(r.result); this.save(db); this.setState({ db }); }catch(err){ alert('Invalid backup file'); } }; r.readAsText(file); }
+  importData(e){ const file=e.target.files[0]; if(!file) return; const r=new FileReader(); r.onload=()=>{ try{ const db=JSON.parse(r.result); this.save(db); this._liveDb=db; this.setState({ db }); }catch(err){ alert('Invalid backup file'); } }; r.readAsText(file); }
 
   // ---------- seed ----------
   seed(){
@@ -1946,7 +1989,7 @@ class Component extends DCLogic {
     for(let d=1;d<=20;d++){ const date=this.shiftDate(T,-d); accounts.forEach((acc,ai)=>{ if(acc.status==='Warming'&&d>10) return; const base=Math.max(1, acc.target-((ai+d)%3)); for(let k=0;k<base;k++){ const c=concepts[(ai+k+d)%concepts.length]; const isRepost=(k%6===0); const cv=(c.variations||[])[(ai+d)%Math.max(1,(c.variations||[]).length)]; const hv=(c.hooks||[])[(k+d)%Math.max(1,(c.hooks||[]).length)]; const bv=(c.bodies||[])[(ai+k)%Math.max(1,(c.bodies||[]).length)];
       posts.push({ id:'p'+posts.length, accountId:acc.id, date, type:(k%3===0?'Growth':'Product'), concept:c.name, conceptId:c.id, conceptVarId:cv?cv.id:'', hookVarId:hv?hv.id:'', bodyVarId:bv?bv.id:'', prod:(isRepost?'Repost':(k%2?'Scratch':'Assembly')), platforms:platSets[(ai+k+d)%platSets.length], done:true, createdAt:0 });
       if(isRepost){ acc.repostCount=(acc.repostCount||0)+1; if(!acc.lastRepostDate||date>acc.lastRepostDate) acc.lastRepostDate=date; } } }); }
-    const db={ version:2, accounts, posts, concepts, products, team };
+    const db={ version:2, platforms:this.DEFAULT_PLATFORMS.map(p=>({...p})), accounts, posts, concepts, products, team };
     db.dailyEntries=this.seedDailyEntries(db);
     return db;
   }
@@ -2499,7 +2542,10 @@ class Component extends DCLogic {
       videoInputStyle:{ flex:'1', minWidth:'0', height:'30px', padding:'0 9px', background:'#0e0e11', border:'1px solid '+(done?'rgba(52,224,138,0.4)':'rgba(255,255,255,0.1)'), borderRadius:'8px', color:'#ededf0', fontSize:'11.5px', outline:'none' },
       // ---- posted + platforms (admin/poster only) ----
       posted, postedCheck:posted?'✓':'',
-      togglePosted:()=>this.commit(db2=>{ const x=(db2.dailyEntries||[]).find(y=>y.id===en.id); if(!x) return; x.posted=!x.posted; x.postedAt=x.posted?Date.now():null; if(x.posted&&!(x.platforms||[]).length) x.platforms=['facebook']; this.syncEntryPost(db2,x); }),
+      togglePosted:()=>this.commit(db2=>{ const x=(db2.dailyEntries||[]).find(y=>y.id===en.id); if(!x) return; x.posted=!x.posted; x.postedAt=x.posted?Date.now():null; if(x.posted){ if(!x.postedDate) x.postedDate=this.todayStr(); if(!(x.platforms||[]).length) x.platforms=['facebook']; } this.syncEntryPost(db2,x); }),
+      postedDateValue: en.postedDate||this.todayStr(),
+      onPostedDate:e=>{ if(!e.target.value) return; this.commit(db2=>{ const x=(db2.dailyEntries||[]).find(y=>y.id===en.id); if(!x) return; x.postedDate=e.target.value; if(x.posted) this.syncEntryPost(db2,x); }); },
+      postedDateStyle:{ height:'26px', padding:'0 7px', background:'#0e0e11', border:'1px solid rgba(91,141,239,0.35)', borderRadius:'7px', color:'#a9c6f7', fontSize:'11px', fontWeight:'600', outline:'none', colorScheme:'dark', cursor:'pointer', flex:'0 0 auto' },
       postedCheckStyle:{ width:'24px', height:'24px', borderRadius:'7px', border:posted?'none':'1.6px solid rgba(255,255,255,0.2)', background:posted?this.C.blue:'transparent', color:'#06140c', fontSize:'14px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flex:'0 0 auto' },
       postedLabelStyle:{ fontSize:'11.5px', fontWeight:'700', color:posted?'#a9c6f7':'#8b8b93' },
       platChips:this.PLATFORMS.map(p=>{ const on=plats.includes(p); const col=this.PLAT_COLOR[p]; return { key:p, label:this.PLAT_LABEL[p], name:this.PLAT_NAME[p], on, isFb:p==='facebook', isIg:p==='instagram',
@@ -2666,7 +2712,8 @@ class Component extends DCLogic {
       v.followerBand={P1:'0 – 500',P2:'500 – 5k',P3:'5k – 30k',P4:'30k – 50k+'}[f.phase]||'';
       v.phaseOptions=['P1','P2','P3','P4'].map(p=>({ label:p, style:this.segBtn(f.phase===p, this.phaseColor(p)), onClick:()=>this.setForm({phase:p}) }));
       v.statusOptions=['Active','Warming','Paused','Banned'].map(s=>({ label:s, style:this.segBtn(f.status===s, this.statusColor(s)), onClick:()=>this.setForm({status:s}) }));
-      v.platFields=this.PLATFORMS.map(p=>({ key:p, label:this.PLAT_NAME[p], value:(f.plats&&f.plats[p])||'', color:this.PLAT_COLOR[p], onInput:e=>this.setState(s=>({ form:{...s.form, plats:{...s.form.plats, [p]:e.target.value}} })) }));
+      v.platFields=this.PLATFORMS.map(p=>({ key:p, label:this.PLAT_NAME[p], value:(f.plats&&f.plats[p])||'', color:this.PLAT_COLOR[p], isCustom:!(p==='facebook'||p==='instagram'), onRemove:()=>this.removePlatform(p), onInput:e=>this.setState(s=>({ form:{...s.form, plats:{...s.form.plats, [p]:e.target.value}} })) }));
+      v.fNewPlat=f.newPlat||''; v.onNewPlat=e=>this.setForm({ newPlat:e.target.value }); v.addPlatform=()=>this.addPlatform(this.state.form&&this.state.form.newPlat); v.onNewPlatKey=e=>{ if(e.key==='Enter'){ e.preventDefault(); this.addPlatform(this.state.form&&this.state.form.newPlat); } };
       v.submitAccount=e=>this.submitAccount(e); v.canDelete=!!m.editId && this.isAdmin(); v.deleteAccount=e=>this.deleteAccount(e); v.editId=m.editId;
       const ab=this.avatarBox({character:f.character,avatar:f.avatar},64); v.avatarPreviewStyle=ab.style; v.avatarShow=ab.show; v.avatarInitial=ab.initial; v.onAvatarFile=e=>this.onAvatarFile(e); v.clearAvatar=()=>this.clearAvatar(); v.hasAvatar=!!f.avatar;
     }
