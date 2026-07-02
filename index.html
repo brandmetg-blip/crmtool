@@ -464,80 +464,100 @@
 </sc-if>
       <sc-if value="{{ isSlots }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Content Slots" style="padding:20px 28px 44px;max-width:1560px">
-  <div style="display:flex;align-items:flex-start;gap:11px;padding:13px 16px;background:rgba(52,224,138,0.06);border:1px solid rgba(52,224,138,0.18);border-radius:12px;margin-bottom:18px">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34e08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto;margin-top:1px"><path d="M5 9l2 2 4-4"/><path d="M14 8h6"/><path d="M14 12h6"/><path d="M5 16l2 2 4-4"/></svg>
-    <div style="font-size:12.5px;color:#9ad9b8;line-height:1.5">Drag concepts from the left into each character&rsquo;s <b style="color:#cfeede">7 daily slots</b> to plan the video mix. Write your own blocks below and drag those in too. Drag a slotted block onto another character to move it. Everything saves live.</div>
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:16px">
+    <div>
+      <div style="font-size:13px;color:#7fcfa3;font-weight:600">Content plan</div>
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.4px;color:#f6f6f7;margin-top:2px">Slot plan per character</div>
+      <div style="font-size:13px;color:#7c7c84;margin-top:4px;max-width:660px">Set how many videos each character needs and of what kind. This feeds the Dashboard to-do and pre-fills the Daily Builder — it stays as-is until you change it.</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;flex:0 0 auto;flex-wrap:wrap">
+      <sc-if value="{{ slotAllClear }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;font-size:12.5px;font-weight:700;color:#9affc9;background:rgba(52,224,138,0.1);border:1px solid rgba(52,224,138,0.26)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>All slots met today</span></sc-if>
+      <sc-if value="{{ slotHasOpen }}" hint-placeholder-val="{{ true }}">
+        <span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;font-size:12.5px;font-weight:700;color:#f0b341;background:rgba(240,179,65,0.1);border:1px solid rgba(240,179,65,0.26)">{{ slotOpenCreate }} to create</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;font-size:12.5px;font-weight:700;color:#5b8def;background:rgba(91,141,239,0.1);border:1px solid rgba(91,141,239,0.26)">{{ slotOpenPost }} to post</span>
+      </sc-if>
+      <button onClick="{{ slotGoBuilder }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;background:#34e08a;color:#06140c;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer" style-hover="background:#46e89a">Open Daily Builder</button>
+    </div>
   </div>
 
-  <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start">
-    <div style="position:sticky;top:12px;display:flex;flex-direction:column;gap:14px">
-      <div style="background:linear-gradient(160deg,#16191b,#0d1110);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:15px 15px 16px">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.7px;color:#7fcfa3;margin-bottom:11px">CONCEPT BLOCKS</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <sc-for list="{{ slotPaletteConcepts }}" as="p" hint-placeholder-count="6">
-            <div draggable="true" onDragStart="{{ p.onDragStart }}" onDragEnd="{{ slotDragEnd }}" style="{{ p.style }}" style-hover="border-color:rgba(52,224,138,0.3)">
-              <span style="{{ p.dotStyle }}"></span>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:12.5px;font-weight:700;color:#eaeaee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div>
-                <div style="font-size:10.5px;color:#6a6a72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.tagline }}</div>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4a4a52" stroke-width="2" stroke-linecap="round" style="flex:0 0 auto"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
-            </div>
-          </sc-for>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px">
+    <sc-for list="{{ slotBoards }}" as="b" hint-placeholder-count="6">
+      <div style="{{ b.boardStyle }}">
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
+          <span style="{{ b.avatarStyle }}">{{ b.initial }}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#f4f4f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.character }}</div>
+            <div style="font-size:11px;color:#6a6a72;margin-top:1px">{{ b.product }}</div>
+          </div>
+          <span style="{{ b.countStyle }}">{{ b.countLabel }}</span>
         </div>
-      </div>
 
-      <div style="background:linear-gradient(160deg,#16191b,#0d1110);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:15px">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.7px;color:#8b8b93;margin-bottom:11px">YOUR OWN BLOCKS</div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <input value="{{ slotCustomText }}" onInput="{{ onSlotCustomInput }}" onKeyDown="{{ onSlotCustomKey }}" placeholder="Write a block&hellip;" style="flex:1;min-width:0;height:32px;padding:0 10px;background:#0e0e11;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#ededf0;font-size:12px;outline:none" style-focus="border-color:rgba(52,224,138,0.45)"/>
-          <button onClick="{{ addSlotCustom }}" style="height:32px;padding:0 12px;background:rgba(52,224,138,0.12);border:1px solid rgba(52,224,138,0.3);border-radius:8px;color:#34e08a;font-size:12px;font-weight:700;cursor:pointer;flex:0 0 auto" style-hover="background:rgba(52,224,138,0.2)">Add</button>
-        </div>
-        <sc-if value="{{ slotHasCustoms }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <sc-for list="{{ slotPaletteCustoms }}" as="cb" hint-placeholder-count="2">
-            <div draggable="true" onDragStart="{{ cb.onDragStart }}" onDragEnd="{{ slotDragEnd }}" style="display:flex;align-items:center;gap:9px;padding:10px 11px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.16);border-radius:11px;cursor:grab" style-hover="border-color:rgba(52,224,138,0.35)">
-              <span style="width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:#8b8b93"></span>
-              <span style="flex:1;min-width:0;font-size:12px;color:#dcdce0;line-height:1.35">{{ cb.text }}</span>
-              <button onClick="{{ cb.remove }}" title="Delete block" style="width:20px;height:20px;flex:0 0 auto;border:none;background:transparent;color:#5e5e66;cursor:pointer;font-size:12px" style-hover="color:#f0584e">&#10005;</button>
+        <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:7px;margin-bottom:11px">
+          <sc-for list="{{ b.steppers }}" as="s" hint-placeholder-count="3">
+            <div style="{{ s.chipStyle }}">
+              <span style="{{ s.dotStyle }}"></span>
+              <span style="{{ s.labelStyle }}">{{ s.prod }}</span>
+              <button onClick="{{ s.dec }}" title="Remove one" style="{{ s.decStyle }}">&#8722;</button>
+              <span style="{{ s.countStyle }}">{{ s.count }}</span>
+              <button onClick="{{ s.inc }}" title="Add one" style="{{ s.incStyle }}">+</button>
             </div>
           </sc-for>
         </div>
         </sc-if>
-        <sc-if value="{{ slotHasCustoms }}" hint-placeholder-val="{{ true }}"></sc-if>
-      </div>
-    </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px">
-      <sc-for list="{{ slotBoards }}" as="b" hint-placeholder-count="6">
-        <div onDragOver="{{ b.onDragOver }}" onDragLeave="{{ b.onDragLeave }}" onDrop="{{ b.onDrop }}" style="{{ b.boardStyle }}">
-          <div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
-            <span style="{{ b.avatarStyle }}">{{ b.initial }}</span>
-            <div style="flex:1;min-width:0">
-              <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#f4f4f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.character }}</div>
-              <div style="font-size:11px;color:#6a6a72;margin-top:1px">{{ b.product }}</div>
+        <div style="display:flex;flex-direction:column;gap:7px">
+          <sc-for list="{{ b.slots }}" as="it" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:9px;min-height:42px;padding:6px 10px;border-radius:11px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06)">
+              <span style="{{ it.barStyle }}"></span>
+              <span style="{{ it.numStyle }}">{{ it.n }}</span>
+              <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}">
+                <select value="{{ it.prodValue }}" onChange="{{ it.onProd }}" style="{{ it.prodSelStyle }}"><sc-for list="{{ slotProdOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for></select>
+                <select value="{{ it.conceptValue }}" onChange="{{ it.onConcept }}" style="{{ it.conceptSelStyle }}"><sc-for list="{{ conceptOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select>
+                <button onClick="{{ it.remove }}" title="Remove slot" style="width:24px;height:24px;flex:0 0 auto;border:none;background:transparent;color:#7a7a82;cursor:pointer;font-size:14px" style-hover="color:#f0584e">&#10005;</button>
+              </sc-if>
+              <sc-if value="{{ b.readonly }}" hint-placeholder-val="{{ false }}">
+                <span style="{{ it.prodChipStyle }}">{{ it.prod }}</span>
+                <span style="flex:1;min-width:0;font-size:12px;color:#cfd0d4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.conceptName }}</span>
+              </sc-if>
             </div>
-            <span style="{{ b.countStyle }}">{{ b.countLabel }}</span>
+          </sc-for>
+          <sc-if value="{{ b.noSlots }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:15px;text-align:center;font-size:12px;color:#5e5e66;border:1px dashed rgba(255,255,255,0.1);border-radius:11px">No slots yet — use the steppers or Add slot.</div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{ b.addSlot }}" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:34px;margin-top:9px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.14);border-radius:10px;color:#9a9ba0;font-size:12px;font-weight:700;cursor:pointer" style-hover="border-color:rgba(52,224,138,0.35);color:#34e08a"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add slot</button>
+        </sc-if>
+
+        <sc-if value="{{ b.hasPlan }}" hint-placeholder-val="{{ true }}">
+        <div style="margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,0.06)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:700;color:#8b8b93">Today</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <sc-if value="{{ b.allClear }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700;color:#9affc9;background:rgba(52,224,138,0.12);border:1px solid rgba(52,224,138,0.26)">All met</span></sc-if>
+              <sc-if value="{{ b.hasNeedCreate }}" hint-placeholder-val="{{ false }}"><span style="{{ b.createStyle }}">{{ b.createLabel }}</span></sc-if>
+              <sc-if value="{{ b.hasNeedPost }}" hint-placeholder-val="{{ false }}"><span style="{{ b.postStyle }}">{{ b.postLabel }}</span></sc-if>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:7px">
-            <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="3">
-              <div draggable="true" onDragStart="{{ it.onDragStart }}" onDragEnd="{{ slotDragEnd }}" style="{{ it.fillStyle }}">
-                <span style="{{ it.barStyle }}"></span>
-                <span style="flex:1;min-width:0;font-size:12.5px;font-weight:600;color:#eaeaee;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.label }}</span>
-                <sc-if value="{{ it.isCustom }}" hint-placeholder-val="{{ false }}"><span style="font-size:9px;font-weight:800;letter-spacing:.5px;color:#8b8b93;flex:0 0 auto">CUSTOM</span></sc-if>
-                <button onClick="{{ it.remove }}" title="Remove from slot" style="width:22px;height:22px;flex:0 0 auto;border:none;background:transparent;color:#7a7a82;cursor:pointer;font-size:13px" style-hover="color:#f0584e">&#10005;</button>
-              </div>
-            </sc-for>
-            <sc-for list="{{ b.empties }}" as="e" hint-placeholder-count="4">
-              <div style="display:flex;align-items:center;gap:9px;min-height:44px;padding:0 12px;border:1px dashed rgba(255,255,255,0.11);border-radius:10px">
-                <span style="font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#3f3f47;flex:0 0 auto">{{ e.n }}</span>
-                <span style="font-size:11.5px;color:#4a4a52">Drop a block here</span>
-              </div>
-            </sc-for>
+          <div style="position:relative;height:8px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden">
+            <div style="{{ b.madeBarStyle }}"></div>
+            <div style="{{ b.postedBarStyle }}"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:7px">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#8b8b93"><span style="width:8px;height:8px;border-radius:2px;background:#34e08a"></span>{{ b.postedText }}</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#8b8b93"><span style="width:8px;height:8px;border-radius:2px;background:rgba(240,179,65,0.55)"></span>{{ b.madeText }}</span>
           </div>
         </div>
-      </sc-for>
-    </div>
+        </sc-if>
+
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ b.prefill }}" title="Create today's Daily Builder rows from this plan" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;background:rgba(52,224,138,0.1);border:1px solid rgba(52,224,138,0.28);border-radius:9px;color:#34e08a;font-size:12px;font-weight:700;cursor:pointer" style-hover="background:rgba(52,224,138,0.18)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Pre-fill builder</button></sc-if>
+          <button onClick="{{ b.openBuilder }}" style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 13px;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#a1a1aa;font-size:12px;font-weight:700;cursor:pointer" style-hover="border-color:rgba(255,255,255,0.2);color:#ededf0">Open</button>
+        </div>
+      </div>
+    </sc-for>
   </div>
 </div>
 </sc-if>
@@ -631,6 +651,7 @@
         <div style="font-size:11.5px;color:#6a6a72;margin-top:1px">{{ builderSheet.ratio }} videos done · {{ builderDateLabel }}</div>
       </div>
       <div style="flex:1"></div>
+      <sc-if value="{{ builderSheet.hasSlotGap }}" hint-placeholder-val="{{ false }}"><button onClick="{{ builderSheet.prefill }}" title="Create rows for this character's remaining slot plan" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;background:rgba(52,224,138,0.1);color:#34e08a;border:1px solid rgba(52,224,138,0.28);border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer" style-hover="background:rgba(52,224,138,0.18)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l2 2 4-4"/><path d="M14 8h6"/><path d="M14 12h6"/><path d="M5 16l2 2 4-4"/></svg>Pre-fill {{ builderSheet.slotGapLabel }}</button></sc-if>
       <sc-if value="{{ builderCanEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ builderSheet.addEntry }}" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 16px;background:#34e08a;color:#06140c;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:#46e89a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06140c" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add video</button></sc-if>
     </div>
 
@@ -1544,7 +1565,17 @@ class Component extends DCLogic {
       if(en.hookKind===undefined) en.hookKind='text'; if(en.hookLink===undefined) en.hookLink=''; if(!en.bodyKind) en.bodyKind='text'; if(en.bodyLink===undefined) en.bodyLink=''; if(en.refVideo===undefined) en.refVideo=''; if(en.win===undefined) en.win=false; if(en.wonAt===undefined) en.wonAt=null; });
     if(!db.assetLinks){ db.assetLinks={ baseImages:'', hooks:'', bodies:'' }; }
     if(!db.slots||typeof db.slots!=='object'||Array.isArray(db.slots)){ db.slots={}; }
-    if(!Array.isArray(db.customBlocks)){ db.customBlocks=[]; }
+    // normalize slots to new shape { id, prod, conceptId } (migrate old concept/custom blocks)
+    Object.keys(db.slots).forEach(ch=>{ const arr=db.slots[ch]; if(!Array.isArray(arr)){ db.slots[ch]=[]; return; }
+      db.slots[ch]=arr.map(it=>{ if(it&&it.prod&&it.id) return { id:it.id, prod:this.PROD_TIERS.includes(it.prod)?it.prod:'Assembly', conceptId:it.conceptId||'' };
+        return { id:this.uid('slot'), prod:'Assembly', conceptId:(it&&it.kind==='concept')?(it.conceptId||''):'' }; }); });
+    // seed a starter plan the first time so the feature is visible
+    if(!db.slotsSeeded){ const chars=this.distinctCharacters(db); const cs=db.concepts||[];
+      const plan={ 0:['Assembly','Repost'], 1:['Assembly','Assembly','Scratch'], 2:['Repost'] };
+      chars.forEach((ch,i)=>{ if(Array.isArray(db.slots[ch])&&db.slots[ch].length) return; const tiers=plan[i%3]||['Assembly'];
+        db.slots[ch]=tiers.map((p,k)=>({ id:this.uid('slot'), prod:p, conceptId:(cs[(i+k)%Math.max(1,cs.length)]||{}).id||'' })); });
+      db.slotsSeeded=true; }
+    if(db.customBlocks!==undefined) delete db.customBlocks;
     (db.team||[]).forEach(m=>{ if(!['Admin','Poster','Editor'].includes(m.role)) m.role=(m.role==='Manager'?'Poster':'Editor');
       if(m.password===undefined) m.password=((m.email||'user').split('@')[0])+'123';
       if(!Array.isArray(m.assignments)) m.assignments=[]; });
@@ -1967,7 +1998,7 @@ class Component extends DCLogic {
     const admin=this.isAdmin(); const allowed=this.allowedTabs();
     const navBase={ display:'flex',alignItems:'center',gap:'11px',padding:'8px 11px',borderRadius:'9px',cursor:'pointer',fontSize:'13.5px',transition:'background .12s' };
     const mk=k=>({ ...navBase, fontWeight: tab===k?'700':'500', color: tab===k?'#e9fff4':'#8a8a92', background: tab===k?'linear-gradient(90deg,rgba(52,224,138,0.16),rgba(52,224,138,0.05))':'transparent', boxShadow: tab===k?'inset 0 0 0 1px rgba(52,224,138,0.18)':'none' });
-    const titles={ dashboard:['Dashboard','Your operation at a glance'], mywork:['My Work','Your accounts & today’s tasks'], planner:['Planner','Plan & track posting day by day'], builder:['Daily Builder','Assemble today’s scripts — hook + body'], accounts:['Accounts','Characters, pipeline & platforms'], library:['Content Library','Concepts, SOPs & product lanes'], assets:['Assets','Concepts, hooks & character drives'], analytics:['Analytics','Posting & concept performance'], logs:['Logs','Everything posted & logged'], slots:['Content Slots','Plan each character’s daily video mix'], settings:['Settings','Users, roles, products & data'] };
+    const titles={ dashboard:['Dashboard','Your operation at a glance'], mywork:['My Work','Your accounts & today’s tasks'], planner:['Planner','Plan & track posting day by day'], builder:['Daily Builder','Assemble today’s scripts — hook + body'], accounts:['Accounts','Characters, pipeline & platforms'], library:['Content Library','Concepts, SOPs & product lanes'], assets:['Assets','Concepts, hooks & character drives'], analytics:['Analytics','Posting & concept performance'], logs:['Logs','Everything posted & logged'], slots:['Slot Plan','Plan each character’s video mix — feeds the builder'], settings:['Settings','Users, roles, products & data'] };
     const greet=(()=>{ const h=new Date().getHours(); return h<12?'Good morning':(h<18?'Good afternoon':'Good evening'); })();
     const roleLabel=me.role==='Admin'?'Admin · full access':(me.role==='Poster'?'VA · Poster · all accounts':(me.role==='Editor'?('VA · Editor · '+this.myAccountIds().length+' accounts'):'—'));
     return {
@@ -2078,7 +2109,7 @@ class Component extends DCLogic {
     const chartModeTabs=[['day','By day'],['account','By account'],['platform','By platform']].map(([k,lbl])=>({ label:lbl, onClick:()=>this.setDashChart(k), style:{padding:'5px 11px',borderRadius:'7px',fontSize:'12px',fontWeight:'600',cursor:'pointer',color:mode===k?'#06140c':'#a1a1aa',background:mode===k?'#34e08a':'transparent'} }));
     // focus
     const entByChar={}; todayEntries.forEach(e=>{ (entByChar[e.character]=entByChar[e.character]||[]).push(e); });
-    const focus=active.map(a=>{ const es=entByChar[a.character]||[]; const made=es.filter(e=>e.done).length; const posted=es.filter(e=>e.posted).length; const toMake=Math.max(0,es.length-made); const toPost=Math.max(0,made-posted); return {a,toMake,toPost,need:toMake+toPost}; }).filter(o=>o.need>0).sort((x,y)=>y.need-x.need).slice(0,5).map(o=>{ const av=this.avatarBox(o.a,38); const pr=this.productById(o.a.product);
+    const focus=active.map(a=>{ const es=entByChar[a.character]||[]; const made=es.filter(e=>e.done).length; const posted=es.filter(e=>e.posted).length; const pg=this.slotProgress(a.character,T); const usePlan=pg.planned>0; const toMake=usePlan?pg.needCreate:Math.max(0,es.length-made); const toPost=usePlan?pg.needPost:Math.max(0,made-posted); return {a,toMake,toPost,need:toMake+toPost}; }).filter(o=>o.need>0).sort((x,y)=>y.need-x.need).slice(0,5).map(o=>{ const av=this.avatarBox(o.a,38); const pr=this.productById(o.a.product);
       const cnt=(col)=>({display:'inline-flex',alignItems:'center',gap:'4px',padding:'4px 9px',borderRadius:'8px',fontSize:'11.5px',fontWeight:'700',whiteSpace:'nowrap',color:col,background:this.alpha(col,0.12),border:'1px solid '+this.alpha(col,0.24)});
       return { name:o.a.name, product:pr?pr.short:'—', avatarStyle:av.style, show:av.show, initial:av.initial, toMake:String(o.toMake), toPost:String(o.toPost), hasMake:o.toMake>0, hasPost:o.toPost>0, makeStyle:cnt(this.C.amber), postStyle:cnt(this.C.blue), onClick:()=>this.setState({tab:'builder',builderChar:o.a.character,builderDate:T,drillId:null,detailId:null}) }; });
     // rows
@@ -2514,7 +2545,9 @@ class Component extends DCLogic {
     // sheet for selected character
     let sheet=null;
     if(sheetOpen){ const es=dayEntries.filter(e=>e.character===selCh).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)); const cdone=es.filter(e=>e.done).length;
+      const pgSheet=this.slotProgress(selCh, date); const slotGap=pgSheet.needCreate;
       sheet={ character:selCh, color:this.charColor(selCh), avatarStyle:this.charAvatarStyle(selCh,40), initial:selCh[0], total:es.length, done:cdone, ratio:cdone+'/'+es.length, left:es.length-cdone, empty:es.length===0, allDone:es.length>0&&cdone===es.length,
+        hasSlotGap:canEdit&&slotGap>0, slotGapLabel:slotGap+' slot'+(slotGap===1?'':'s'), prefill:()=>this.prefillFromSlots(selCh, date),
         rows:es.map((en,i)=>({ ...this.entryRow(en, concepts, canEdit), num:String(i+1) })), addEntry:()=>this.addEntry(selCh) };
     }
     return { builderDateLabel:this.fmtFull(date), builderIsToday:date===T, builderDateInput:date,
@@ -2683,69 +2716,102 @@ class Component extends DCLogic {
     });
     const totalMade=entriesToday.filter(e=>e.done).length; const totalPosted=entriesToday.filter(e=>e.posted).length; const totalLeft=Math.max(0,totalMade-totalPosted);
     // Today's tasks = videos that are MADE but NOT yet POSTED (ready to post). Videos merely added / not yet made do not appear here.
-    const tasks=cards.filter(c=>c.left>0).map(c=>({ kind:'post', dotColor:this.C.amber, title:c.name, sub:c.left+' video'+(c.left===1?'':'s')+' ready to post', tagText:'POST', tagStyle:this.pillStyle(this.C.amber), onClick:c.openPlanner }));
+    // create tasks come from the slot plan (planned videos not yet made today)
+    const createTasks=[]; myChars.forEach(ch=>{ const pg=this.slotProgress(ch,T); if(pg.needCreate>0){ createTasks.push({ kind:'create', dotColor:this.C.blue, title:ch, sub:pg.needCreate+' video'+(pg.needCreate===1?'':'s')+' to create', tagText:'CREATE', tagStyle:this.pillStyle(this.C.blue), onClick:()=>this.setState({tab:'builder',builderChar:ch,builderDate:T,drillId:null,detailId:null}) }); } });
+    const postTasks=cards.filter(c=>c.left>0).map(c=>({ kind:'post', dotColor:this.C.amber, title:c.name, sub:c.left+' video'+(c.left===1?'':'s')+' ready to post', tagText:'POST', tagStyle:this.pillStyle(this.C.amber), onClick:c.openPlanner }));
+    const tasks=createTasks.concat(postTasks);
     return { mwAccounts:cards, mwHasAccounts:accts.length>0, mwNoAccounts:accts.length===0,
       mwTotalLeft:totalLeft, mwSummary:totalPosted+' / '+totalMade+' made videos posted today', mwLeftLabel: totalMade===0?'No finished videos yet today':(totalLeft===0?'All finished videos posted':(totalLeft+' video'+(totalLeft===1?'':'s')+' ready to post')),
-      mwAllClear:totalLeft===0, mwTasks:tasks, mwHasTasks:tasks.length>0, mwTaskCount:tasks.length, mwGoBuilder:()=>this.goBuilder(T),
+      mwAllClear:tasks.length===0, mwTasks:tasks, mwHasTasks:tasks.length>0, mwTaskCount:tasks.length, mwGoBuilder:()=>this.goBuilder(T),
       mwBannerBg: totalLeft===0 ? 'rgba(52,224,138,0.07)' : 'rgba(240,179,65,0.07)' };
   }
 
-  slotDragStart(payload){ return (e)=>{ this._slotDrag=payload; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', payload.kind||'block'); }catch(_){ } }; }
-  applySlotDrop(char){ const d=this._slotDrag; this._slotDrag=null; if(this.state.slotOver) this.setState({ slotOver:null }); if(!d) return; const MAX=7;
-    this.commit(db=>{ if(!db.slots||typeof db.slots!=='object'||Array.isArray(db.slots)) db.slots={};
-      if(d.kind==='move'){
-        const from=d.char; const fromArr=((db.slots[from]||[]).slice()); const idx=fromArr.findIndex(s=>s.id===d.id); if(idx<0) return; const item=fromArr.splice(idx,1)[0]; db.slots[from]=fromArr;
-        const arr=(db.slots[char]||[]).slice(); if(from!==char && arr.length>=MAX){ fromArr.splice(idx,0,item); db.slots[from]=fromArr; return; } arr.push(item); db.slots[char]=arr;
-      } else {
-        const arr=(db.slots[char]||[]).slice(); if(arr.length>=MAX) return;
-        const item = d.kind==='concept' ? { id:this.uid('slot'), kind:'concept', conceptId:d.conceptId } : { id:this.uid('slot'), kind:'custom', text:d.text };
-        arr.push(item); db.slots[char]=arr;
-      }
+  // ---------- slot plan model ----------
+  prodColor(p){ return ({ Assembly:this.C.green, Scratch:this.C.blue, Repost:this.C.amber })[p]||this.C.gray; }
+  slotPlan(ch){ const db=this.state.db||{}; return ((db.slots||{})[ch]||[]).slice(); }
+  slotPlanCounts(ch){ const c={Assembly:0,Scratch:0,Repost:0}; this.slotPlan(ch).forEach(s=>{ c[s.prod]=(c[s.prod]||0)+1; }); return c; }
+  slotProgress(ch,date){ const db=this.state.db||{}; date=date||this.todayStr();
+    const byProd={}; this.PROD_TIERS.forEach(p=>byProd[p]={planned:0,made:0,posted:0});
+    this.slotPlan(ch).forEach(s=>{ if(byProd[s.prod]) byProd[s.prod].planned++; });
+    (db.dailyEntries||[]).filter(e=>e.character===ch && e.date===date).forEach(e=>{ const b=byProd[e.prod||'Assembly']; if(!b) return; if(e.done) b.made++; if(e.posted) b.posted++; });
+    let planned=0, made=0, posted=0, needCreate=0, needPost=0;
+    this.PROD_TIERS.forEach(p=>{ const b=byProd[p]; planned+=b.planned; made+=Math.min(b.planned,b.made); posted+=Math.min(b.planned,b.posted);
+      needCreate+=Math.max(0,b.planned-b.made); needPost+=Math.max(0, Math.min(b.planned,b.made)-b.posted); });
+    return { planned, made, posted, needCreate, needPost, byProd };
+  }
+  slotTasks(date, chars){ chars=chars||this.distinctCharacters(); const out=[];
+    chars.forEach(ch=>{ const pg=this.slotProgress(ch,date); this.PROD_TIERS.forEach(p=>{ const b=pg.byProd[p];
+      const nc=Math.max(0,b.planned-b.made); const np=Math.max(0, Math.min(b.planned,b.made)-b.posted);
+      if(nc>0) out.push({ char:ch, prod:p, kind:'create', count:nc });
+      if(np>0) out.push({ char:ch, prod:p, kind:'post', count:np }); }); });
+    return out;
+  }
+  slotAdd(ch,prod){ this.commit(db=>{ if(!db.slots) db.slots={}; if(!Array.isArray(db.slots[ch])) db.slots[ch]=[]; db.slots[ch].push({ id:this.uid('slot'), prod:prod||'Assembly', conceptId:'' }); }); }
+  slotRemove(ch,id){ this.commit(db=>{ if(!db.slots||!db.slots[ch]) return; db.slots[ch]=db.slots[ch].filter(s=>s.id!==id); }); }
+  slotRemoveLastOfProd(ch,prod){ this.commit(db=>{ if(!db.slots||!Array.isArray(db.slots[ch])) return; const a=db.slots[ch]; for(let i=a.length-1;i>=0;i--){ if(a[i].prod===prod){ a.splice(i,1); break; } } }); }
+  slotSetProd(ch,id,prod){ this.commit(db=>{ const s=((db.slots||{})[ch]||[]).find(x=>x.id===id); if(s) s.prod=prod; }); }
+  slotSetConcept(ch,id,cid){ this.commit(db=>{ const s=((db.slots||{})[ch]||[]).find(x=>x.id===id); if(s) s.conceptId=cid; }); }
+  slotClear(ch){ this.commit(db=>{ if(db.slots) db.slots[ch]=[]; }); }
+  prefillFromSlots(ch,date){ date=date||this.curBuilderDate();
+    this.commit(db=>{ if(!Array.isArray(db.dailyEntries)) db.dailyEntries=[]; const plan=(db.slots||{})[ch]||[];
+      const haveByProd={}; db.dailyEntries.filter(e=>e.character===ch&&e.date===date).forEach(e=>{ const p=e.prod||'Assembly'; haveByProd[p]=(haveByProd[p]||0)+1; });
+      const bucket={}; plan.forEach(s=>{ (bucket[s.prod]=bucket[s.prod]||[]).push(s); });
+      Object.keys(bucket).forEach(p=>{ const slots=bucket[p]; const have=haveByProd[p]||0;
+        for(let i=have;i<slots.length;i++){ const s=slots[i];
+          db.dailyEntries.push({ id:this.uid('de'), date, character:ch, conceptId:s.conceptId||'', conceptVarId:'', hookVarId:'', bodyVarId:'', hook:'', bodyText:'', type:'Product', prod:p, done:false, posted:false, platforms:[], videoLink:'', hookKind:'text', hookLink:'', bodyKind:'text', bodyLink:'', refVideo:'', notes:'', win:false, wonAt:null, createdAt:Date.now() }); } });
     });
   }
-  slotRemove(ch,id){ this.commit(db=>{ if(!db.slots||!db.slots[ch]) return; db.slots[ch]=db.slots[ch].filter(s=>s.id!==id); }); }
-  addCustomBlock(){ const t=(this.state.slotCustomText||'').trim(); if(!t) return; this.commit(db=>{ if(!Array.isArray(db.customBlocks)) db.customBlocks=[]; db.customBlocks.push({ id:this.uid('cb'), text:t }); }); this.setState({ slotCustomText:'' }); }
-  removeCustomBlock(id){ this.commit(db=>{ if(!Array.isArray(db.customBlocks)) return; db.customBlocks=db.customBlocks.filter(b=>b.id!==id); }); }
   slotsVals(){
-    const db=this.state.db||{}; const MAX=7;
-    const laneColor=(id)=>({ pr1:this.C.green, pr2:this.C.amber, pr3:this.C.blue })[id]||this.C.gray;
-    const paletteCard=(color)=>({ display:'flex', alignItems:'center', gap:'9px', padding:'10px 11px', background:'linear-gradient(160deg,#16191b,#0d1110)', border:'1px solid rgba(255,255,255,0.07)', borderLeft:'3px solid '+color, borderRadius:'11px', cursor:'grab' });
-    const paletteConcepts=(db.concepts||[]).map(c=>{ const col=laneColor(c.productLane); return {
-      id:c.id, name:c.name, tagline:this.truncate(c.tagline||'',56),
-      style:paletteCard(col), dotStyle:{ width:'8px', height:'8px', borderRadius:'50%', flex:'0 0 auto', background:col },
-      onDragStart:this.slotDragStart({ kind:'concept', conceptId:c.id }) }; });
-    const paletteCustoms=(db.customBlocks||[]).map(b=>({ id:b.id, text:b.text,
-      onDragStart:this.slotDragStart({ kind:'custom', text:b.text }), remove:()=>this.removeCustomBlock(b.id) }));
+    const db=this.state.db||{}; const T=this.todayStr();
     const cById={}; (db.concepts||[]).forEach(c=>{ cById[c.id]=c; });
+    const conceptOpts=[{ id:'', name:'\u2014 Any concept' }].concat((db.concepts||[]).map(c=>({ id:c.id, name:c.name })));
     const accByChar={}; (db.accounts||[]).forEach(a=>{ if(!accByChar[a.character]) accByChar[a.character]=a; });
-    const fillStyle=(color)=>({ display:'flex', alignItems:'center', gap:'9px', minHeight:'44px', padding:'0 10px', borderRadius:'10px', background:this.alpha(color,0.12), border:'1px solid '+this.alpha(color,0.32), cursor:'grab' });
+    const canEdit=this.isAdmin();
+    const selStyle=(col)=>({ height:'30px', padding:'0 8px', background:'#0e0e11', border:'1px solid '+this.alpha(col,0.3), borderRadius:'8px', color:this.alpha(col,1), fontSize:'11.5px', fontWeight:'700', outline:'none', colorScheme:'dark', cursor:'pointer' });
+    const stepBtn=(disabled)=>({ width:'26px', height:'26px', flex:'0 0 auto', borderRadius:'7px', border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color: disabled?'#3a3a40':'#cfd0d4', fontSize:'15px', fontWeight:'700', cursor: disabled?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:'1' });
+    let openCreate=0, openPost=0;
     const boards=this.distinctCharacters(db).map(ch=>{
-      const a=accByChar[ch]; const pr=a?this.productById(a.product):null; const isOver=this.state.slotOver===ch;
-      const items=((db.slots||{})[ch]||[]).slice(0,MAX).map(it=>{
-        if(it.kind==='concept'){ const c=cById[it.conceptId]; const col=c?laneColor(c.productLane):this.C.gray;
-          return { id:it.id, isCustom:false, label:c?c.name:'(deleted concept)', fillStyle:fillStyle(col),
-            barStyle:{ width:'9px', height:'9px', borderRadius:'3px', flex:'0 0 auto', background:col },
-            onDragStart:this.slotDragStart({ kind:'move', char:ch, id:it.id }), remove:()=>this.slotRemove(ch,it.id) }; }
-        return { id:it.id, isCustom:true, label:it.text, fillStyle:fillStyle('#8b8b93'),
-          barStyle:{ width:'9px', height:'9px', borderRadius:'3px', flex:'0 0 auto', background:'#8b8b93' },
-          onDragStart:this.slotDragStart({ kind:'move', char:ch, id:it.id }), remove:()=>this.slotRemove(ch,it.id) };
+      const a=accByChar[ch]; const pr=a?this.productById(a.product):null;
+      const plan=(db.slots||{})[ch]||[]; const counts=this.slotPlanCounts(ch); const pg=this.slotProgress(ch,T);
+      openCreate+=pg.needCreate; openPost+=pg.needPost;
+      const steppers=this.PROD_TIERS.map(p=>{ const col=this.prodColor(p); const n=counts[p]||0; return {
+        prod:p, count:String(n), dotStyle:{ width:'9px', height:'9px', borderRadius:'3px', background:col, flex:'0 0 auto' },
+        chipStyle:{ display:'flex', alignItems:'center', gap:'8px', flex:'1', minWidth:'0', padding:'8px 9px', borderRadius:'11px', background:this.alpha(col,0.08), border:'1px solid '+this.alpha(col,n>0?0.3:0.14) },
+        labelStyle:{ flex:'1', minWidth:'0', fontSize:'11.5px', fontWeight:'700', color: n>0?this.alpha(col,1):'#8b8b93', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
+        countStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'13px', fontWeight:'700', color: n>0?'#f4f4f5':'#5e5e66', minWidth:'14px', textAlign:'center' },
+        incStyle:stepBtn(false), decStyle:stepBtn(n===0), decDisabled:n===0,
+        inc:()=>this.slotAdd(ch,p), dec:()=>{ if(n>0) this.slotRemoveLastOfProd(ch,p); } };
       });
-      const empties=[]; for(let i=items.length;i<MAX;i++) empties.push({ n:String(i+1) });
-      const full=items.length>=MAX;
+      const slots=plan.map((s,i)=>{ const col=this.prodColor(s.prod); const c=cById[s.conceptId];
+        return { id:s.id, n:String(i+1), prod:s.prod, prodColor:col,
+          barStyle:{ width:'4px', alignSelf:'stretch', borderRadius:'3px', background:col, flex:'0 0 auto' },
+          numStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'11px', fontWeight:'700', color:'#5e5e66', width:'16px', flex:'0 0 auto', textAlign:'center' },
+          prodValue:s.prod, prodSelStyle:{ ...selStyle(col), flex:'0 0 auto', width:'104px' }, onProd:e=>this.slotSetProd(ch,s.id,e.target.value),
+          prodChipStyle:this.pillStyle(col), conceptName: c?c.name:'Any concept',
+          conceptValue:s.conceptId||'', conceptSelStyle:{ ...selStyle(this.C.gray), flex:'1', minWidth:'0', color:'#cfd0d4', fontWeight:'600', borderColor:'rgba(255,255,255,0.1)' }, onConcept:e=>this.slotSetConcept(ch,s.id,e.target.value),
+          remove:()=>this.slotRemove(ch,s.id) };
+      });
+      const planned=pg.planned; const madePct= planned?Math.round(pg.made/planned*100):0; const postedPct= planned?Math.round(pg.posted/planned*100):0;
+      const barSeg=(pct,color)=>({ position:'absolute', left:'0', top:'0', bottom:'0', width:pct+'%', background:color, borderRadius:'999px', transition:'width .2s' });
+      const need=(txt,col)=>({ display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 9px', borderRadius:'8px', fontSize:'11px', fontWeight:'700', color:col, background:this.alpha(col,0.12), border:'1px solid '+this.alpha(col,0.26) });
       return { character:ch, initial:(ch||'?')[0], product:pr?pr.short:'\u2014', avatarStyle:this.charAvatarStyle(ch,38),
-        items, empties, countLabel:items.length+'/'+MAX,
-        countStyle:{ display:'inline-flex', alignItems:'center', height:'22px', padding:'0 9px', borderRadius:'999px', fontFamily:"'JetBrains Mono',monospace", fontSize:'11px', fontWeight:'700', flex:'0 0 auto', color: full?'#06140c':'#8b8b93', background: full?'#34e08a':'rgba(255,255,255,0.05)', border: full?'none':'1px solid rgba(255,255,255,0.08)' },
-        boardStyle:{ background:'linear-gradient(160deg,#16191b,#0d1110)', border:'1px solid '+(isOver?'rgba(52,224,138,0.5)':'rgba(255,255,255,0.06)'), borderRadius:'16px', padding:'15px 16px 16px', boxShadow: isOver?'0 0 0 1px rgba(52,224,138,0.25),0 10px 30px rgba(52,224,138,0.12)':'none', transition:'border-color .12s, box-shadow .12s' },
-        onDragOver:(e)=>{ e.preventDefault(); if(this.state.slotOver!==ch) this.setState({ slotOver:ch }); },
-        onDragLeave:(e)=>{ if(!e.currentTarget.contains(e.relatedTarget) && this.state.slotOver===ch) this.setState({ slotOver:null }); },
-        onDrop:(e)=>{ e.preventDefault(); this.applySlotDrop(ch); } };
+        canEdit, readonly:!canEdit, steppers, slots, hasSlots:plan.length>0, noSlots:plan.length===0,
+        countLabel:plan.length+' slot'+(plan.length===1?'':'s'),
+        countStyle:{ display:'inline-flex', alignItems:'center', height:'22px', padding:'0 10px', borderRadius:'999px', fontFamily:"'JetBrains Mono',monospace", fontSize:'11px', fontWeight:'700', flex:'0 0 auto', color:'#8b8b93', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)' },
+        hasPlan:planned>0, madeText:pg.made+'/'+planned+' made today', postedText:pg.posted+'/'+planned+' posted',
+        madeBarStyle:barSeg(madePct,this.alpha(this.C.amber,0.55)), postedBarStyle:barSeg(postedPct,this.C.green),
+        needCreate:pg.needCreate, needPost:pg.needPost, hasNeedCreate:pg.needCreate>0, hasNeedPost:pg.needPost>0,
+        allClear: planned>0 && pg.needCreate===0 && pg.needPost===0,
+        createStyle:need('',this.C.amber), postStyle:need('',this.C.blue), createLabel:pg.needCreate+' to create', postLabel:pg.needPost+' to post',
+        addSlot:()=>this.slotAdd(ch,'Assembly'), clearAll:()=>this.slotClear(ch),
+        prefill:()=>{ this.prefillFromSlots(ch,T); this.setState({ tab:'builder', builderChar:ch, builderDate:T, drillId:null, detailId:null }); },
+        openBuilder:()=>this.setState({ tab:'builder', builderChar:ch, builderDate:T, drillId:null, detailId:null }),
+        boardStyle:{ background:'linear-gradient(160deg,#16191b,#0d1110)', border:'1px solid '+(pg.needCreate>0||pg.needPost>0?'rgba(255,255,255,0.08)':(planned>0?'rgba(52,224,138,0.25)':'rgba(255,255,255,0.06)')), borderRadius:'16px', padding:'16px 16px 15px' } };
     });
-    return { slotBoards:boards, slotHasBoards:boards.length>0, slotPaletteConcepts:paletteConcepts, slotPaletteCustoms:paletteCustoms, slotHasCustoms:paletteCustoms.length>0,
-      slotCustomText:this.state.slotCustomText||'',
-      onSlotCustomInput:e=>this.setState({ slotCustomText:e.target.value }),
-      onSlotCustomKey:e=>{ if(e.key==='Enter'){ e.preventDefault(); this.addCustomBlock(); } },
-      addSlotCustom:()=>this.addCustomBlock(),
-      slotDragEnd:()=>{ this._slotDrag=null; if(this.state.slotOver) this.setState({ slotOver:null }); } };
+    return { slotBoards:boards, slotHasBoards:boards.length>0, conceptOpts, slotProdOpts:this.PROD_TIERS, slotCanEdit:canEdit,
+      slotTodayLabel:this.fmtFull(T), slotOpenCreate:String(openCreate), slotOpenPost:String(openPost),
+      slotOpenTotal:openCreate+openPost, slotAllClear:(openCreate+openPost)===0, slotHasOpen:(openCreate+openPost)>0,
+      slotGoBuilder:()=>this.setState({ tab:'builder', builderDate:T, builderChar:null, drillId:null, detailId:null }) };
   }
   renderVals(){
     const g=this.globalVals();
