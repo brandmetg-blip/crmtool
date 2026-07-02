@@ -1,0 +1,251 @@
+/* ============================================================================
+ * slate-store.js — persistence adapter for the Slate CRM app
+ * ----------------------------------------------------------------------------
+ * This is the ONE seam between the app and where its data lives. The app never
+ * touches storage or the network directly — it calls a "store" with:
+ *
+ *   loadData()            -> the whole app database object (db), or null
+ *   persist(prevDb, nextDb) -> save a change (row-level when possible)
+ *   subscribe(onChange)   -> live updates from other users; returns unsubscribe
+ *   loadSession()         -> logged-in user id, or null
+ *   saveSession(id)       -> remember / clear the session
+ *   signIn(email, pw, db) -> { userId } | { error }
+ *   signOut()             -> void
+ *
+ * Every method MAY return a Promise; the app awaits them. So a synchronous
+ * local store and an async server store are interchangeable with ZERO changes
+ * to the app.
+ *
+ * TWO server designs live here:
+ *   • SupabaseStore  — MULTI-USER SAFE. One table per collection, row-level
+ *                      writes (no clobbering), plus realtime so everyone stays
+ *                      in sync live. This is the one to ship. See BACKEND.md §4B
+ *                      and GO-LIVE.md for the SQL + setup.
+ *   • (The old single-blob "quick path" has been retired in favor of the safe
+ *      design above.)
+ *
+ * TO GO LIVE: set SUPABASE_URL + SUPABASE_ANON_KEY, flip STORE_MODE to
+ * 'supabase', uncomment the Supabase <script> in Slate.dc.html. That's it.
+ * ==========================================================================*/
+
+(function () {
+  'use strict';
+
+  // ---- CONFIG ---------------------------------------------------------------
+  const STORE_MODE = 'local'; // 'local' (this browser only) | 'supabase' (shared, live)
+
+  const SUPABASE_URL = '';       // e.g. 'https://xxxx.supabase.co'
+  const SUPABASE_ANON_KEY = '';  // the public anon key from Supabase → Settings → API
+
+  const DB_KEY = 'slate_crm_v2';
+  const SESSION_KEY = 'slate_session_v1';
+
+  // Collections that become one row per item (keyed by `id`), one table each.
+  // [ appKey, tableName ]
+  const ID_COLLECTIONS = [
+    ['accounts', 'accounts'],
+    ['posts', 'posts'],
+    ['concepts', 'concepts'],
+    ['products', 'products'],
+    ['team', 'team'],
+    ['dailyEntries', 'daily_entries'],
+  ];
+  // dailyMetrics is an object keyed by date -> one row per date.
+  const METRICS_TABLE = 'daily_metrics';
+  // Everything else (characterMeta, assetLinks, flags…) rides in one meta row.
+  const META_TABLE = 'app_meta';
+  const META_KEYS_EXCLUDED = new Set(
+    ID_COLLECTIONS.map(c => c[0]).concat(['dailyMetrics'])
+  );
+
+  // ==========================================================================
+  // LocalStore — prototype default. Whole db in this browser. Not shared.
+  // ==========================================================================
+  class LocalStore {
+    loadData() {
+      try { const r = localStorage.getItem(DB_KEY); return r ? JSON.parse(r) : null; }
+      catch (e) { return null; }
+    }
+    // Local storage has no concurrency to worry about — just save the whole db.
+    persist(prevDb, nextDb) {
+      try { localStorage.setItem(DB_KEY, JSON.stringify(nextDb)); } catch (e) {}
+    }
+    subscribe(onChange) { return function () {}; } // no live sync locally
+    loadSession() { try { return localStorage.getItem(SESSION_KEY); } catch (e) { return null; } }
+    saveSession(id) {
+      try { if (id) localStorage.setItem(SESSION_KEY, id); else localStorage.removeItem(SESSION_KEY); }
+      catch (e) {}
+    }
+    signIn(email, password, db) {
+      const e = (email || '').trim().toLowerCase();
+      const u = ((db && db.team) || []).find(t => (t.email || '').toLowerCase() === e);
+      if (!u) return { error: 'No account found with that email.' };
+      if ((u.password || '') !== (password || '')) return { error: 'Incorrect password. Try again.' };
+      this.saveSession(u.id);
+      return { userId: u.id };
+    }
+    signOut() { this.saveSession(null); }
+  }
+
+  // ==========================================================================
+  // SupabaseStore — MULTI-USER SAFE. Row-level writes + realtime.
+  // --------------------------------------------------------------------------
+  // Schema (each table is just id + a jsonb `data` blob of the item, so there's
+  // no column mapping to maintain — see GO-LIVE.md for the exact SQL):
+  //   accounts, posts, concepts, products, team, daily_entries : (id text pk, data jsonb, updated_at)
+  //   daily_metrics : (date text pk, data jsonb, updated_at)
+  //   app_meta      : (id int pk, data jsonb, updated_at)   -- single row, id=1
+  //
+  // Why this is safe with many people at once:
+  //   • Two VAs logging different posts write two DIFFERENT rows — no overwrite.
+  //   • Edits are computed as a DIFF of the old vs new db, so only the rows that
+  //     actually changed get written.
+  //   • Realtime pushes every change to all open clients, so everyone stays live.
+  //
+  // Requires the Supabase client loaded first:
+  //   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  // ==========================================================================
+  class SupabaseStore {
+    constructor() {
+      this.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      this.META_ID = 1;
+    }
+
+    // ---- read: assemble the whole db from the tables ------------------------
+    async loadData() {
+      try {
+        const selects = ID_COLLECTIONS.map(([, table]) => this.sb.from(table).select('data'));
+        selects.push(this.sb.from(METRICS_TABLE).select('date,data'));
+        selects.push(this.sb.from(META_TABLE).select('data').eq('id', this.META_ID).maybeSingle());
+        const results = await Promise.all(selects);
+
+        // If NOTHING exists yet (fresh project), return null so the app seeds.
+        const anyRows = results.some((r, i) => i < ID_COLLECTIONS.length && r.data && r.data.length);
+        const metaRes = results[results.length - 1];
+        if (!anyRows && !(metaRes && metaRes.data)) return null;
+
+        const db = {};
+        ID_COLLECTIONS.forEach(([key], i) => {
+          const r = results[i];
+          if (r.error) throw r.error;
+          db[key] = (r.data || []).map(row => row.data);
+        });
+        const metricsRes = results[ID_COLLECTIONS.length];
+        if (metricsRes.error) throw metricsRes.error;
+        db.dailyMetrics = {};
+        (metricsRes.data || []).forEach(row => { db.dailyMetrics[row.date] = row.data; });
+        if (metaRes && metaRes.data && metaRes.data.data) Object.assign(db, metaRes.data.data);
+        return db;
+      } catch (e) {
+        console.error('[store] loadData failed', e);
+        return null;
+      }
+    }
+
+    // ---- write: diff old vs new, write only what changed --------------------
+    async persist(prevDb, nextDb) {
+      const now = new Date().toISOString();
+      const ops = [];
+      // Supabase can't take hundreds of ids in one .in() (URL too long) — batch everything.
+      const CH = 100;
+      const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+
+      // id-keyed collections
+      for (const [key, table] of ID_COLLECTIONS) {
+        const { upserts, deletes } = diffById((prevDb && prevDb[key]) || [], (nextDb && nextDb[key]) || []);
+        for (const grp of chunk(upserts, CH)) ops.push(this.sb.from(table).upsert(grp.map(it => ({ id: it.id, data: it, updated_at: now }))));
+        for (const grp of chunk(deletes, CH)) ops.push(this.sb.from(table).delete().in('id', grp));
+      }
+
+      // dailyMetrics (keyed by date)
+      const mPrev = (prevDb && prevDb.dailyMetrics) || {};
+      const mNext = (nextDb && nextDb.dailyMetrics) || {};
+      const mUpserts = [], mDeletes = [];
+      for (const date of Object.keys(mNext)) {
+        if (JSON.stringify(mNext[date]) !== JSON.stringify(mPrev[date])) {
+          mUpserts.push({ date, data: mNext[date], updated_at: now });
+        }
+      }
+      for (const date of Object.keys(mPrev)) { if (!(date in mNext)) mDeletes.push(date); }
+      for (const grp of chunk(mUpserts, CH)) ops.push(this.sb.from(METRICS_TABLE).upsert(grp));
+      for (const grp of chunk(mDeletes, CH)) ops.push(this.sb.from(METRICS_TABLE).delete().in('date', grp));
+
+      // meta (everything else) — one row, written only when it changed
+      const metaPrev = pickMeta(prevDb), metaNext = pickMeta(nextDb);
+      if (JSON.stringify(metaPrev) !== JSON.stringify(metaNext)) {
+        ops.push(this.sb.from(META_TABLE).upsert({ id: this.META_ID, data: metaNext, updated_at: now }));
+      }
+
+      // Fire them; log (don't throw) so the optimistic UI never crashes.
+      const settled = await Promise.allSettled(ops);
+      settled.forEach(s => { if (s.status === 'rejected') console.error('[store] persist op failed', s.reason); });
+    }
+
+    // ---- realtime: notify the app whenever anyone changes anything ----------
+    subscribe(onChange) {
+      const tables = ID_COLLECTIONS.map(c => c[1]).concat([METRICS_TABLE, META_TABLE]);
+      const channel = this.sb.channel('slate-live');
+      tables.forEach(table => {
+        channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange());
+      });
+      channel.subscribe();
+      return () => { try { this.sb.removeChannel(channel); } catch (e) {} };
+    }
+
+    // ---- session / auth -----------------------------------------------------
+    loadSession() { try { return localStorage.getItem(SESSION_KEY); } catch (e) { return null; } }
+    saveSession(id) {
+      try { if (id) localStorage.setItem(SESSION_KEY, id); else localStorage.removeItem(SESSION_KEY); }
+      catch (e) {}
+    }
+    async signIn(email, password, db) {
+      const { data, error } = await this.sb.auth.signInWithPassword({
+        email: (email || '').trim().toLowerCase(), password: password || ''
+      });
+      if (error) return { error: error.message };
+      const authEmail = (data.user.email || '').toLowerCase();
+      const u = ((db && db.team) || []).find(t => (t.email || '').toLowerCase() === authEmail);
+      if (!u) return { error: 'Signed in, but no team profile is linked to this email. Add them under Settings first.' };
+      this.saveSession(u.id);
+      return { userId: u.id };
+    }
+    async signOut() { try { await this.sb.auth.signOut(); } catch (e) {} this.saveSession(null); }
+  }
+
+  // ---- diff helpers ---------------------------------------------------------
+  // Compare two arrays of {id} objects; return which rows to upsert (added or
+  // changed) and which ids to delete (removed).
+  function diffById(prevArr, nextArr) {
+    const prevMap = new Map(prevArr.map(it => [it.id, it]));
+    const nextMap = new Map(nextArr.map(it => [it.id, it]));
+    const upserts = [], deletes = [];
+    for (const [id, it] of nextMap) {
+      const before = prevMap.get(id);
+      if (!before || JSON.stringify(before) !== JSON.stringify(it)) upserts.push(it);
+    }
+    for (const id of prevMap.keys()) { if (!nextMap.has(id)) deletes.push(id); }
+    return { upserts, deletes };
+  }
+  // Everything in db that isn't an id-collection or dailyMetrics -> the meta row.
+  function pickMeta(db) {
+    const out = {};
+    if (!db) return out;
+    for (const k of Object.keys(db)) { if (!META_KEYS_EXCLUDED.has(k)) out[k] = db[k]; }
+    return out;
+  }
+
+  // ---- FACTORY --------------------------------------------------------------
+  function createStore() {
+    if (STORE_MODE === 'supabase') {
+      if (!window.supabase) {
+        console.error('[store] Supabase client not loaded — falling back to LocalStore. ' +
+          'Add the @supabase/supabase-js script tag before slate-store.js.');
+        return new LocalStore();
+      }
+      return new SupabaseStore();
+    }
+    return new LocalStore();
+  }
+
+  window.SlateStore = { create: createStore, LocalStore, SupabaseStore, STORE_MODE };
+})();
