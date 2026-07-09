@@ -1611,9 +1611,25 @@ class Component extends DCLogic {
     // always converges. reloadFromStore() already defers while YOU are editing, so
     // this never clobbers in-flight local work.
     if(this.store && this.store.loadData){
-      this._pollT = setInterval(()=>{ if(document.visibilityState!=='hidden') this.scheduleReload(); }, 15000);
+      // Cheap safety-net poll: instead of re-downloading the WHOLE db every tick
+      // (which re-pulls every row incl. base64 avatars/videos and was burning
+      // gigabytes of egress a day), first ask the store for the newest
+      // updated_at across all tables — a few bytes — and only do a real reload
+      // when something actually changed. Realtime still handles live updates.
+      this._lastStamp = null;
+      if(this.store.latestStamp){ Promise.resolve(this.store.latestStamp()).then(s=>{ this._lastStamp=s; }).catch(()=>{}); }
+      const pollTick = async ()=>{
+        if(document.visibilityState==='hidden') return;
+        if(this.store.latestStamp){
+          try{ const s=await this.store.latestStamp();
+            if(s===null){ this.scheduleReload(); return; }      // check failed → fall back to full reload
+            if(s!==this._lastStamp){ this._lastStamp=s; this.scheduleReload(); }
+          }catch(e){ this.scheduleReload(); }
+        } else { this.scheduleReload(); }
+      };
+      this._pollT = setInterval(pollTick, 30000);
       // Also pull immediately when the tab regains focus / becomes visible again.
-      this._onVisible = ()=>{ if(document.visibilityState==='visible') this.scheduleReload(); };
+      this._onVisible = ()=>{ if(document.visibilityState==='visible') pollTick(); };
       document.addEventListener('visibilitychange', this._onVisible);
       window.addEventListener('focus', this._onVisible);
       // Track pointer interaction so a background refresh never re-renders in the
@@ -1634,6 +1650,9 @@ class Component extends DCLogic {
       // click (e.g. opening a reference-video link in a new tab). Skip those.
       const changed = JSON.stringify(m) !== JSON.stringify(this._liveDb);
       this._liveDb=m; if(changed){ this.setState({ db:m }); this._syncDesktopNotifs(m); }
+      // Keep the poll's change-marker current so a reload triggered by realtime
+      // (or focus) doesn't make the next poll re-pull the whole db needlessly.
+      if(this.store.latestStamp){ Promise.resolve(this.store.latestStamp()).then(s=>{ if(s) this._lastStamp=s; }).catch(()=>{}); }
     } }catch(e){ console.error('[app] live reload failed', e); } }
   migrate(db){
     if(!db.dailyMetrics){ db.dailyMetrics=this.seedMetrics(); }

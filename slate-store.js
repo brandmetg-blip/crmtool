@@ -111,6 +111,24 @@
       this.META_ID = 1;
     }
 
+    // ---- cheap change-check: newest updated_at across all tables ------------
+    // Returns a single comparable timestamp string (or '' if empty). This pulls
+    // ONE tiny row per table (just the max updated_at) instead of the whole db,
+    // so the safety-net poll can ask "did anything change?" for a few bytes
+    // rather than re-downloading every row (including base64 media) every time.
+    async latestStamp() {
+      try {
+        const tables = ID_COLLECTIONS.map(c => c[1]).concat([METRICS_TABLE, META_TABLE]);
+        const qs = tables.map(t =>
+          this.sb.from(t).select('updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle()
+        );
+        const res = await Promise.all(qs);
+        let max = '';
+        res.forEach(r => { const u = r && r.data && r.data.updated_at; if (u && u > max) max = u; });
+        return max;
+      } catch (e) { return null; } // null => caller should fall back to a full reload
+    }
+
     // ---- read: assemble the whole db from the tables ------------------------
     async loadData() {
       try {
@@ -182,14 +200,34 @@
     }
 
     // ---- realtime: notify the app whenever anyone changes anything ----------
+    // A realtime channel can silently die (network blip, tab sleep, server
+    // timeout). If it does and we don't rebuild it, live updates stop forever
+    // and the user is stuck waiting on the slow poll. So we watch the channel
+    // status and auto-reconnect whenever it errors, times out, or closes.
     subscribe(onChange) {
       const tables = ID_COLLECTIONS.map(c => c[1]).concat([METRICS_TABLE, META_TABLE]);
-      const channel = this.sb.channel('slate-live');
-      tables.forEach(table => {
-        channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange());
-      });
-      channel.subscribe();
-      return () => { try { this.sb.removeChannel(channel); } catch (e) {} };
+      let channel = null, closed = false, retryT = null;
+      const build = () => {
+        if (closed) return;
+        // Unique name each attempt so a stale channel never blocks the new one.
+        channel = this.sb.channel('slate-live-' + Math.random().toString(36).slice(2));
+        tables.forEach(table => {
+          channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange());
+        });
+        channel.subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            // Freshly (re)connected — pull once so we don't miss anything that
+            // changed while the channel was down.
+            onChange();
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            if (closed) return;
+            clearTimeout(retryT);
+            retryT = setTimeout(() => { try { this.sb.removeChannel(channel); } catch (e) {} build(); }, 1200);
+          }
+        });
+      };
+      build();
+      return () => { closed = true; clearTimeout(retryT); try { if (channel) this.sb.removeChannel(channel); } catch (e) {} };
     }
 
     // ---- session / auth -----------------------------------------------------
