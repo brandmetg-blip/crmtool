@@ -741,7 +741,7 @@
                 <sc-if value="{{ r.readonly }}" hint-placeholder-val="{{ false }}">
                   <sc-if value="{{ r.hasHookVarLabel }}" hint-placeholder-val="{{ false }}"><span style="{{ r.hookVarChipStyle }}">Hook {{ r.hookVarLabel }}</span></sc-if>
                   <sc-if value="{{ r.hookShowLink }}" hint-placeholder-val="{{ false }}"><a href="{{ r.hookLink }}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#9fbef7;text-decoration:none;font-weight:600;word-break:break-all" style-hover="text-decoration:underline"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>Open hook link</a></sc-if>
-                  <sc-if value="{{ r.hookShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.hookBoxStyle }}">{{ r.hookOut }}</div></sc-if>
+                  <sc-if value="{{ r.hookShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.hookBoxStyle }}">{{ r.hookOut }}</div><sc-if value="{{ r.hookLong }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.hookToggle }}" style="{{ r.expandToggleStyle }}">{{ r.hookToggleLabel }}</button></sc-if></sc-if>
                 </sc-if>
               </div>
 
@@ -760,7 +760,7 @@
                 <sc-if value="{{ r.readonly }}" hint-placeholder-val="{{ false }}">
                   <sc-if value="{{ r.hasBodyVarLabel }}" hint-placeholder-val="{{ false }}"><span style="{{ r.bodyVarChipStyle }}">Body {{ r.bodyVarLabel }}</span></sc-if>
                   <sc-if value="{{ r.bodyShowLink }}" hint-placeholder-val="{{ false }}"><a href="{{ r.bodyLink }}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#f0c97a;text-decoration:none;font-weight:600;word-break:break-all" style-hover="text-decoration:underline"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>Open body link</a></sc-if>
-                  <sc-if value="{{ r.bodyShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.bodyBoxStyle }}">{{ r.bodyOut }}</div></sc-if>
+                  <sc-if value="{{ r.bodyShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.bodyBoxStyle }}">{{ r.bodyOut }}</div><sc-if value="{{ r.bodyLong }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.bodyToggle }}" style="{{ r.expandToggleStyle }}">{{ r.bodyToggleLabel }}</button></sc-if></sc-if>
                 </sc-if>
               </div>
 
@@ -2708,13 +2708,16 @@ class Component extends DCLogic {
       bodyShowLink: bodyKind==='link' && /^https?:\/\//.test(bodyLink), bodyShowText: !(bodyKind==='link' && /^https?:\/\//.test(bodyLink)),
       bodyOut: bodyKind==='link' ? (bodyLink||'—') : ((en.bodyText||'').trim()||'—'),
       hookDisplay: (en.hook||'').trim()||'—', bodyDisplay: (en.bodyText||'').trim()||'—', notesDisplay: (en.notes||'').trim()||'—',
-      // ---- hook & body are the script itself — always show it in full, never clamp/hide it ----
-      hookLong:false, hookExpanded:true,
-      hookBoxStyle:{ fontSize:'12.5px', color:'#cfd0d4', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word' },
-      hookToggle:()=>this.toggleExp(en.id,'hook'), hookToggleLabel:'Show less',
-      bodyLong:false, bodyExpanded:true,
-      bodyBoxStyle:{ fontSize:'12px', color:'#9a9ba0', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word' },
-      bodyToggle:()=>this.toggleExp(en.id,'body'), bodyToggleLabel:'Show less',
+      // ---- hook & body are the script itself — clamp together under one shared
+      // expand/collapse so they never disagree, and toggling either expands both ----
+      scriptExpanded: this.isExp(en.id,'script'),
+      hookLong:((en.hook||'').trim().length>220), hookExpanded:this.isExp(en.id,'script'),
+      hookBoxStyle:{ fontSize:'12.5px', color:'#cfd0d4', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word', ...this.clampBox(this.isExp(en.id,'script')) },
+      hookToggle:()=>this.toggleExp(en.id,'script'), hookToggleLabel:this.isExp(en.id,'script')?'Show less':'Show more',
+      bodyLong:((en.bodyText||'').trim().length>220), bodyExpanded:this.isExp(en.id,'script'),
+      bodyBoxStyle:{ fontSize:'12px', color:'#9a9ba0', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word', ...this.clampBox(this.isExp(en.id,'script')) },
+      bodyToggle:()=>this.toggleExp(en.id,'script'), bodyToggleLabel:this.isExp(en.id,'script')?'Show less':'Show more',
+      scriptLong: ((en.hook||'').trim().length>220) || ((en.bodyText||'').trim().length>220),
       notesLong:((en.notes||'').trim().length>220), notesExpanded:this.isExp(en.id,'notes'),
       notesBoxStyle:{ fontSize:'12px', color:'#9a9ba0', lineHeight:'1.45', whiteSpace:'pre-wrap', wordBreak:'break-word', ...this.clampBox(this.isExp(en.id,'notes')) },
       notesToggle:()=>this.toggleExp(en.id,'notes'), notesToggleLabel:this.isExp(en.id,'notes')?'Show less':'Show more',
