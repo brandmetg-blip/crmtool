@@ -740,7 +740,7 @@
                 <sc-if value="{{ r.readonly }}" hint-placeholder-val="{{ false }}">
                   <sc-if value="{{ r.hasHookVarLabel }}" hint-placeholder-val="{{ false }}"><span style="{{ r.hookVarChipStyle }}">Hook {{ r.hookVarLabel }}</span></sc-if>
                   <sc-if value="{{ r.hookShowLink }}" hint-placeholder-val="{{ false }}"><a href="{{ r.hookLink }}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#9fbef7;text-decoration:none;font-weight:600;word-break:break-all" style-hover="text-decoration:underline"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>Open hook link</a></sc-if>
-                  <sc-if value="{{ r.hookShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.hookBoxStyle }}">{{ r.hookOut }}</div><sc-if value="{{ r.hookLong }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.hookToggle }}" style="{{ r.expandToggleStyle }}">{{ r.hookToggleLabel }}</button></sc-if></sc-if>
+                  <sc-if value="{{ r.hookShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.hookBoxStyle }}">{{ r.hookOut }}</div></sc-if>
                 </sc-if>
               </div>
 
@@ -759,7 +759,7 @@
                 <sc-if value="{{ r.readonly }}" hint-placeholder-val="{{ false }}">
                   <sc-if value="{{ r.hasBodyVarLabel }}" hint-placeholder-val="{{ false }}"><span style="{{ r.bodyVarChipStyle }}">Body {{ r.bodyVarLabel }}</span></sc-if>
                   <sc-if value="{{ r.bodyShowLink }}" hint-placeholder-val="{{ false }}"><a href="{{ r.bodyLink }}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#f0c97a;text-decoration:none;font-weight:600;word-break:break-all" style-hover="text-decoration:underline"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1.5-1.5"/></svg>Open body link</a></sc-if>
-                  <sc-if value="{{ r.bodyShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.bodyBoxStyle }}">{{ r.bodyOut }}</div><sc-if value="{{ r.bodyLong }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.bodyToggle }}" style="{{ r.expandToggleStyle }}">{{ r.bodyToggleLabel }}</button></sc-if></sc-if>
+                  <sc-if value="{{ r.bodyShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.bodyBoxStyle }}">{{ r.bodyOut }}</div></sc-if>
                 </sc-if>
               </div>
 
@@ -1642,7 +1642,7 @@ class Component extends DCLogic {
   scheduleReload(){ clearTimeout(this._reloadT); this._reloadT=setTimeout(()=>this.reloadFromStore(), 120); }
   async reloadFromStore(){ if(!this.store||!this.store.loadData) return;
     // Never clobber in-flight local work: defer while a write is pending, an edit just happened, or a form is open.
-    if(this._persistT || this._persisting || this._flushNext || (this._localEditAt && (Date.now()-this._localEditAt)<1800) || (this._interactAt && (Date.now()-this._interactAt)<900) || this.state.modal){ return this.scheduleReload(); }
+    if(this._persistT || this._persisting || this._flushNext || (this._localEditAt && (Date.now()-this._localEditAt)<3000) || (this._interactAt && (Date.now()-this._interactAt)<1500) || this.state.modal){ return this.scheduleReload(); }
     try{ const fresh=await Promise.resolve(this.store.loadData()); if(fresh){ const m=this.migrate(fresh);
       // Only re-render if something actually changed. Most refreshes (the poll,
       // and a user's own writes echoing back through realtime) return identical
@@ -1996,7 +1996,30 @@ class Component extends DCLogic {
   acctReposts(id){ return (this.state.db.posts||[]).filter(p=>p.accountId===id&&p.prod==='Repost').length; }
   acctLastRepost(id){ const ds=(this.state.db.posts||[]).filter(p=>p.accountId===id&&p.prod==='Repost').map(p=>p.date).sort(); return ds.length?ds[ds.length-1]:null; }
   deleteEntry(e){ const id=e.currentTarget.dataset.id; this.commit(db=>{ const i=(db.dailyEntries||[]).findIndex(x=>x.id===id); if(i>=0) db.dailyEntries.splice(i,1); }); }
-  mutEntry(id, fn){ this.commit(db=>{ const en=(db.dailyEntries||[]).find(x=>x.id===id); if(en) fn(en); }); }
+  // Fast path for the Daily Builder's per-keystroke edits (hook/body/notes/links).
+  // commit() deep-clones the WHOLE db on every call — fine for occasional edits,
+  // but dailyEntries typing fires on every keystroke, and the db also carries
+  // large base64 avatar/video blobs in accounts/concepts. Cloning all of that
+  // per keystroke is what made fast typing/pasting feel laggy and drop input.
+  // Here we only clone the single entry being edited, and shallow-copy the top
+  // level db so every other collection (with the big blobs) keeps its existing
+  // reference untouched — same commit()/persist() pipeline, far less work.
+  mutEntry(id, fn){
+    const prev = this._liveDb || this.state.db;
+    const list = prev.dailyEntries || [];
+    const idx = list.findIndex(x=>x.id===id);
+    if(idx<0) return;
+    const updated = structuredClone(list[idx]);
+    fn(updated);
+    const newList = list.slice(); newList[idx] = updated;
+    const db = { ...prev, dailyEntries: newList };
+    this._liveDb = db;
+    if(this._flushPrev === undefined) this._flushPrev = prev;
+    this._flushNext = db;
+    this._localEditAt = Date.now();
+    this.setState({ db });
+    this._schedulePersist();
+  }
 
   // ---------- notifications ----------
   // Editors are linked to a character through their account assignments: an
@@ -2666,13 +2689,13 @@ class Component extends DCLogic {
       bodyShowLink: bodyKind==='link' && /^https?:\/\//.test(bodyLink), bodyShowText: !(bodyKind==='link' && /^https?:\/\//.test(bodyLink)),
       bodyOut: bodyKind==='link' ? (bodyLink||'—') : ((en.bodyText||'').trim()||'—'),
       hookDisplay: (en.hook||'').trim()||'—', bodyDisplay: (en.bodyText||'').trim()||'—', notesDisplay: (en.notes||'').trim()||'—',
-      // ---- expand/collapse for long readonly text blocks ----
-      hookLong:((en.hook||'').trim().length>220), hookExpanded:this.isExp(en.id,'hook'),
-      hookBoxStyle:{ fontSize:'12.5px', color:'#cfd0d4', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word', ...this.clampBox(this.isExp(en.id,'hook')) },
-      hookToggle:()=>this.toggleExp(en.id,'hook'), hookToggleLabel:this.isExp(en.id,'hook')?'Show less':'Show more',
-      bodyLong:((en.bodyText||'').trim().length>220), bodyExpanded:this.isExp(en.id,'body'),
-      bodyBoxStyle:{ fontSize:'12px', color:'#9a9ba0', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word', ...this.clampBox(this.isExp(en.id,'body')) },
-      bodyToggle:()=>this.toggleExp(en.id,'body'), bodyToggleLabel:this.isExp(en.id,'body')?'Show less':'Show more',
+      // ---- hook & body are the script itself — always show it in full, never clamp/hide it ----
+      hookLong:false, hookExpanded:true,
+      hookBoxStyle:{ fontSize:'12.5px', color:'#cfd0d4', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word' },
+      hookToggle:()=>this.toggleExp(en.id,'hook'), hookToggleLabel:'Show less',
+      bodyLong:false, bodyExpanded:true,
+      bodyBoxStyle:{ fontSize:'12px', color:'#9a9ba0', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word' },
+      bodyToggle:()=>this.toggleExp(en.id,'body'), bodyToggleLabel:'Show less',
       notesLong:((en.notes||'').trim().length>220), notesExpanded:this.isExp(en.id,'notes'),
       notesBoxStyle:{ fontSize:'12px', color:'#9a9ba0', lineHeight:'1.45', whiteSpace:'pre-wrap', wordBreak:'break-word', ...this.clampBox(this.isExp(en.id,'notes')) },
       notesToggle:()=>this.toggleExp(en.id,'notes'), notesToggleLabel:this.isExp(en.id,'notes')?'Show less':'Show more',
@@ -2683,7 +2706,7 @@ class Component extends DCLogic {
       statusCellStyle:{ padding:'12px 12px', display:'flex', flexDirection:'column', gap:'9px', minWidth:'0' },
       // ---- concept + 3 variation axes ----
       conceptId:en.conceptId, conceptOpts:concepts.map(x=>({ id:x.id, name:x.name })),
-      onConcept:e=>this.mutEntry(en.id, x=>{ x.conceptId=e.target.value; x.conceptVarId=''; x.hookVarId=''; x.bodyVarId=''; x.hook=''; x.bodyText=''; }),
+      onConcept:e=>this.mutEntry(en.id, x=>{ x.conceptId=e.target.value; }), // keep everything already filled in (hook, body, variation picks) — switching concept must never wipe work
       conceptSelStyle:selStyle(this.C.green), conceptHeadSelStyle:{ ...selStyle(this.C.green), width:'auto', maxWidth:'240px', flex:'0 1 auto' }, conceptVarHeadSelStyle:{ ...selStyle(this.C.violet), width:'auto', maxWidth:'220px', flex:'0 1 auto' },
       // concept variation
       conceptVarId:en.conceptVarId||'', hasConceptVars:cvars.length>0,
