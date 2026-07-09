@@ -1079,7 +1079,8 @@
     <div>
       <div style="font-size:13px;color:#7fcfa3;font-weight:600">Single source of truth</div>
       <div style="font-size:22px;font-weight:800;letter-spacing:-.4px;color:#f6f6f7;margin-top:3px">Concept database</div>
-      <div style="font-size:13.5px;color:#7c7c84;margin-top:5px;max-width:620px">Every concept, its variations, hooks, bodies and example videos live here — and feed straight into the Daily Builder. Add one here and it’s instantly selectable everywhere.</div>
+      <sc-if value="{{ assetsShowFull }}" hint-placeholder-val="{{ true }}"><div style="font-size:13.5px;color:#7c7c84;margin-top:5px;max-width:620px">Every concept, its variations, hooks, bodies and example videos live here — and feed straight into the Daily Builder. Add one here and it’s instantly selectable everywhere.</div></sc-if>
+      <sc-if value="{{ assetsEditorOnly }}" hint-placeholder-val="{{ false }}"><div style="font-size:13.5px;color:#7c7c84;margin-top:5px;max-width:620px">Everything you need lives in the Drive folder below.</div></sc-if>
     </div>
     <sc-if value="{{ assetsIsConcepts }}" hint-placeholder-val="{{ true }}"><sc-if value="{{ assetsCanEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ openAddConcept }}" style="display:flex;align-items:center;gap:6px;height:40px;padding:0 17px;background:#34e08a;color:#06140c;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;flex:0 0 auto" style-hover="background:#46e89a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06140c" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add concept</button></sc-if></sc-if>
   </div>
@@ -1102,6 +1103,7 @@
     </sc-for>
   </div>
 
+  <sc-if value="{{ assetsShowFull }}" hint-placeholder-val="{{ true }}">
   <div style="display:flex;gap:2px;background:linear-gradient(155deg,#17191b 0%,#0e1211 100%);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:3px;width:max-content;margin-bottom:18px">
     <div onClick="{{ goAssetConcepts }}" style="{{ segConcepts }}">Concepts</div>
     <div onClick="{{ goAssetCoverage }}" style="{{ segCoverage }}">Coverage</div>
@@ -1208,6 +1210,7 @@
       </sc-for>
     </div>
   </div>
+  </sc-if>
   </sc-if>
 
 </div>
@@ -2893,7 +2896,8 @@ class Component extends DCLogic {
     const card=(key,title,desc)=>{ const url=links[key]||''; const hasUrl=/^https?:\/\//.test(url);
       return { key, title, desc, url, hasUrl, noUrl:!hasUrl, isBase:true, isHooks:false, isBodies:false,
         onUrl:e=>this.commit(db2=>{ if(!db2.assetLinks) db2.assetLinks={}; db2.assetLinks[key]=e.target.value; }) }; };
-    return { assetsCanEdit:isAdmin, assetsReadonly:!isAdmin,
+    const editorOnly=this.isEditor();
+    return { assetsCanEdit:isAdmin, assetsReadonly:!isAdmin, assetsShowFull:!editorOnly, assetsEditorOnly:editorOnly,
       assetsTab:tab, assetsIsConcepts:tab==='concepts', assetsIsCoverage:tab==='coverage', assetsIsLanes:tab==='lanes',
       goAssetConcepts:()=>this.setAssetsTab('concepts'), goAssetCoverage:()=>this.setAssetsTab('coverage'), goAssetLanes:()=>this.setAssetsTab('lanes'),
       segConcepts:seg(tab==='concepts'), segCoverage:seg(tab==='coverage'), segLanes:seg(tab==='lanes'),
