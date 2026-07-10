@@ -25,6 +25,9 @@
   input::placeholder,textarea::placeholder{color:#5e5e66}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  @keyframes lbRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes lbCrownBob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-3px) rotate(4deg)}}
+  @keyframes lbRowIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
 </style>
 <!-- Persistence adapter. Swap localStorage <-> real backend here (see slate-store.js + BACKEND.md). -->
 <!-- The Supabase client below loads harmlessly in local mode and activates when STORE_MODE='supabase'. -->
@@ -41,6 +44,15 @@
       <img src="logo.png" alt="" style="width:38px;height:38px;border-radius:11px;object-fit:contain"/>
       <div style="width:24px;height:24px;border:2.5px solid rgba(255,255,255,0.12);border-top-color:#34e08a;border-radius:50%;animation:spin .7s linear infinite"></div>
       <span style="color:#5e5e66;font-size:13px;letter-spacing:.3px">Loading workspace…</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ loadError }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:2147483647;background:#080b0a;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:24px;text-align:center">
+      <img src="logo.png" alt="" style="width:38px;height:38px;border-radius:11px;object-fit:contain"/>
+      <div style="font-size:15px;font-weight:700;color:#f4f4f5">Couldn't reach the workspace</div>
+      <div style="font-size:13px;color:#8b8b93;max-width:360px;line-height:1.5">The server didn't respond after several tries. To protect your data, nothing was changed or reset — just retry when you're back online.</div>
+      <button onClick="{{ retryLoad }}" style="height:40px;padding:0 20px;background:#34e08a;color:#06140c;border:none;border-radius:10px;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:4px">Retry</button>
     </div>
   </sc-if>
 
@@ -79,10 +91,10 @@
       <sc-if value="{{ navShow.dashboard }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.dashboard }}" style="{{ navItemStyle.dashboard }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg><span>Dashboard</span></div></sc-if>
       <sc-if value="{{ navShow.mywork }}" hint-placeholder-val="{{ false }}"><div onClick="{{ go.mywork }}" style="{{ navItemStyle.mywork }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg><span>My Work</span></div></sc-if>
       <sc-if value="{{ navShow.planner }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.planner }}" style="{{ navItemStyle.planner }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18"/><path d="M8 2.5v4"/><path d="M16 2.5v4"/><path d="M7 13h2v2H7zM11 13h2v2h-2zM15 13h2v2h-2z"/></svg><span>Planner</span></div></sc-if>
-      <sc-if value="{{ navShow.slots }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.slots }}" style="{{ navItemStyle.slots }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><path d="M3 15.5h7.5"/><path d="M3 19h7.5"/><path d="M13.5 14.5l2.5 2.5 4.5-4.5"/></svg><span>Slots</span></div></sc-if>
       <sc-if value="{{ navShow.builder }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.builder }}" style="{{ navItemStyle.builder }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18"/><path d="m6.5 6-1.2 4M11.5 6l-1.2 4M16.5 6l-1.2 4"/></svg><span>Daily Builder</span></div></sc-if>
       <sc-if value="{{ navShow.accounts }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.accounts }}" style="{{ navItemStyle.accounts }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.4a3 3 0 0 1 0 5.4"/><path d="M18.5 20a5.2 5.2 0 0 0-3-4.4"/></svg><span>Accounts</span></div></sc-if>
       <sc-if value="{{ navShow.assets }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.assets }}" style="{{ navItemStyle.assets }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4.5" rx="1.2"/><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5"/><path d="M10 12.5h4"/></svg><span>Assets</span></div></sc-if>
+      <sc-if value="{{ navShow.leaderboard }}" hint-placeholder-val="{{ false }}"><div onClick="{{ go.leaderboard }}" style="{{ navItemStyle.leaderboard }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v6a5 5 0 0 1-10 0V4z"/><path d="M7 5.5H4a2 2 0 0 0 2 4.5"/><path d="M17 5.5h3a2 2 0 0 1-2 4.5"/></svg><span>Leaderboard</span></div></sc-if>
       <sc-if value="{{ navShow.analytics }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.analytics }}" style="{{ navItemStyle.analytics }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><rect x="5.5" y="11" width="3.2" height="7" rx="1"/><rect x="10.4" y="6.5" width="3.2" height="11.5" rx="1"/><rect x="15.3" y="13.5" width="3.2" height="4.5" rx="1"/></svg><span>Analytics</span></div></sc-if>
       <sc-if value="{{ navShow.logs }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.logs }}" style="{{ navItemStyle.logs }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h12"/><path d="M8 12h12"/><path d="M8 18h12"/><path d="M3.5 6h.01"/><path d="M3.5 12h.01"/><path d="M3.5 18h.01"/></svg><span>Logs</span></div></sc-if>
       <sc-if value="{{ navShow.settings }}" hint-placeholder-val="{{ true }}"><div onClick="{{ go.settings }}" style="{{ navItemStyle.settings }}" style-hover="background:rgba(255,255,255,0.05)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h9"/><path d="M16 7h5"/><circle cx="14" cy="7" r="2.1"/><path d="M3 17h5"/><path d="M12 17h9"/><circle cx="10" cy="17" r="2.1"/></svg><span>Settings</span></div></sc-if>
@@ -498,105 +510,6 @@
 
 </div>
 </sc-if>
-      <sc-if value="{{ isSlots }}" hint-placeholder-val="{{ false }}">
-<div data-screen-label="Content Slots" style="padding:20px 28px 44px;max-width:1560px">
-  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:16px">
-    <div>
-      <div style="font-size:13px;color:#7fcfa3;font-weight:600">Content plan</div>
-      <div style="font-size:22px;font-weight:800;letter-spacing:-.4px;color:#f6f6f7;margin-top:2px">Slot plan per character</div>
-      <div style="font-size:13px;color:#7c7c84;margin-top:4px;max-width:660px">Set how many videos each character needs and of what kind. This feeds the Dashboard to-do and pre-fills the Daily Builder — it stays as-is until you change it.</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:9px;flex:0 0 auto;flex-wrap:wrap">
-      <sc-if value="{{ slotAllClear }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;font-size:12.5px;font-weight:700;color:#9affc9;background:rgba(52,224,138,0.1);border:1px solid rgba(52,224,138,0.26)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>All slots met today</span></sc-if>
-      <sc-if value="{{ slotHasOpen }}" hint-placeholder-val="{{ true }}">
-        <span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;font-size:12.5px;font-weight:700;color:#f0b341;background:rgba(240,179,65,0.1);border:1px solid rgba(240,179,65,0.26)">{{ slotOpenCreate }} to create</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:10px;font-size:12.5px;font-weight:700;color:#5b8def;background:rgba(91,141,239,0.1);border:1px solid rgba(91,141,239,0.26)">{{ slotOpenPost }} to post</span>
-      </sc-if>
-      <button onClick="{{ slotGoBuilder }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;background:#34e08a;color:#06140c;border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer" style-hover="background:#46e89a">Open Daily Builder</button>
-    </div>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px">
-    <sc-for list="{{ slotBoards }}" as="b" hint-placeholder-count="6">
-      <div style="{{ b.boardStyle }}">
-        <div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">
-          <span style="{{ b.avatarStyle }}">{{ b.initial }}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:#f4f4f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b.character }}</div>
-            <div style="font-size:11px;color:#6a6a72;margin-top:1px">{{ b.product }}</div>
-          </div>
-          <span style="{{ b.countStyle }}">{{ b.countLabel }}</span>
-        </div>
-
-        <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}">
-        <div style="display:flex;gap:7px;margin-bottom:11px">
-          <sc-for list="{{ b.steppers }}" as="s" hint-placeholder-count="3">
-            <div style="{{ s.chipStyle }}">
-              <span style="{{ s.dotStyle }}"></span>
-              <span style="{{ s.labelStyle }}">{{ s.prod }}</span>
-              <button onClick="{{ s.dec }}" title="Remove one" style="{{ s.decStyle }}">&#8722;</button>
-              <span style="{{ s.countStyle }}">{{ s.count }}</span>
-              <button onClick="{{ s.inc }}" title="Add one" style="{{ s.incStyle }}">+</button>
-            </div>
-          </sc-for>
-        </div>
-        </sc-if>
-
-        <div style="display:flex;flex-direction:column;gap:7px">
-          <sc-for list="{{ b.slots }}" as="it" hint-placeholder-count="3">
-            <div style="display:flex;align-items:center;gap:9px;min-height:42px;padding:6px 10px;border-radius:11px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06)">
-              <span style="{{ it.barStyle }}"></span>
-              <span style="{{ it.numStyle }}">{{ it.n }}</span>
-              <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}">
-                <select value="{{ it.prodValue }}" onChange="{{ it.onProd }}" style="{{ it.prodSelStyle }}"><sc-for list="{{ slotProdOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o }}">{{ o }}</option></sc-for></select>
-                <select value="{{ it.conceptValue }}" onChange="{{ it.onConcept }}" style="{{ it.conceptSelStyle }}"><sc-for list="{{ conceptOpts }}" as="o" hint-placeholder-count="4"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select>
-                <button onClick="{{ it.remove }}" title="Remove slot" style="width:24px;height:24px;flex:0 0 auto;border:none;background:transparent;color:#7a7a82;cursor:pointer;font-size:14px" style-hover="color:#f0584e">&#10005;</button>
-              </sc-if>
-              <sc-if value="{{ b.readonly }}" hint-placeholder-val="{{ false }}">
-                <span style="{{ it.prodChipStyle }}">{{ it.prod }}</span>
-                <span style="flex:1;min-width:0;font-size:12px;color:#cfd0d4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.conceptName }}</span>
-              </sc-if>
-            </div>
-          </sc-for>
-          <sc-if value="{{ b.noSlots }}" hint-placeholder-val="{{ false }}">
-            <div style="padding:15px;text-align:center;font-size:12px;color:#5e5e66;border:1px dashed rgba(255,255,255,0.1);border-radius:11px">No slots yet — use the steppers or Add slot.</div>
-          </sc-if>
-        </div>
-
-        <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}">
-        <button onClick="{{ b.addSlot }}" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:34px;margin-top:9px;background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.14);border-radius:10px;color:#9a9ba0;font-size:12px;font-weight:700;cursor:pointer" style-hover="border-color:rgba(52,224,138,0.35);color:#34e08a"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add slot</button>
-        </sc-if>
-
-        <sc-if value="{{ b.hasPlan }}" hint-placeholder-val="{{ true }}">
-        <div style="margin-top:13px;padding-top:13px;border-top:1px solid rgba(255,255,255,0.06)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:7px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:700;color:#8b8b93">Today</span>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <sc-if value="{{ b.allClear }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:8px;font-size:11px;font-weight:700;color:#9affc9;background:rgba(52,224,138,0.12);border:1px solid rgba(52,224,138,0.26)">All met</span></sc-if>
-              <sc-if value="{{ b.hasNeedCreate }}" hint-placeholder-val="{{ false }}"><span style="{{ b.createStyle }}">{{ b.createLabel }}</span></sc-if>
-              <sc-if value="{{ b.hasNeedPost }}" hint-placeholder-val="{{ false }}"><span style="{{ b.postStyle }}">{{ b.postLabel }}</span></sc-if>
-            </div>
-          </div>
-          <div style="position:relative;height:8px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden">
-            <div style="{{ b.madeBarStyle }}"></div>
-            <div style="{{ b.postedBarStyle }}"></div>
-          </div>
-          <div style="display:flex;align-items:center;gap:14px;margin-top:7px">
-            <span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#8b8b93"><span style="width:8px;height:8px;border-radius:2px;background:#34e08a"></span>{{ b.postedText }}</span>
-            <span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:#8b8b93"><span style="width:8px;height:8px;border-radius:2px;background:rgba(240,179,65,0.55)"></span>{{ b.madeText }}</span>
-          </div>
-        </div>
-        </sc-if>
-
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <sc-if value="{{ b.canEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ b.prefill }}" title="Create today's Daily Builder rows from this plan" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;background:rgba(52,224,138,0.1);border:1px solid rgba(52,224,138,0.28);border-radius:9px;color:#34e08a;font-size:12px;font-weight:700;cursor:pointer" style-hover="background:rgba(52,224,138,0.18)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Pre-fill builder</button></sc-if>
-          <button onClick="{{ b.openBuilder }}" style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;padding:0 13px;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#a1a1aa;font-size:12px;font-weight:700;cursor:pointer" style-hover="border-color:rgba(255,255,255,0.2);color:#ededf0">Open</button>
-        </div>
-      </div>
-    </sc-for>
-  </div>
-</div>
-</sc-if>
       <sc-if value="{{ isBuilder }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Daily Builder" style="padding:20px 28px 44px;max-width:1560px">
 
@@ -688,7 +601,6 @@
         <div style="font-size:11.5px;color:#6a6a72;margin-top:1px">{{ builderSheet.ratio }} videos done · {{ builderDateLabel }}</div>
       </div>
       <div style="flex:1"></div>
-      <sc-if value="{{ builderSheet.hasSlotGap }}" hint-placeholder-val="{{ false }}"><button onClick="{{ builderSheet.prefill }}" title="Create rows for this character's remaining slot plan" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;background:rgba(52,224,138,0.1);color:#34e08a;border:1px solid rgba(52,224,138,0.28);border-radius:10px;font-weight:700;font-size:12.5px;cursor:pointer" style-hover="background:rgba(52,224,138,0.18)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l2 2 4-4"/><path d="M14 8h6"/><path d="M14 12h6"/><path d="M5 16l2 2 4-4"/></svg>Pre-fill {{ builderSheet.slotGapLabel }}</button></sc-if>
       <sc-if value="{{ builderCanEdit }}" hint-placeholder-val="{{ true }}"><button onClick="{{ builderSheet.addEntry }}" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 16px;background:#34e08a;color:#06140c;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:#46e89a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06140c" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Add video</button></sc-if>
     </div>
 
@@ -1215,6 +1127,99 @@
 
 </div>
 </sc-if>
+      <sc-if value="{{ isLeaderboard }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="Leaderboard" style="padding:24px 28px 56px;max-width:1000px">
+
+  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px">
+    <button onClick="{{ lbPrevMonth }}" title="Previous month" style="width:34px;height:34px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#9a9ba0;cursor:pointer" style-hover="color:#f4f4f5;border-color:rgba(255,255,255,0.2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></button>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:190px">
+      <div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.6px">MONTH</div>
+      <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;color:#f6f6f7">{{ lbMonthLabel }}</div>
+    </div>
+    <button onClick="{{ lbNextMonth }}" title="Next month" style="width:34px;height:34px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#9a9ba0;cursor:pointer" style-hover="color:#f4f4f5;border-color:rgba(255,255,255,0.2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></button>
+  </div>
+  <sc-if value="{{ lbNotCurrentMonth }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;justify-content:center;margin-bottom:18px"><button onClick="{{ lbBackToToday }}" style="background:none;border:none;color:#34e08a;font-size:12px;font-weight:700;cursor:pointer;padding:0" style-hover="text-decoration:underline">Back to this month</button></div>
+  </sc-if>
+  <sc-if value="{{ lbNotCurrentMonth }}" hint-placeholder-val="{{ true }}"><div style="margin-bottom:18px"></div></sc-if>
+
+  <div style="text-align:center;padding:13px 18px;background:linear-gradient(160deg,rgba(224,169,46,0.1),rgba(224,169,46,0.02));border:1px solid rgba(224,169,46,0.22);border-radius:12px;margin-bottom:28px">
+    <span style="font-size:13.5px;font-weight:700;color:#f0c97a">🏆 {{ lbLeaderLine }}</span>
+  </div>
+
+  <sc-if value="{{ lbEmpty }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:48px 20px;text-align:center;color:#5e5e66;font-size:13.5px">No scripts finished by any editor yet this month.</div>
+  </sc-if>
+
+  <sc-if value="{{ lbHasPodium }}" hint-placeholder-val="{{ true }}">
+  <div style="display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-bottom:28px;flex-wrap:wrap">
+    <sc-for list="{{ lbPodium }}" as="p" hint-placeholder-count="3">
+      <div style="{{ p.cardStyle }}">
+        <sc-if value="{{ p.crownShow }}" hint-placeholder-val="{{ false }}"><svg width="24" height="24" viewBox="0 0 24 24" fill="#e0a92e" stroke="#e0a92e" stroke-width="1" stroke-linejoin="round" style="animation:lbCrownBob 2.2s ease-in-out infinite"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5L3 8z"/></svg></sc-if>
+        <div style="{{ p.avatarWrapStyle }}"><div style="{{ p.avatarStyle }}">{{ p.initial }}</div><span style="{{ p.medalStyle }}">{{ p.rank }}</span></div>
+        <div style="{{ p.nameStyle }}">{{ p.name }}</div>
+        <div style="{{ p.countStyle }}">{{ p.countLabel }} {{ p.unitLabel }}</div>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ lbHasRest }}" hint-placeholder-val="{{ false }}">
+  <div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:9px">FULL RANKING</div>
+  <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:28px">
+    <sc-for list="{{ lbRest }}" as="row" hint-placeholder-count="2">
+      <div style="{{ row.rowStyle }}" style-hover="background:rgba(255,255,255,0.035);border-color:rgba(255,255,255,0.09)">
+        <span style="{{ row.rankStyle }}">{{ row.rank }}</span>
+        <span style="{{ row.avatarStyle }}">{{ row.initial }}</span>
+        <span style="font-size:13px;color:#dcdce0;font-weight:600">{{ row.name }}</span>
+        <div style="display:flex;align-items:center;gap:9px">
+          <div style="{{ row.barOuter }};flex:1"><div style="{{ row.barInner }}"></div></div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#9a9ba0;white-space:nowrap">{{ row.countLabel }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
+    <sc-for list="{{ lbStats }}" as="s" hint-placeholder-count="4">
+      <div style="background:linear-gradient(155deg,#16191b 0%,#0d1110 100%);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:15px 17px">
+        <div style="font-size:10.5px;color:#7c7c84;font-weight:700;letter-spacing:.4px">{{ s.label }}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:#f6f6f7;letter-spacing:-0.5px;margin-top:5px">{{ s.value }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ lbHasChart }}" hint-placeholder-val="{{ true }}">
+  <div style="background:linear-gradient(160deg,#16191b 0%,#0d1110 100%);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:18px 20px;margin-bottom:22px">
+    <div style="font-size:14px;font-weight:700;color:#f4f4f5;margin-bottom:2px">Scripts finished per day</div>
+    <div style="font-size:12px;color:#5e5e66;margin-bottom:16px">Team-wide, across all editors — {{ lbMonthLabel }}</div>
+    <div onMouseLeave="{{ lbOnChartLeave }}" style="display:flex;align-items:flex-end;gap:3px;height:90px;position:relative">
+      <sc-for list="{{ lbDailyBars }}" as="b" hint-placeholder-count="28">
+        <div style="{{ b.colStyle }}" onMouseEnter="{{ b.onEnter }}">
+          <div style="{{ b.bubbleStyle }}">{{ b.val }}</div>
+          <div style="{{ b.barStyle }}"></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ lbHasRecent }}" hint-placeholder-val="{{ true }}">
+  <div style="background:linear-gradient(160deg,#16191b 0%,#0d1110 100%);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:8px 6px 12px">
+    <div style="font-size:14px;font-weight:700;color:#f4f4f5;padding:10px 16px 2px">Recent finishes</div>
+    <sc-for list="{{ lbRecent }}" as="r" hint-placeholder-count="6">
+      <div style="display:flex;align-items:center;gap:11px;padding:10px 16px;border-top:1px solid rgba(255,255,255,0.04);animation:lbRowIn .35s ease both">
+        <span style="{{ r.avatarStyle }}">{{ r.initial }}</span>
+        <div style="flex:1;min-width:0;font-size:12.5px;color:#cfd0d4"><span style="font-weight:700;color:#f4f4f5">{{ r.name }}</span> finished a script — <span style="color:#9a9ba0">{{ r.concept }}</span></div>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#5e5e66;white-space:nowrap">{{ r.when }}</span>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+</div>
+</sc-if>
       <sc-if value="{{ isAnalytics }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Analytics" style="padding:20px 28px 40px;max-width:1200px">
 
@@ -1410,8 +1415,7 @@
       <label style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;background:#1c1c21;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ededf0;font-size:13px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(52,224,138,0.4)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg>Import JSON<input type="file" accept="application/json" onChange="{{ importData }}" style="display:none"/></label>
       <div style="flex:1"></div>
       <button onClick="{{ clearContent }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;background:transparent;border:1px solid rgba(240,88,78,0.3);border-radius:10px;color:#f0584e;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:rgba(240,88,78,0.1)">Clear all content</button>
-      <button onClick="{{ resetData }}" style="display:flex;align-items:center;gap:7px;height:38px;padding:0 16px;background:transparent;border:1px solid rgba(240,88,78,0.3);border-radius:10px;color:#f0584e;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:rgba(240,88,78,0.1)">Reset demo data</button>
-    </div>
+          </div>
   </div>
 
 </div>
@@ -1588,27 +1592,64 @@ class Component extends DCLogic {
 
   state = { tab:'dashboard', ready:false, db:null, date:null, role:null, userId:null, drillId:null, modal:null, search:'', acctTab:'all', detailId:null, detailPlatform:'facebook', libTab:'concepts', anTab:'accounts', conceptOpen:null, dashChart:'day', dashHover:null, profileMenu:false, loginEmail:'', loginPassword:'', loginError:null, notifOpen:false, flash:null };
 
+  retryLoad(){ this.setState({ loadError:false }); this.componentDidMount(); }
+
   async componentDidMount(){
     // Wait for the store bundle to finish loading before booting.
     // (In a single-file bundle the component can mount before slate-store.js runs.)
     for(let i=0; i<200 && !window.SlateStore; i++){ await new Promise(r=>setTimeout(r,25)); }
     this.store = window.SlateStore ? window.SlateStore.create() : null;
-    const loaded = await Promise.resolve(this.load());
-    let db = loaded ? structuredClone(loaded) : this.seed();
+    // Cap how long a single load attempt can hang — a blocked/unreachable network
+    // must fail fast (not hang for however long the underlying client takes),
+    // so retries actually cycle instead of stacking into a near-endless spinner.
+    const loadWithTimeout = ()=> Promise.race([
+      Promise.resolve(this.load()),
+      new Promise(res=>setTimeout(()=>res({__failed:true}), 5000))
+    ]);
+    let loaded = await loadWithTimeout();
+    // CRITICAL SAFETY CHECK: a failed fetch (network blip, timeout, one flaky
+    // table) must NEVER be treated as "this project is empty" — doing so
+    // reseeds demo data and immediately WRITES it over a real, populated
+    // database (this is what caused accounts/team/passwords to change on
+    // their own). Retry with backoff instead of ever seeding on a failure.
+    let attempts = 0;
+    while(loaded && loaded.__failed && attempts < 4){
+      attempts++;
+      await new Promise(r=>setTimeout(r, Math.min(800*attempts, 2000)));
+      loaded = await loadWithTimeout();
+    }
+    if(loaded && loaded.__failed){
+      // Still failing after retries — show a retry screen. Do NOT seed, do NOT persist.
+      this.setState({ ready:false, loadError:true });
+      return;
+    }
+    this._booting = false;
+    // Never auto-seed. If Supabase genuinely has nothing (a fresh project),
+    // show a real EMPTY workspace — not demo content. Seed data may only ever
+    // appear if a user explicitly asks for it (see loadDemoData(), wired to an
+    // opt-in button), never automatically on load.
+    let db = loaded ? structuredClone(loaded) : this.emptyDb();
     db = this.migrate(db);
-    if(this.store) this.store.persist(loaded, db); // persist only the seed / migration diff
+    // Only write back when we KNOW what's on the server (loaded is either a
+    // real db, or null meaning genuinely-confirmed-empty) — never on a guess,
+    // and never write seed/demo content automatically.
+    if(this.store && loaded) this.store.persist(loaded, db); // persist only the migration diff to EXISTING real data
     const T=this.todayStr();
     const sid=await Promise.resolve(this.loadSession()); const u=sid&&(db.team||[]).find(t=>t.id===sid);
     this.setState({ db, ready:true, date:T, plannerMonth:T.slice(0,7), selectedDate:T,
       userId: u?u.id:null, role: u?u.role:null, tab: u?(u.role==='Admin'?'dashboard':(u.role==='Editor'?'builder':'mywork')):'dashboard' });
     this._liveDb = db;
+    if(this._liveWired) return; // retryLoad() re-enters componentDidMount — don't double-register listeners/subscriptions
+    this._liveWired = true;
     // Seed the "already seen" set so notifications that existed before this page
     // load never fire a desktop popup — only brand-new ones (arriving live) do.
     this._seenNotif = new Set(((db.notifications)||[]).map(n=>n.id));
     this._registerNotifSW();
     this._onBeforeUnload = ()=>this._flushPersist(); window.addEventListener('beforeunload', this._onBeforeUnload);
     // Live sync: when any user changes anything on the server, refetch (debounced).
-    if(this.store && this.store.subscribe){ this._unsub = this.store.subscribe(()=>this.scheduleReload()); }
+    // The store tells us WHICH table changed so we only refetch that collection
+    // (see scheduleReload/reloadFromStore) instead of the whole db every time.
+    if(this.store && this.store.subscribe){ this._unsub = this.store.subscribe((table)=>this.scheduleReload(table)); }
     // Safety net: realtime can be disabled or flaky for individual tables, which
     // makes another user's change (e.g. an editor ticking "Video made") only show
     // up after a manual refresh. Poll the server on a short interval so everyone
@@ -1620,14 +1661,21 @@ class Component extends DCLogic {
       // gigabytes of egress a day), first ask the store for the newest
       // updated_at across all tables — a few bytes — and only do a real reload
       // when something actually changed. Realtime still handles live updates.
-      this._lastStamp = null;
-      if(this.store.latestStamp){ Promise.resolve(this.store.latestStamp()).then(s=>{ this._lastStamp=s; }).catch(()=>{}); }
+      this._lastStampMap = null;
+      if(this.store.latestStamp){ Promise.resolve(this.store.latestStamp()).then(m=>{ this._lastStampMap=m; }).catch(()=>{}); }
       const pollTick = async ()=>{
         if(document.visibilityState==='hidden') return;
         if(this.store.latestStamp){
-          try{ const s=await this.store.latestStamp();
-            if(s===null){ this.scheduleReload(); return; }      // check failed → fall back to full reload
-            if(s!==this._lastStamp){ this._lastStamp=s; this.scheduleReload(); }
+          try{ const m=await this.store.latestStamp();
+            if(m===null){ this.scheduleReload(); return; }      // check failed → fall back to full reload
+            const prev=this._lastStampMap;
+            if(!prev){ this._lastStampMap=m; return; } // first read — nothing to compare yet
+            // Only the tables whose stamp actually moved get refetched — not
+            // the whole db (which is what was burning egress: every poll tick
+            // used to re-download every row, blobs included, on any change).
+            const changed=Object.keys(m).filter(t=>m[t]!==prev[t]);
+            this._lastStampMap=m;
+            if(changed.length) this.scheduleReload(changed);
           }catch(e){ this.scheduleReload(); }
         } else { this.scheduleReload(); }
       };
@@ -1643,11 +1691,36 @@ class Component extends DCLogic {
     }
   }
   componentWillUnmount(){ this._flushPersist(); if(this._onBeforeUnload) window.removeEventListener('beforeunload', this._onBeforeUnload); if(this._unsub){ this._unsub(); } if(this._pollT) clearInterval(this._pollT); if(this._onVisible){ document.removeEventListener('visibilitychange', this._onVisible); window.removeEventListener('focus', this._onVisible); } if(this._onPointer){ document.removeEventListener('pointerdown', this._onPointer, true); } clearTimeout(this._reloadT); clearTimeout(this._persistT); }
-  scheduleReload(){ clearTimeout(this._reloadT); this._reloadT=setTimeout(()=>this.reloadFromStore(), 120); }
+  // table: the one table that changed ('all'/undefined means "refetch everything",
+  // an array of table names means only those need refetching). Accumulates
+  // across rapid-fire events so one reload can cover several tables at once.
+  scheduleReload(table){
+    if(table===undefined || table==='all'){ this._pendingTables='all'; }
+    else if(this._pendingTables!=='all'){
+      const set=this._pendingTables instanceof Set ? this._pendingTables : new Set();
+      const items = table instanceof Set ? [...table] : (Array.isArray(table)?table:[table]);
+      items.forEach(t=>set.add(t));
+      this._pendingTables=set;
+    }
+    clearTimeout(this._reloadT); this._reloadT=setTimeout(()=>this.reloadFromStore(), 120);
+  }
   async reloadFromStore(){ if(!this.store||!this.store.loadData) return;
     // Never clobber in-flight local work: defer while a write is pending, an edit just happened, or a form is open.
-    if(this._persistT || this._persisting || this._flushNext || (this._localEditAt && (Date.now()-this._localEditAt)<3000) || (this._interactAt && (Date.now()-this._interactAt)<1500) || this.state.modal){ return this.scheduleReload(); }
-    try{ const fresh=await Promise.resolve(this.store.loadData()); if(fresh){ const m=this.migrate(fresh);
+    if(this._persistT || this._persisting || this._flushNext || (this._localEditAt && (Date.now()-this._localEditAt)<3000) || (this._interactAt && (Date.now()-this._interactAt)<1500) || this.state.modal){ return this.scheduleReload(this._pendingTables); }
+    const tables=this._pendingTables; this._pendingTables=null;
+    try{
+      let fresh;
+      if(tables && tables!=='all' && this.store.loadTables && tables.size){
+        // Egress fix: only re-pull the tables that actually changed (e.g. a
+        // daily_entries edit no longer drags accounts/concepts — and their
+        // big base64 avatar/video blobs — along for the ride) and merge them
+        // over the live db, leaving every untouched collection alone.
+        const partial=await Promise.resolve(this.store.loadTables([...tables]));
+        fresh = partial ? { ...(this._liveDb||this.state.db), ...partial } : null;
+      } else {
+        fresh = await Promise.resolve(this.store.loadData());
+      }
+      if(fresh){ const m=this.migrate(fresh);
       // Only re-render if something actually changed. Most refreshes (the poll,
       // and a user's own writes echoing back through realtime) return identical
       // data — re-rendering then is pure churn that can swallow an in-flight
@@ -1656,13 +1729,18 @@ class Component extends DCLogic {
       this._liveDb=m; if(changed){ this.setState({ db:m }); this._syncDesktopNotifs(m); }
       // Keep the poll's change-marker current so a reload triggered by realtime
       // (or focus) doesn't make the next poll re-pull the whole db needlessly.
-      if(this.store.latestStamp){ Promise.resolve(this.store.latestStamp()).then(s=>{ if(s) this._lastStamp=s; }).catch(()=>{}); }
+      if(this.store.latestStamp){ Promise.resolve(this.store.latestStamp()).then(s=>{ if(s) this._lastStampMap=s; }).catch(()=>{}); }
     } }catch(e){ console.error('[app] live reload failed', e); } }
   migrate(db){
-    if(!db.dailyMetrics){ db.dailyMetrics=this.seedMetrics(); }
-    (db.accounts||[]).forEach(a=>{ if(a.avatar===undefined) a.avatar=null; if(a.repostCount===undefined) a.repostCount=0; if(!Array.isArray(a.followersHistory)||!a.followersHistory.length){ a.followersHistory=this.seedFollowerHistory(a); } });
-    if(!db.characterMeta){ db.characterMeta=this.seedCharacterMeta(db); }
-    if(!Array.isArray(db.dailyEntries)){ db.dailyEntries=this.seedDailyEntries(db); }
+    // NOTE: every fallback below fills in a genuinely EMPTY value ({}/[]) when a
+    // field is missing — never fabricated/demo content. Auto-generating content
+    // on load is exactly what silently overwrote real accounts/team data before;
+    // it must never happen again. Demo content is only ever created by an
+    // explicit, opt-in action (Settings → "Load demo data" / resetData()).
+    if(!db.dailyMetrics){ db.dailyMetrics={}; }
+    (db.accounts||[]).forEach(a=>{ if(a.avatar===undefined) a.avatar=null; if(a.repostCount===undefined) a.repostCount=0; if(!Array.isArray(a.followersHistory)) a.followersHistory=[]; });
+    if(!db.characterMeta){ db.characterMeta={}; }
+    if(!Array.isArray(db.dailyEntries)){ db.dailyEntries=[]; }
     (db.concepts||[]).forEach(c=>{ ['variations','hooks','bodies'].forEach(k=>{ if(!Array.isArray(c[k])) c[k]=[]; });
       (c.hooks||[]).forEach(h=>{ if(h.video===undefined) h.video=''; if(h.videoKind===undefined) h.videoKind=''; }); });
     (db.dailyEntries||[]).forEach(en=>{ ['conceptVarId','hookVarId','bodyVarId'].forEach(k=>{ if(en[k]===undefined) en[k]=''; });
@@ -1671,18 +1749,7 @@ class Component extends DCLogic {
     if(!db.assetLinks){ db.assetLinks={ baseImages:'', hooks:'', bodies:'' }; }
     if(!Array.isArray(db.platforms)||!db.platforms.length){ db.platforms=this.DEFAULT_PLATFORMS.map(p=>({...p})); }
     else { db.platforms=db.platforms.map(p=>({ id:p.id, name:p.name||p.id, label:p.label||(p.name||p.id).slice(0,2).toUpperCase(), color:p.color||'#8b8b93' })); }
-    if(!db.slots||typeof db.slots!=='object'||Array.isArray(db.slots)){ db.slots={}; }
-    // normalize slots to new shape { id, prod, conceptId } (migrate old concept/custom blocks)
-    Object.keys(db.slots).forEach(ch=>{ const arr=db.slots[ch]; if(!Array.isArray(arr)){ db.slots[ch]=[]; return; }
-      db.slots[ch]=arr.map(it=>{ if(it&&it.prod&&it.id) return { id:it.id, prod:this.PROD_TIERS.includes(it.prod)?it.prod:'Assembly', conceptId:it.conceptId||'' };
-        return { id:this.uid('slot'), prod:'Assembly', conceptId:(it&&it.kind==='concept')?(it.conceptId||''):'' }; }); });
-    // seed a starter plan the first time so the feature is visible
-    if(!db.slotsSeeded){ const chars=this.distinctCharacters(db); const cs=db.concepts||[];
-      const plan={ 0:['Assembly','Repost'], 1:['Assembly','Assembly','Scratch'], 2:['Repost'] };
-      chars.forEach((ch,i)=>{ if(Array.isArray(db.slots[ch])&&db.slots[ch].length) return; const tiers=plan[i%3]||['Assembly'];
-        db.slots[ch]=tiers.map((p,k)=>({ id:this.uid('slot'), prod:p, conceptId:(cs[(i+k)%Math.max(1,cs.length)]||{}).id||'' })); });
-      db.slotsSeeded=true; }
-    if(db.customBlocks!==undefined) delete db.customBlocks;
+
     (db.team||[]).forEach(m=>{ if(!['Admin','Poster','Editor'].includes(m.role)) m.role=(m.role==='Manager'?'Poster':'Editor');
       if(m.password===undefined) m.password=((m.email||'user').split('@')[0])+'123';
       if(!Array.isArray(m.assignments)) m.assignments=[]; });
@@ -1737,8 +1804,8 @@ class Component extends DCLogic {
   entryVisibleToMe(en){ if(this.seesAllAccounts()||this.isAdmin()) return true; const me=this.currentUser(); if(!me) return false;
     if(en.assignedEditorId) return en.assignedEditorId===me.id;
     return this.visibleCharacters().includes(en.character); }
-  allowedTabs(){ if(this.isAdmin()) return ['dashboard','planner','slots','builder','accounts','assets','analytics','logs','settings'];
-    if(this.isPoster()) return ['dashboard','mywork','planner','slots','builder','accounts','assets','analytics','logs'];
+  allowedTabs(){ if(this.isAdmin()) return ['dashboard','planner','builder','accounts','assets','leaderboard','analytics','logs','settings'];
+    if(this.isPoster()) return ['dashboard','mywork','planner','builder','accounts','assets','analytics','logs'];
     return ['builder','assets']; }
 
   // ---------- content builder: characters & bodies ----------
@@ -2112,7 +2179,7 @@ class Component extends DCLogic {
   setEntryConcept(e){ const id=e.currentTarget.dataset.id, v=e.target.value; this.mutEntry(id, en=>{ en.conceptId=v; }); }
   setEntryBodyMode(id, mode){ this.mutEntry(id, en=>{ en.bodyKind=mode; }); }
   pickSavedBody(e){ const id=e.currentTarget.dataset.id, idx=parseInt(e.target.value); if(isNaN(idx)) return; this.mutEntry(id, en=>{ const c=(this.state.db.concepts||[]).find(x=>x.id===en.conceptId); const b=c&&(c.bodies||[])[idx]; if(!b) return; const n=this.normBody(b); en.bodyKind=n.kind; if(n.kind==='link') en.bodyLink=n.value; else en.bodyText=n.value; }); e.target.value=''; }
-  toggleEntryDone(e){ const id=e.currentTarget.dataset.id; this.mutEntry(id, en=>{ en.done=!en.done; en.doneAt=en.done?Date.now():null; }); }
+  toggleEntryDone(e){ const id=e.currentTarget.dataset.id; const me=this.currentUser(); this.mutEntry(id, en=>{ en.done=!en.done; en.doneAt=en.done?Date.now():null; en.doneBy=en.done?(me?me.id:en.doneBy):en.doneBy; }); }
   toggleEntryWin(e){ const id=e.currentTarget.dataset.id; this.mutEntry(id, en=>{ en.win=!en.win; en.wonAt=en.win?Date.now():null; }); }
   saveEntryHook(e){ const id=e.currentTarget.dataset.id; const en=(this.state.db.dailyEntries||[]).find(x=>x.id===id); if(!en||!en.hook.trim()||!en.conceptId) return; this.commit(db=>{ if(!db.hooks) db.hooks=[]; if(db.hooks.some(h=>h.conceptId===en.conceptId&&h.text===en.hook.trim())) return; db.hooks.push({ id:this.uid('hk'), conceptId:en.conceptId, text:en.hook.trim(), createdAt:Date.now() }); }); }
 
@@ -2166,6 +2233,14 @@ class Component extends DCLogic {
 
   exportData(){ const blob=new Blob([JSON.stringify(this.state.db,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='slate-backup-'+this.todayStr()+'.json'; a.click(); URL.revokeObjectURL(url); }
   importData(e){ const file=e.target.files[0]; if(!file) return; const r=new FileReader(); r.onload=()=>{ try{ const db=JSON.parse(r.result); this.save(db); this._liveDb=db; this.setState({ db }); }catch(err){ alert('Invalid backup file'); } }; r.readAsText(file); }
+
+  // ---------- empty (real) db ----------
+  // Used ONLY when Supabase is confirmed to have zero rows in every table —
+  // never as a stand-in for a failed/uncertain load. Contains no demo/placeholder
+  // content: an empty workspace stays empty until real data is entered.
+  emptyDb(){
+    return { version:2, platforms:this.DEFAULT_PLATFORMS.map(p=>({...p})), accounts:[], posts:[], concepts:[], products:[], team:[], dailyEntries:[], dailyMetrics:{} };
+  }
 
   // ---------- seed ----------
   seed(){
@@ -2251,17 +2326,17 @@ class Component extends DCLogic {
     const admin=this.isAdmin(); const allowed=this.allowedTabs();
     const navBase={ display:'flex',alignItems:'center',gap:'11px',padding:'8px 11px',borderRadius:'9px',cursor:'pointer',fontSize:'13.5px',transition:'background .12s' };
     const mk=k=>({ ...navBase, fontWeight: tab===k?'700':'500', color: tab===k?'#e9fff4':'#8a8a92', background: tab===k?'linear-gradient(90deg,rgba(52,224,138,0.16),rgba(52,224,138,0.05))':'transparent', boxShadow: tab===k?'inset 0 0 0 1px rgba(52,224,138,0.18)':'none' });
-    const titles={ dashboard:['Dashboard','Your operation at a glance'], mywork:['My Work','Your accounts & today’s tasks'], planner:['Planner','Plan & track posting day by day'], builder:['Daily Builder','Assemble today’s scripts — hook + body'], accounts:['Accounts','Characters, pipeline & platforms'], library:['Content Library','Concepts, SOPs & product lanes'], assets:['Assets','Concepts, hooks & character drives'], analytics:['Analytics','Posting & concept performance'], logs:['Logs','Everything posted & logged'], slots:['Slot Plan','Plan each character’s video mix — feeds the builder'], settings:['Settings','Users, roles, products & data'] };
+    const titles={ dashboard:['Dashboard','Your operation at a glance'], mywork:['My Work','Your accounts & today’s tasks'], planner:['Planner','Plan & track posting day by day'], builder:['Daily Builder','Assemble today’s scripts — hook + body'], accounts:['Accounts','Characters, pipeline & platforms'], library:['Content Library','Concepts, SOPs & product lanes'], assets:['Assets','Concepts, hooks & character drives'], leaderboard:['Leaderboard','See who’s shipping the most this month'], analytics:['Analytics','Posting & concept performance'], logs:['Logs','Everything posted & logged'], settings:['Settings','Users, roles, products & data'] };
     const greet=(()=>{ const h=new Date().getHours(); return h<12?'Good morning':(h<18?'Good afternoon':'Good evening'); })();
     const roleLabel=me.role==='Admin'?'Admin · full access':(me.role==='Poster'?'VA · Poster · all accounts':(me.role==='Editor'?('VA · Editor · '+this.myAccountIds().length+' accounts'):'—'));
     return {
-      ready:this.state.ready, loading:!this.state.ready,
+      ready:this.state.ready, loading:!this.state.ready && !this.state.loadError, loadError:!!this.state.loadError, retryLoad:()=>this.retryLoad(),
       loggedIn:this.loggedIn(), loggedOut:!this.loggedIn(), isAdminUser:admin,
       showLogin:this.state.ready && !this.loggedIn(), showApp:this.state.ready && this.loggedIn(),
-      navShow:{ dashboard:allowed.includes('dashboard'), mywork:allowed.includes('mywork'), planner:allowed.includes('planner'), builder:allowed.includes('builder'), accounts:allowed.includes('accounts'), library:allowed.includes('library'), assets:allowed.includes('assets'), analytics:allowed.includes('analytics'), logs:allowed.includes('logs'), slots:allowed.includes('slots'), settings:allowed.includes('settings') },
-      isDashboard:tab==='dashboard', isMyWork:tab==='mywork', isDaily:tab==='planner', isBuilder:tab==='builder', isAssets:tab==='assets', isAccounts:tab==='accounts', isLibrary:tab==='library', isAnalytics:tab==='analytics', isLogs:tab==='logs', isSlots:tab==='slots', isSettings:tab==='settings',
-      go:{ dashboard:()=>this.setTab('dashboard'), mywork:()=>this.goMyWork(), planner:()=>this.setTab('planner'), builder:()=>this.setTab('builder'), accounts:()=>this.setTab('accounts'), library:()=>this.setTab('library'), assets:()=>this.setTab('assets'), analytics:()=>this.setTab('analytics'), logs:()=>this.setTab('logs'), slots:()=>this.setTab('slots'), settings:()=>this.setTab('settings') },
-      navItemStyle:{ dashboard:mk('dashboard'), mywork:mk('mywork'), planner:mk('planner'), builder:mk('builder'), accounts:mk('accounts'), library:mk('library'), assets:mk('assets'), analytics:mk('analytics'), logs:mk('logs'), slots:mk('slots'), settings:mk('settings') },
+      navShow:{ dashboard:allowed.includes('dashboard'), mywork:allowed.includes('mywork'), planner:allowed.includes('planner'), builder:allowed.includes('builder'), accounts:allowed.includes('accounts'), library:allowed.includes('library'), assets:allowed.includes('assets'), leaderboard:allowed.includes('leaderboard'), analytics:allowed.includes('analytics'), logs:allowed.includes('logs'), settings:allowed.includes('settings') },
+      isDashboard:tab==='dashboard', isMyWork:tab==='mywork', isDaily:tab==='planner', isBuilder:tab==='builder', isAssets:tab==='assets', isAccounts:tab==='accounts', isLibrary:tab==='library', isLeaderboard:tab==='leaderboard', isAnalytics:tab==='analytics', isLogs:tab==='logs', isSettings:tab==='settings',
+      go:{ dashboard:()=>this.setTab('dashboard'), mywork:()=>this.goMyWork(), planner:()=>this.setTab('planner'), builder:()=>this.setTab('builder'), accounts:()=>this.setTab('accounts'), library:()=>this.setTab('library'), assets:()=>this.setTab('assets'), leaderboard:()=>this.setTab('leaderboard'), analytics:()=>this.setTab('analytics'), logs:()=>this.setTab('logs'), settings:()=>this.setTab('settings') },
+      navItemStyle:{ dashboard:mk('dashboard'), mywork:mk('mywork'), planner:mk('planner'), builder:mk('builder'), accounts:mk('accounts'), library:mk('library'), assets:mk('assets'), leaderboard:mk('leaderboard'), analytics:mk('analytics'), logs:mk('logs'), settings:mk('settings') },
       headerTitle:(titles[tab]||['',''])[0], headerSub:(titles[tab]||['',''])[1], greet,
       userName:me.name, userRole:me.role||'', userInitial:(me.name||'A')[0], roleLabel,
       profileMenuOpen:this.state.profileMenu, toggleProfileMenu:()=>this.toggleProfileMenu(), doLogout:()=>this.logout(),
@@ -2365,7 +2440,7 @@ class Component extends DCLogic {
     const chartModeTabs=[['day','By day'],['account','By account'],['platform','By platform']].map(([k,lbl])=>({ label:lbl, onClick:()=>this.setDashChart(k), style:{padding:'5px 11px',borderRadius:'7px',fontSize:'12px',fontWeight:'600',cursor:'pointer',color:mode===k?'#06140c':'#a1a1aa',background:mode===k?'#34e08a':'transparent'} }));
     // focus
     const entByChar={}; todayEntries.forEach(e=>{ (entByChar[e.character]=entByChar[e.character]||[]).push(e); });
-    const focus=active.map(a=>{ const es=entByChar[a.character]||[]; const made=es.filter(e=>e.done).length; const posted=es.filter(e=>e.posted).length; const pg=this.slotProgress(a.character,T); const usePlan=pg.planned>0; const toMake=usePlan?pg.needCreate:Math.max(0,es.length-made); const toPost=usePlan?pg.needPost:Math.max(0,made-posted); return {a,toMake,toPost,need:toMake+toPost}; }).filter(o=>o.need>0).sort((x,y)=>y.need-x.need).slice(0,5).map(o=>{ const av=this.avatarBox(o.a,38); const pr=this.productById(o.a.product);
+    const focus=active.map(a=>{ const es=entByChar[a.character]||[]; const made=es.filter(e=>e.done).length; const posted=es.filter(e=>e.posted).length; const toMake=Math.max(0,es.length-made); const toPost=Math.max(0,made-posted); return {a,toMake,toPost,need:toMake+toPost}; }).filter(o=>o.need>0).sort((x,y)=>y.need-x.need).slice(0,5).map(o=>{ const av=this.avatarBox(o.a,38); const pr=this.productById(o.a.product);
       const cnt=(col)=>({display:'inline-flex',alignItems:'center',gap:'4px',padding:'4px 9px',borderRadius:'8px',fontSize:'11.5px',fontWeight:'700',whiteSpace:'nowrap',color:col,background:this.alpha(col,0.12),border:'1px solid '+this.alpha(col,0.24)});
       return { name:o.a.name, product:pr?pr.short:'—', avatarStyle:av.style, show:av.show, initial:av.initial, toMake:String(o.toMake), toPost:String(o.toPost), hasMake:o.toMake>0, hasPost:o.toPost>0, makeStyle:cnt(this.C.amber), postStyle:cnt(this.C.blue), onClick:()=>this.setState({tab:'builder',builderChar:o.a.character,builderDate:T,drillId:null,detailId:null}) }; });
     // rows
@@ -2629,7 +2704,10 @@ class Component extends DCLogic {
   setAccountManager(e){ const accountId=e.currentTarget.dataset.acct; const memberId=e.target.value;
     this.commit(db=>{ (db.team||[]).forEach(m=>{ if(m.role==='Admin') return; if(!Array.isArray(m.assignments)) m.assignments=[]; m.assignments=m.assignments.filter(x=>x.accountId!==accountId); });
       if(memberId){ const m=db.team.find(t=>t.id===memberId); const a=db.accounts.find(x=>x.id===accountId); if(m&&a){ const plats=this.PLATFORMS.filter(p=>a.platforms&&a.platforms[p]); m.assignments.push({ accountId, platforms:plats.length?plats:['facebook','instagram'] }); } } }); }
-  resetData(){ if(!confirm('Reset all data back to the demo seed? This cannot be undone.')) return; const db=this.seed(); this.save(db); this.setState({ db, drillId:null, detailId:null, modal:null }); }
+  // resetData() intentionally removed — no path exists in the app to write demo/
+  // placeholder content into a real workspace anymore. seed()/seedMetrics()/
+  // seedCharacterMeta()/seedDailyEntries()/seedFollowerHistory() are now dead
+  // code, kept only for reference; nothing calls them.
   clearContent(){ if(!confirm('Remove ALL accounts, posts, concepts, products and daily activity from the shared workspace? Your team and logins are kept. This cannot be undone.')) return;
     this.commit(db=>{ db.accounts=[]; db.posts=[]; db.concepts=[]; db.products=[]; db.dailyEntries=[]; db.dailyMetrics={}; db.characterMeta={}; });
     this.setState({ drillId:null, detailId:null, modal:null, tab:'dashboard', search:'' }); }
@@ -2769,7 +2847,7 @@ class Component extends DCLogic {
       roVideoBtnStyle:{ display:'inline-flex', alignItems:'center', gap:'6px', height:'30px', padding:'0 12px', borderRadius:'8px', border:'1px solid rgba(52,224,138,0.35)', color:'#34e08a', textDecoration:'none', fontSize:'12px', fontWeight:'700' },
       roNoVideoStyle:{ fontSize:'12px', color:'#5e5e66' },
       checkStyle:{ width:'24px', height:'24px', borderRadius:'7px', border:done?'none':'1.6px solid rgba(255,255,255,0.2)', background:done?this.C.green:'transparent', color:'#06140c', fontSize:'14px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flex:'0 0 auto' },
-      toggleDone:()=>{ if(this.isPoster()) return; this.mutEntry(en.id, x=>{ x.done=!x.done; x.doneAt=x.done?Date.now():null; }); },
+      toggleDone:()=>{ if(this.isPoster()) return; const me=this.currentUser(); this.mutEntry(en.id, x=>{ x.done=!x.done; x.doneAt=x.done?Date.now():null; x.doneBy=x.done?(me?me.id:x.doneBy):x.doneBy; }); },
       madeLabelStyle:{ fontSize:'11.5px', fontWeight:'700', color:done?'#9affc9':'#8b8b93' },
       videoLink:vlink, videoLinkValid:vlinkValid, onVideoLink:e=>{ if(this.isPoster()) return; this.mutEntry(en.id, x=>{ x.videoLink=e.target.value; }); },
       videoInputStyle:{ flex:'1', minWidth:'0', height:'30px', padding:'0 9px', background:'#0e0e11', border:'1px solid '+(done?'rgba(52,224,138,0.4)':'rgba(255,255,255,0.1)'), borderRadius:'8px', color:'#ededf0', fontSize:'11.5px', outline:'none' },
@@ -2831,9 +2909,7 @@ class Component extends DCLogic {
     // sheet for selected character
     let sheet=null;
     if(sheetOpen){ const es=dayEntries.filter(e=>e.character===selCh).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)); const cdone=es.filter(e=>e.done).length;
-      const pgSheet=this.slotProgress(selCh, date); const slotGap=pgSheet.needCreate;
       sheet={ character:selCh, color:this.charColor(selCh), avatarStyle:this.charAvatarStyle(selCh,40), initial:selCh[0], total:es.length, done:cdone, ratio:cdone+'/'+es.length, left:es.length-cdone, empty:es.length===0, allDone:es.length>0&&cdone===es.length,
-        hasSlotGap:canEdit&&slotGap>0, slotGapLabel:slotGap+' slot'+(slotGap===1?'':'s'), prefill:()=>this.prefillFromSlots(selCh, date),
         rows:es.map((en,i)=>({ ...this.entryRow(en, concepts, canEdit), num:String(i+1) })), addEntry:()=>this.addEntry(selCh) };
     }
     return { builderDateLabel:this.fmtFull(date), builderIsToday:date===T, builderDateInput:date,
@@ -2903,6 +2979,80 @@ class Component extends DCLogic {
       segConcepts:seg(tab==='concepts'), segCoverage:seg(tab==='coverage'), segLanes:seg(tab==='lanes'),
       concepts, conceptCount:concepts.length, lanes, covCols, covColCount:covCols.length, covRows, covEmpty, openAddConcept:()=>this.openAddConcept(),
       assetCards:[ card('drive','Assets','Everything lives in our main Drive \u2014 images, hooks, bodies, footage & more.') ] };
+  }
+
+  // ---------- leaderboard (admin-only, VA editors ranked by scripts finished this month) ----------
+  lbShiftMonth(delta){ this.setState(s=>{ const m=s.lbMonth||this.todayStr().slice(0,7); const d=new Date(+m.slice(0,4), +m.slice(5,7)-1+delta, 1); return { lbMonth: d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0') }; }); }
+  lbEditorFor(en){ return en.doneBy || en.assignedEditorId || null; }
+  leaderboardVals(){
+    const db=this.state.db; const T=this.todayStr();
+    const month=this.state.lbMonth||T.slice(0,7);
+    const monthLabel=new Date(+month.slice(0,4), +month.slice(5,7)-1, 1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const isCurMonth=month===T.slice(0,7);
+    const editors=(db.team||[]).filter(m=>m.role==='Editor');
+    const teamById={}; (db.team||[]).forEach(m=>teamById[m.id]=m);
+    const monthEntries=(db.dailyEntries||[]).filter(e=>e.done && (e.doneAt?new Date(e.doneAt).toISOString().slice(0,7):e.date.slice(0,7))===month);
+    const RANK_COLOR=['#e0a92e','#b7bcc4','#c17f4a'];
+    let rows=editors.map(m=>{
+      const mine=monthEntries.filter(e=>this.lbEditorFor(e)===m.id);
+      return { id:m.id, name:m.name, initial:(m.name||'?')[0], count:mine.length };
+    }).sort((a,b)=>b.count-a.count);
+    const top=rows.length?rows[0].count:0;
+    const podium=rows.slice(0,3).map((r,i)=>({ ...r, rank:i+1, color:RANK_COLOR[i],
+      cardStyle:{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center', gap:'10px', flex:'1', minWidth:'0', maxWidth:'220px', padding: i===0?'30px 18px 22px':'24px 16px 18px', borderRadius:'16px', background: i===0?'linear-gradient(160deg,rgba(224,169,46,0.14) 0%,#15181a 55%)':'linear-gradient(155deg,#16191b 0%,#0d1110 100%)', border:'1px solid '+this.alpha(RANK_COLOR[i],i===0?0.4:0.22), boxShadow: i===0?'0 12px 34px rgba(224,169,46,0.16)':'none', transform: i===0?'translateY(-10px)':'none', animation:'lbRise .5s cubic-bezier(.2,.8,.3,1) both', animationDelay:(i===1?'0s':(i===0?'.08s':'.16s')) },
+      avatarStyle:{ ...this.avatarStyle(r.name,i===0?66:52), background:'linear-gradient(155deg,'+this.alpha(RANK_COLOR[i],0.28)+','+this.alpha(RANK_COLOR[i],0.08)+')', border:'2px solid '+this.alpha(RANK_COLOR[i],0.55), color:RANK_COLOR[i], fontSize:i===0?'24px':'19px', fontWeight:'800', boxShadow:'0 0 0 4px '+this.alpha(RANK_COLOR[i],0.08) },
+      crownShow:i===0,
+      avatarWrapStyle:{ position:'relative', display:'inline-flex' },
+      medalStyle:{ position:'absolute', bottom:'-4px', right:'-4px', width:i===0?'24px':'20px', height:i===0?'24px':'20px', borderRadius:'50%', background:RANK_COLOR[i], color:'#06140c', display:'flex', alignItems:'center', justifyContent:'center', fontSize:i===0?'12px':'10.5px', fontWeight:'800', boxShadow:'0 2px 8px rgba(0,0,0,0.4)', border:'2px solid #0d1110', flex:'0 0 auto' },
+      nameStyle:{ fontSize:i===0?'15px':'13.5px', fontWeight:'800', color:'#f4f4f5', textAlign:'center' },
+      countStyle:{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 11px', borderRadius:'999px', background:this.alpha(RANK_COLOR[i],0.14), color:RANK_COLOR[i], fontFamily:"'JetBrains Mono',monospace", fontSize:'12px', fontWeight:'700' },
+      countLabel:String(r.count), unitLabel:r.count===1?'script':'scripts' }));
+    const rest=rows.slice(3).map((r,i)=>({ ...r, rank:i+4,
+      rowStyle:{ display:'grid', gridTemplateColumns:'30px 32px 1fr 130px', gap:'12px', alignItems:'center', padding:'11px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:'10px', transition:'background .12s,border-color .12s' },
+      rankStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'13px', fontWeight:'700', color:'#5e5e66', textAlign:'center' },
+      avatarStyle:this.avatarStyle(r.name,28),
+      barOuter:{ height:'8px', borderRadius:'6px', background:'rgba(255,255,255,0.06)', overflow:'hidden' },
+      barInner:{ height:'100%', width:(top?Math.max(4,Math.round(r.count/top*100)):0)+'%', borderRadius:'6px', background:'linear-gradient(90deg,#2bd389,#5cf3ad)', transition:'width .5s ease' },
+      countLabel:r.count+(r.count===1?' script':' scripts') }));
+    const hasRest=rest.length>0;
+    const empty=rows.length===0 || top===0;
+    const leaderName=rows.length&&top>0?rows[0].name:null;
+
+    // ---- team stat cards ----
+    const totalScripts=monthEntries.length;
+    const activeEditorCount=rows.filter(r=>r.count>0).length;
+    const avgPerEditor=activeEditorCount?Math.round(totalScripts/activeEditorCount*10)/10:0;
+    const byDay={}; monthEntries.forEach(e=>{ const d=(e.doneAt?new Date(e.doneAt).toISOString().slice(0,10):e.date); byDay[d]=(byDay[d]||0)+1; });
+    let bestDay=null, bestDayCount=0; Object.keys(byDay).forEach(d=>{ if(byDay[d]>bestDayCount){ bestDayCount=byDay[d]; bestDay=d; } });
+    const stats=[
+      { label:'SCRIPTS FINISHED', value:String(totalScripts) },
+      { label:'ACTIVE EDITORS', value:activeEditorCount+' / '+editors.length },
+      { label:'AVG PER EDITOR', value:String(avgPerEditor) },
+      { label:'BEST DAY', value: bestDay?(this.md(bestDay)+' \u00b7 '+bestDayCount):'\u2014' },
+    ];
+
+    // ---- daily activity chart (scripts finished per day this month) ----
+    const yy=+month.slice(0,4), mm=+month.slice(5,7); const dim=new Date(yy,mm,0).getDate();
+    const dayRaw=[]; for(let d=1; d<=dim; d++){ const ds=month+'-'+String(d).padStart(2,'0'); if(isCurMonth && ds>T) break; dayRaw.push({ key:ds, label:String(d), val:byDay[ds]||0, sub:this.fmtFull(ds) }); }
+    const chartHov=this.state.lbChartHover; const setChartHov=h=>this.setState({ lbChartHover:h });
+    const dailyBars=dayRaw.length?this.mkBars(dayRaw, chartHov, setChartHov, 90):[];
+    const hasChart=dailyBars.length>0;
+
+    // ---- recent finishes feed ----
+    const recentSrc=monthEntries.slice().sort((a,b)=>(b.doneAt||0)-(a.doneAt||0)).slice(0,10);
+    const recent=recentSrc.map(e=>{ const ed=this.lbEditorFor(e); const m=teamById[ed]; const c=(db.concepts||[]).find(x=>x.id===e.conceptId);
+      return { id:e.id, name:m?m.name:'Unassigned', initial:(m?m.name:'?')[0]||'?', avatarStyle:this.avatarStyle(m?m.name:'?',26),
+        concept:c?c.name:'a script', when: e.doneAt? new Date(e.doneAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})+' \u00b7 '+new Date(e.doneAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : this.fmtFull(e.date) };
+    });
+    const hasRecent=recent.length>0;
+
+    return { lbMonthLabel:monthLabel, lbPrevMonth:()=>this.lbShiftMonth(-1), lbNextMonth:()=>this.lbShiftMonth(1),
+      lbIsCurrentMonth:isCurMonth, lbNotCurrentMonth:!isCurMonth, lbBackToToday:()=>this.setState({ lbMonth:T.slice(0,7) }),
+      lbPodium:podium, lbHasPodium:podium.length>0, lbEmpty:empty,
+      lbRest:rest, lbHasRest:hasRest,
+      lbStats:stats, lbDailyBars:dailyBars, lbHasChart:hasChart, lbOnChartLeave:()=>setChartHov(null),
+      lbRecent:recent, lbHasRecent:hasRecent,
+      lbLeaderLine: leaderName?(leaderName+' is winning this month with '+top+(top===1?' script':' scripts')+' finished.'):'No scripts finished yet this month.' };
   }
 
   modalVals(){
@@ -3014,107 +3164,18 @@ class Component extends DCLogic {
     });
     const totalMade=entriesToday.filter(e=>e.done).length; const totalPosted=entriesToday.filter(e=>e.posted).length; const totalLeft=Math.max(0,totalMade-totalPosted);
     // Today's tasks = videos that are MADE but NOT yet POSTED (ready to post). Videos merely added / not yet made do not appear here.
-    // create tasks come from the slot plan (planned videos not yet made today)
-    const createTasks=[]; myChars.forEach(ch=>{ const pg=this.slotProgress(ch,T); if(pg.needCreate>0){ createTasks.push({ kind:'create', dotColor:this.C.blue, title:ch, sub:pg.needCreate+' video'+(pg.needCreate===1?'':'s')+' to create', tagText:'CREATE', tagStyle:this.pillStyle(this.C.blue), onClick:()=>this.setState({tab:'builder',builderChar:ch,builderDate:T,drillId:null,detailId:null}) }); } });
     const postTasks=cards.filter(c=>c.left>0).map(c=>({ kind:'post', dotColor:this.C.amber, title:c.name, sub:c.left+' video'+(c.left===1?'':'s')+' ready to post', tagText:'POST', tagStyle:this.pillStyle(this.C.amber), onClick:c.openPlanner }));
-    const tasks=createTasks.concat(postTasks);
+    const tasks=postTasks;
     return { mwAccounts:cards, mwHasAccounts:accts.length>0, mwNoAccounts:accts.length===0,
       mwTotalLeft:totalLeft, mwSummary:totalPosted+' / '+totalMade+' made videos posted today', mwLeftLabel: totalMade===0?'No finished videos yet today':(totalLeft===0?'All finished videos posted':(totalLeft+' video'+(totalLeft===1?'':'s')+' ready to post')),
       mwAllClear:tasks.length===0, mwTasks:tasks, mwHasTasks:tasks.length>0, mwTaskCount:tasks.length, mwGoBuilder:()=>this.goBuilder(T),
       mwBannerBg: totalLeft===0 ? 'rgba(52,224,138,0.07)' : 'rgba(240,179,65,0.07)' };
   }
 
-  // ---------- slot plan model ----------
-  prodColor(p){ return ({ Assembly:this.C.green, Scratch:this.C.blue, Repost:this.C.amber })[p]||this.C.gray; }
-  slotPlan(ch){ const db=this.state.db||{}; return ((db.slots||{})[ch]||[]).slice(); }
-  slotPlanCounts(ch){ const c={Assembly:0,Scratch:0,Repost:0}; this.slotPlan(ch).forEach(s=>{ c[s.prod]=(c[s.prod]||0)+1; }); return c; }
-  slotProgress(ch,date){ const db=this.state.db||{}; date=date||this.todayStr();
-    const byProd={}; this.PROD_TIERS.forEach(p=>byProd[p]={planned:0,made:0,posted:0});
-    this.slotPlan(ch).forEach(s=>{ if(byProd[s.prod]) byProd[s.prod].planned++; });
-    (db.dailyEntries||[]).filter(e=>e.character===ch && e.date===date).forEach(e=>{ const b=byProd[e.prod||'Assembly']; if(!b) return; if(e.done) b.made++; if(e.posted) b.posted++; });
-    let planned=0, made=0, posted=0, needCreate=0, needPost=0;
-    this.PROD_TIERS.forEach(p=>{ const b=byProd[p]; planned+=b.planned; made+=Math.min(b.planned,b.made); posted+=Math.min(b.planned,b.posted);
-      needCreate+=Math.max(0,b.planned-b.made); needPost+=Math.max(0, Math.min(b.planned,b.made)-b.posted); });
-    return { planned, made, posted, needCreate, needPost, byProd };
-  }
-  slotTasks(date, chars){ chars=chars||this.distinctCharacters(); const out=[];
-    chars.forEach(ch=>{ const pg=this.slotProgress(ch,date); this.PROD_TIERS.forEach(p=>{ const b=pg.byProd[p];
-      const nc=Math.max(0,b.planned-b.made); const np=Math.max(0, Math.min(b.planned,b.made)-b.posted);
-      if(nc>0) out.push({ char:ch, prod:p, kind:'create', count:nc });
-      if(np>0) out.push({ char:ch, prod:p, kind:'post', count:np }); }); });
-    return out;
-  }
-  slotAdd(ch,prod){ this.commit(db=>{ if(!db.slots) db.slots={}; if(!Array.isArray(db.slots[ch])) db.slots[ch]=[]; db.slots[ch].push({ id:this.uid('slot'), prod:prod||'Assembly', conceptId:'' }); }); }
-  slotRemove(ch,id){ this.commit(db=>{ if(!db.slots||!db.slots[ch]) return; db.slots[ch]=db.slots[ch].filter(s=>s.id!==id); }); }
-  slotRemoveLastOfProd(ch,prod){ this.commit(db=>{ if(!db.slots||!Array.isArray(db.slots[ch])) return; const a=db.slots[ch]; for(let i=a.length-1;i>=0;i--){ if(a[i].prod===prod){ a.splice(i,1); break; } } }); }
-  slotSetProd(ch,id,prod){ this.commit(db=>{ const s=((db.slots||{})[ch]||[]).find(x=>x.id===id); if(s) s.prod=prod; }); }
-  slotSetConcept(ch,id,cid){ this.commit(db=>{ const s=((db.slots||{})[ch]||[]).find(x=>x.id===id); if(s) s.conceptId=cid; }); }
-  slotClear(ch){ this.commit(db=>{ if(db.slots) db.slots[ch]=[]; }); }
-  prefillFromSlots(ch,date){ date=date||this.curBuilderDate();
-    this.commit(db=>{ if(!Array.isArray(db.dailyEntries)) db.dailyEntries=[]; const plan=(db.slots||{})[ch]||[];
-      const haveByProd={}; db.dailyEntries.filter(e=>e.character===ch&&e.date===date).forEach(e=>{ const p=e.prod||'Assembly'; haveByProd[p]=(haveByProd[p]||0)+1; });
-      const bucket={}; plan.forEach(s=>{ (bucket[s.prod]=bucket[s.prod]||[]).push(s); });
-      Object.keys(bucket).forEach(p=>{ const slots=bucket[p]; const have=haveByProd[p]||0;
-        for(let i=have;i<slots.length;i++){ const s=slots[i];
-          db.dailyEntries.push({ id:this.uid('de'), date, character:ch, conceptId:s.conceptId||'', conceptVarId:'', hookVarId:'', bodyVarId:'', hook:'', bodyText:'', type:'Product', prod:p, done:false, posted:false, platforms:[], videoLink:'', hookKind:'text', hookLink:'', bodyKind:'text', bodyLink:'', refVideo:'', notes:'', win:false, wonAt:null, createdAt:Date.now() }); } });
-    });
-  }
-  slotsVals(){
-    const db=this.state.db||{}; const T=this.todayStr();
-    const cById={}; (db.concepts||[]).forEach(c=>{ cById[c.id]=c; });
-    const conceptOpts=[{ id:'', name:'\u2014 Any concept' }].concat((db.concepts||[]).map(c=>({ id:c.id, name:c.name })));
-    const accByChar={}; (db.accounts||[]).forEach(a=>{ if(!accByChar[a.character]) accByChar[a.character]=a; });
-    const canEdit=this.isAdmin();
-    const selStyle=(col)=>({ height:'30px', padding:'0 8px', background:'#0e0e11', border:'1px solid '+this.alpha(col,0.3), borderRadius:'8px', color:this.alpha(col,1), fontSize:'11.5px', fontWeight:'700', outline:'none', colorScheme:'dark', cursor:'pointer' });
-    const stepBtn=(disabled)=>({ width:'26px', height:'26px', flex:'0 0 auto', borderRadius:'7px', border:'1px solid rgba(255,255,255,0.12)', background:'transparent', color: disabled?'#3a3a40':'#cfd0d4', fontSize:'15px', fontWeight:'700', cursor: disabled?'default':'pointer', display:'flex', alignItems:'center', justifyContent:'center', lineHeight:'1' });
-    let openCreate=0, openPost=0;
-    const boards=this.distinctCharacters(db).map(ch=>{
-      const a=accByChar[ch]; const pr=a?this.productById(a.product):null;
-      const plan=(db.slots||{})[ch]||[]; const counts=this.slotPlanCounts(ch); const pg=this.slotProgress(ch,T);
-      openCreate+=pg.needCreate; openPost+=pg.needPost;
-      const steppers=this.PROD_TIERS.map(p=>{ const col=this.prodColor(p); const n=counts[p]||0; return {
-        prod:p, count:String(n), dotStyle:{ width:'9px', height:'9px', borderRadius:'3px', background:col, flex:'0 0 auto' },
-        chipStyle:{ display:'flex', alignItems:'center', gap:'8px', flex:'1', minWidth:'0', padding:'8px 9px', borderRadius:'11px', background:this.alpha(col,0.08), border:'1px solid '+this.alpha(col,n>0?0.3:0.14) },
-        labelStyle:{ flex:'1', minWidth:'0', fontSize:'11.5px', fontWeight:'700', color: n>0?this.alpha(col,1):'#8b8b93', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' },
-        countStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'13px', fontWeight:'700', color: n>0?'#f4f4f5':'#5e5e66', minWidth:'14px', textAlign:'center' },
-        incStyle:stepBtn(false), decStyle:stepBtn(n===0), decDisabled:n===0,
-        inc:()=>this.slotAdd(ch,p), dec:()=>{ if(n>0) this.slotRemoveLastOfProd(ch,p); } };
-      });
-      const slots=plan.map((s,i)=>{ const col=this.prodColor(s.prod); const c=cById[s.conceptId];
-        return { id:s.id, n:String(i+1), prod:s.prod, prodColor:col,
-          barStyle:{ width:'4px', alignSelf:'stretch', borderRadius:'3px', background:col, flex:'0 0 auto' },
-          numStyle:{ fontFamily:"'JetBrains Mono',monospace", fontSize:'11px', fontWeight:'700', color:'#5e5e66', width:'16px', flex:'0 0 auto', textAlign:'center' },
-          prodValue:s.prod, prodSelStyle:{ ...selStyle(col), flex:'0 0 auto', width:'104px' }, onProd:e=>this.slotSetProd(ch,s.id,e.target.value),
-          prodChipStyle:this.pillStyle(col), conceptName: c?c.name:'Any concept',
-          conceptValue:s.conceptId||'', conceptSelStyle:{ ...selStyle(this.C.gray), flex:'1', minWidth:'0', color:'#cfd0d4', fontWeight:'600', borderColor:'rgba(255,255,255,0.1)' }, onConcept:e=>this.slotSetConcept(ch,s.id,e.target.value),
-          remove:()=>this.slotRemove(ch,s.id) };
-      });
-      const planned=pg.planned; const madePct= planned?Math.round(pg.made/planned*100):0; const postedPct= planned?Math.round(pg.posted/planned*100):0;
-      const barSeg=(pct,color)=>({ position:'absolute', left:'0', top:'0', bottom:'0', width:pct+'%', background:color, borderRadius:'999px', transition:'width .2s' });
-      const need=(txt,col)=>({ display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 9px', borderRadius:'8px', fontSize:'11px', fontWeight:'700', color:col, background:this.alpha(col,0.12), border:'1px solid '+this.alpha(col,0.26) });
-      return { character:ch, initial:(ch||'?')[0], product:pr?pr.short:'\u2014', avatarStyle:this.charAvatarStyle(ch,38),
-        canEdit, readonly:!canEdit, steppers, slots, hasSlots:plan.length>0, noSlots:plan.length===0,
-        countLabel:plan.length+' slot'+(plan.length===1?'':'s'),
-        countStyle:{ display:'inline-flex', alignItems:'center', height:'22px', padding:'0 10px', borderRadius:'999px', fontFamily:"'JetBrains Mono',monospace", fontSize:'11px', fontWeight:'700', flex:'0 0 auto', color:'#8b8b93', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)' },
-        hasPlan:planned>0, madeText:pg.made+'/'+planned+' made today', postedText:pg.posted+'/'+planned+' posted',
-        madeBarStyle:barSeg(madePct,this.alpha(this.C.amber,0.55)), postedBarStyle:barSeg(postedPct,this.C.green),
-        needCreate:pg.needCreate, needPost:pg.needPost, hasNeedCreate:pg.needCreate>0, hasNeedPost:pg.needPost>0,
-        allClear: planned>0 && pg.needCreate===0 && pg.needPost===0,
-        createStyle:need('',this.C.amber), postStyle:need('',this.C.blue), createLabel:pg.needCreate+' to create', postLabel:pg.needPost+' to post',
-        addSlot:()=>this.slotAdd(ch,'Assembly'), clearAll:()=>this.slotClear(ch),
-        prefill:()=>{ this.prefillFromSlots(ch,T); this.setState({ tab:'builder', builderChar:ch, builderDate:T, drillId:null, detailId:null }); },
-        openBuilder:()=>this.setState({ tab:'builder', builderChar:ch, builderDate:T, drillId:null, detailId:null }),
-        boardStyle:{ background:'linear-gradient(160deg,#16191b,#0d1110)', border:'1px solid '+(pg.needCreate>0||pg.needPost>0?'rgba(255,255,255,0.08)':(planned>0?'rgba(52,224,138,0.25)':'rgba(255,255,255,0.06)')), borderRadius:'16px', padding:'16px 16px 15px' } };
-    });
-    return { slotBoards:boards, slotHasBoards:boards.length>0, conceptOpts, slotProdOpts:this.PROD_TIERS, slotCanEdit:canEdit,
-      slotTodayLabel:this.fmtFull(T), slotOpenCreate:String(openCreate), slotOpenPost:String(openPost),
-      slotOpenTotal:openCreate+openPost, slotAllClear:(openCreate+openPost)===0, slotHasOpen:(openCreate+openPost)>0,
-      slotGoBuilder:()=>this.setState({ tab:'builder', builderDate:T, builderChar:null, drillId:null, detailId:null }) };
-  }
   renderVals(){
     const g=this.globalVals();
     if(!this.state.ready || !this.loggedIn()) return g;
-    return { ...g, ...this.dashVals(), ...this.myWorkVals(), ...this.dailyVals(), ...this.builderVals(), ...this.assetsVals(), ...this.accountsVals(), ...this.analyticsVals(), ...this.logsVals(), ...this.settingsVals(), ...this.slotsVals(), ...this.modalVals() };
+    return { ...g, ...this.dashVals(), ...this.myWorkVals(), ...this.dailyVals(), ...this.builderVals(), ...this.assetsVals(), ...this.leaderboardVals(), ...this.accountsVals(), ...this.analyticsVals(), ...this.logsVals(), ...this.settingsVals(), ...this.modalVals() };
   }
 }
 </script>
