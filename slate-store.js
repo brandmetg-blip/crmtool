@@ -64,7 +64,7 @@
   class LocalStore {
     loadData() {
       try { const r = localStorage.getItem(DB_KEY); return r ? JSON.parse(r) : null; }
-      catch (e) { return null; }
+      catch (e) { return { __failed: true }; } // parse error, not "empty" — see SupabaseStore note above
     }
     // Local storage has no concurrency to worry about — just save the whole db.
     persist(prevDb, nextDb) {
@@ -111,11 +111,11 @@
       this.META_ID = 1;
     }
 
-    // ---- cheap change-check: newest updated_at across all tables ------------
-    // Returns a single comparable timestamp string (or '' if empty). This pulls
-    // ONE tiny row per table (just the max updated_at) instead of the whole db,
-    // so the safety-net poll can ask "did anything change?" for a few bytes
-    // rather than re-downloading every row (including base64 media) every time.
+    // ---- cheap change-check: newest updated_at PER TABLE ---------------------
+    // Returns { tableName: updated_at }. This pulls ONE tiny row per table (just
+    // the max updated_at) instead of the whole db. Returning it per-table (not
+    // collapsed to one max) lets the caller figure out WHICH tables actually
+    // changed and refetch only those — see loadTables().
     async latestStamp() {
       try {
         const tables = ID_COLLECTIONS.map(c => c[1]).concat([METRICS_TABLE, META_TABLE]);
@@ -123,40 +123,96 @@
           this.sb.from(t).select('updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle()
         );
         const res = await Promise.all(qs);
-        let max = '';
-        res.forEach(r => { const u = r && r.data && r.data.updated_at; if (u && u > max) max = u; });
-        return max;
+        const out = {};
+        tables.forEach((t, i) => { out[t] = (res[i] && res[i].data && res[i].data.updated_at) || ''; });
+        return out;
       } catch (e) { return null; } // null => caller should fall back to a full reload
     }
 
+    // Every table name this store manages (used by callers to mean "everything").
+    allTableNames() { return ID_COLLECTIONS.map(c => c[1]).concat([METRICS_TABLE, META_TABLE]); }
+
     // ---- read: assemble the whole db from the tables ------------------------
-    async loadData() {
+    // IMPORTANT: returns { __failed: true } (never null) when the fetch itself
+    // errored (network blip, timeout, etc). null is reserved for "confirmed
+    // truly empty project". These must never be conflated — a caller that
+    // treats a failed fetch as "empty" will reseed demo data and WRITE it over
+    // a real, populated database. See loadTables() below.
+    async loadData() { return this.loadTables(this.allTableNames()); }
+
+    // ---- read: assemble ONLY the given tables into a partial db object ------
+    // This is the key egress fix: a change to daily_entries (small rows, no
+    // media) used to trigger a full loadData() for EVERY connected client —
+    // re-downloading accounts/concepts/products too, which carry big base64
+    // avatar/video blobs. Now a realtime event says which table changed, and
+    // we only re-pull that one. Callers merge the partial result over their
+    // existing db, leaving untouched collections (and their blobs) alone.
+    async loadTables(tableNames) {
+      // Cancel any still-in-flight previous load before starting a new one.
+      // Retries used to just fire ANOTHER full set of queries on top of ones
+      // still running from the last (client-gave-up-early) attempt — that
+      // pile-up of concurrent queries against the same tables was what pushed
+      // Postgres into hitting its own statement timeout and made "loading"
+      // hang even longer the more it retried. Aborting the old request first
+      // means each attempt is the only one actually hitting the database.
+      if (this._loadAbort) { try { this._loadAbort.abort(); } catch (e) {} }
+      const controller = new AbortController();
+      this._loadAbort = controller;
       try {
-        const selects = ID_COLLECTIONS.map(([, table]) => this.sb.from(table).select('data'));
-        selects.push(this.sb.from(METRICS_TABLE).select('date,data'));
-        selects.push(this.sb.from(META_TABLE).select('data').eq('id', this.META_ID).maybeSingle());
-        const results = await Promise.all(selects);
+        const want = new Set(tableNames);
+        const idKeys = ID_COLLECTIONS.filter(([, table]) => want.has(table));
+        const wantMetrics = want.has(METRICS_TABLE);
+        const wantMeta = want.has(META_TABLE);
 
-        // If NOTHING exists yet (fresh project), return null so the app seeds.
-        const anyRows = results.some((r, i) => i < ID_COLLECTIONS.length && r.data && r.data.length);
-        const metaRes = results[results.length - 1];
-        if (!anyRows && !(metaRes && metaRes.data)) return null;
-
+        // Order by id so row order is stable across fetches — the app renders
+        // these lists with plain array-index React keys, so if the same table
+        // came back in a different order on every refetch (Postgres makes NO
+        // ordering guarantee without an ORDER BY), a mid-typing textarea could
+        // get silently reassigned to a different row's text on the next reload.
+        //
+        // Fetched ONE TABLE AT A TIME rather than Promise.all-ing all of them:
+        // account rows carry multi-MB base64 avatar images, and firing every
+        // query at once multiplies the database's momentary load — that spike
+        // is what was tripping the server's own statement timeout. Sequential
+        // requests keep each individual query small and reliable; the total
+        // wall-clock cost is still well under the client's timeout.
         const db = {};
-        ID_COLLECTIONS.forEach(([key], i) => {
-          const r = results[i];
+        for (const [key, table] of idKeys) {
+          const r = await this.sb.from(table).select('data').order('id').abortSignal(controller.signal);
           if (r.error) throw r.error;
           db[key] = (r.data || []).map(row => row.data);
-        });
-        const metricsRes = results[ID_COLLECTIONS.length];
-        if (metricsRes.error) throw metricsRes.error;
-        db.dailyMetrics = {};
-        (metricsRes.data || []).forEach(row => { db.dailyMetrics[row.date] = row.data; });
-        if (metaRes && metaRes.data && metaRes.data.data) Object.assign(db, metaRes.data.data);
+        }
+        if (wantMetrics) {
+          const r = await this.sb.from(METRICS_TABLE).select('date,data').order('date').abortSignal(controller.signal);
+          if (r.error) throw r.error;
+          db.dailyMetrics = {};
+          (r.data || []).forEach(row => { db.dailyMetrics[row.date] = row.data; });
+        }
+        if (wantMeta) {
+          const r = await this.sb.from(META_TABLE).select('data').eq('id', this.META_ID).maybeSingle().abortSignal(controller.signal);
+          if (r.error) throw r.error;
+          if (r.data && r.data.data) Object.assign(db, r.data.data);
+        }
+
+        // Only treat as "nothing exists yet" when this was a full-db fetch AND
+        // it truly came back empty — a partial refresh legitimately returns an
+        // empty object when e.g. every daily_entries row was deleted.
+        const wasFullFetch = want.size >= this.allTableNames().length;
+        if (wasFullFetch) {
+          const anyRows = idKeys.some(([key]) => (db[key] || []).length);
+          if (!anyRows && !Object.keys(db).some(k => !ID_COLLECTIONS.some(c => c[0] === k) && k !== 'dailyMetrics')) return null;
+        }
         return db;
       } catch (e) {
-        console.error('[store] loadData failed', e);
-        return null;
+        // A newer loadTables() call aborting this one (see top of function) is
+        // expected traffic, not a real failure — don't spam the console for it.
+        if (e && (e.name === 'AbortError' || /abort/i.test(e.message || ''))) return { __failed: true };
+        console.error('[store] loadTables failed', e);
+        // NEVER return null here — null means "confirmed empty" to callers,
+        // which triggers reseeding + an immediate write of that seed over the
+        // real database. A failed fetch must be distinguishable so callers can
+        // retry instead of destructively "filling in" what looks like empty.
+        return { __failed: true };
       }
     }
 
@@ -204,6 +260,10 @@
     // timeout). If it does and we don't rebuild it, live updates stop forever
     // and the user is stuck waiting on the slow poll. So we watch the channel
     // status and auto-reconnect whenever it errors, times out, or closes.
+    // onChange(table) — table is the ONE table that changed, so the caller can
+    // refetch just that collection instead of the whole db (see loadTables()
+    // above). onChange() with no argument means "refresh everything" (used on
+    // (re)connect, when we don't know what was missed while offline).
     subscribe(onChange) {
       const tables = ID_COLLECTIONS.map(c => c[1]).concat([METRICS_TABLE, META_TABLE]);
       let channel = null, closed = false, retryT = null;
@@ -212,7 +272,7 @@
         // Unique name each attempt so a stale channel never blocks the new one.
         channel = this.sb.channel('slate-live-' + Math.random().toString(36).slice(2));
         tables.forEach(table => {
-          channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange());
+          channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange(table));
         });
         channel.subscribe((status) => {
           if (status === 'SUBSCRIBED') {
@@ -237,10 +297,21 @@
       catch (e) {}
     }
     async signIn(email, password, db) {
-      const { data, error } = await this.sb.auth.signInWithPassword({
-        email: (email || '').trim().toLowerCase(), password: password || ''
-      });
-      if (error) return { error: error.message };
+      let data, error;
+      try {
+        const res = await this.sb.auth.signInWithPassword({
+          email: (email || '').trim().toLowerCase(), password: password || ''
+        });
+        data = res.data; error = res.error;
+      } catch (e) {
+        return { error: 'Could not reach the sign-in server. Check your connection and try again.' };
+      }
+      if (error) {
+        // Never surface a raw/blank/non-string error object to the UI.
+        const msg = (typeof error.message === 'string' && error.message.trim()) ? error.message : 'Sign-in failed. Check your email and password and try again.';
+        return { error: msg };
+      }
+      if (!data || !data.user) return { error: 'Sign-in failed. Check your email and password and try again.' };
       const authEmail = (data.user.email || '').toLowerCase();
       const u = ((db && db.team) || []).find(t => (t.email || '').toLowerCase() === authEmail);
       if (!u) return { error: 'Signed in, but no team profile is linked to this email. Add them under Settings first.' };
