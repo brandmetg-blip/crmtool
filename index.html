@@ -2085,7 +2085,7 @@ class Component extends DCLogic {
   builderToday(){ this.setState({ builderDate:this.todayStr() }); }
   onBuilderDateInput(e){ if(e.target.value) this.setState({ builderDate:e.target.value }); }
 
-  addEntry(character){ const date=this.curBuilderDate(); const me=this.currentUser(); this.commit(db=>{ if(!db.dailyEntries) db.dailyEntries=[]; const concepts=db.concepts||[]; db.dailyEntries.push({ id:this.uid('de'), date, character, hook:'', notes:'', conceptId:(concepts[0]&&concepts[0].id)||'', conceptVarId:'', hookVarId:'', bodyVarId:'', type:'Product', prod:'Assembly', bodyKind:'', bodyText:'', bodyLink:'', done:false, videoLink:'', posted:false, platforms:[], postId:null, postedAt:null, assignedEditorId:'', createdAt:Date.now(), createdById: me?me.id:'', createdByName: me?me.name:'' }); }); }
+  addEntry(character){ const date=this.curBuilderDate(); const me=this.currentUser(); this.commitEntries(db=>{ if(!db.dailyEntries) db.dailyEntries=[]; const concepts=(this._liveDb||this.state.db).concepts||[]; db.dailyEntries.push({ id:this.uid('de'), date, character, hook:'', notes:'', conceptId:(concepts[0]&&concepts[0].id)||'', conceptVarId:'', hookVarId:'', bodyVarId:'', type:'Product', prod:'Assembly', bodyKind:'', bodyText:'', bodyLink:'', done:false, videoLink:'', posted:false, platforms:[], postId:null, postedAt:null, assignedEditorId:'', createdAt:Date.now(), createdById: me?me.id:'', createdByName: me?me.name:'' }); }); }
   syncEntryPost(db, en){
     if(en.postId){ const i=(db.posts||[]).findIndex(p=>p.id===en.postId); if(i>=0) db.posts.splice(i,1); en.postId=null; }
     if(en.posted && (en.platforms||[]).length){ const acc=(db.accounts||[]).find(a=>a.character===en.character); const c=(db.concepts||[]).find(x=>x.id===en.conceptId); const pid=this.uid('p'); en.postId=pid;
@@ -2093,7 +2093,7 @@ class Component extends DCLogic {
   }
   acctReposts(id){ return (this.state.db.posts||[]).filter(p=>p.accountId===id&&p.prod==='Repost').length; }
   acctLastRepost(id){ const ds=(this.state.db.posts||[]).filter(p=>p.accountId===id&&p.prod==='Repost').map(p=>p.date).sort(); return ds.length?ds[ds.length-1]:null; }
-  deleteEntry(e){ const id=e.currentTarget.dataset.id; this.commit(db=>{ const i=(db.dailyEntries||[]).findIndex(x=>x.id===id); if(i>=0) db.dailyEntries.splice(i,1); }); }
+  deleteEntry(e){ const id=e.currentTarget.dataset.id; this.commitEntries(db=>{ const i=(db.dailyEntries||[]).findIndex(x=>x.id===id); if(i>=0) db.dailyEntries.splice(i,1); }); }
   // Fast path for the Daily Builder's per-keystroke edits (hook/body/notes/links).
   // commit() deep-clones the WHOLE db on every call — fine for occasional edits,
   // but dailyEntries typing fires on every keystroke, and the db also carries
@@ -2111,6 +2111,41 @@ class Component extends DCLogic {
     fn(updated);
     const newList = list.slice(); newList[idx] = updated;
     const db = { ...prev, dailyEntries: newList };
+    this._liveDb = db;
+    if(this._flushPrev === undefined) this._flushPrev = prev;
+    this._flushNext = db;
+    this._localEditAt = Date.now();
+    this.setState({ db });
+    this._schedulePersist();
+  }
+  // Same fast path as mutEntry() above, for row add/remove — only touches
+  // dailyEntries/posts, never clones accounts/concepts (and their base64
+  // avatar/video blobs). Add/Delete row used to go through commit(), which
+  // clones the WHOLE db on every click — with real media in the account, that
+  // made clicking "Add row" repeatedly feel like it did nothing until several
+  // clicks' worth of full clones finally finished and all landed at once.
+  commitEntries(fn){
+    const prev = this._liveDb || this.state.db;
+    const db = { ...prev, dailyEntries: (prev.dailyEntries||[]).slice(), posts: (prev.posts||[]).slice() };
+    fn(db);
+    this._liveDb = db;
+    if(this._flushPrev === undefined) this._flushPrev = prev;
+    this._flushNext = db;
+    this._localEditAt = Date.now();
+    this.setState({ db });
+    this._schedulePersist();
+  }
+  // Same fast path, for actions on ONE entry that may also touch posts
+  // (mark posted, toggle a platform, change posted date) — see commitEntries().
+  commitEntry(id, fn){
+    const prev = this._liveDb || this.state.db;
+    const list = prev.dailyEntries || [];
+    const idx = list.findIndex(x=>x.id===id);
+    if(idx<0) return;
+    const updated = structuredClone(list[idx]);
+    const newList = list.slice(); newList[idx] = updated;
+    const db = { ...prev, dailyEntries: newList, posts: (prev.posts||[]).slice() };
+    fn(db, updated);
     this._liveDb = db;
     if(this._flushPrev === undefined) this._flushPrev = prev;
     this._flushNext = db;
@@ -2883,19 +2918,19 @@ class Component extends DCLogic {
       videoInputStyle:{ flex:'1', minWidth:'0', height:'30px', padding:'0 9px', background:'#0e0e11', border:'1px solid '+(done?'rgba(52,224,138,0.4)':'rgba(255,255,255,0.1)'), borderRadius:'8px', color:'#ededf0', fontSize:'11.5px', outline:'none' },
       // ---- posted + platforms (admin/poster only) ----
       posted, postedCheck:posted?'✓':'',
-      togglePosted:()=>this.commit(db2=>{ const x=(db2.dailyEntries||[]).find(y=>y.id===en.id); if(!x) return; x.posted=!x.posted; x.postedAt=x.posted?Date.now():null; if(x.posted){ if(!x.postedDate) x.postedDate=this.todayStr(); if(!(x.platforms||[]).length) x.platforms=['facebook']; } this.syncEntryPost(db2,x); }),
+      togglePosted:()=>this.commitEntry(en.id, (db2,x)=>{ x.posted=!x.posted; x.postedAt=x.posted?Date.now():null; if(x.posted){ if(!x.postedDate) x.postedDate=this.todayStr(); if(!(x.platforms||[]).length) x.platforms=['facebook']; } this.syncEntryPost(db2,x); }),
       postedDateValue: en.postedDate||this.todayStr(),
-      onPostedDate:e=>{ if(!e.target.value) return; this.commit(db2=>{ const x=(db2.dailyEntries||[]).find(y=>y.id===en.id); if(!x) return; x.postedDate=e.target.value; if(x.posted) this.syncEntryPost(db2,x); }); },
+      onPostedDate:e=>{ if(!e.target.value) return; this.commitEntry(en.id, (db2,x)=>{ x.postedDate=e.target.value; if(x.posted) this.syncEntryPost(db2,x); }); },
       postedDateStyle:{ height:'26px', padding:'0 7px', background:'#0e0e11', border:'1px solid rgba(91,141,239,0.35)', borderRadius:'7px', color:'#a9c6f7', fontSize:'11px', fontWeight:'600', outline:'none', colorScheme:'dark', cursor:'pointer', flex:'0 0 auto' },
       postedCheckStyle:{ width:'24px', height:'24px', borderRadius:'7px', border:posted?'none':'1.6px solid rgba(255,255,255,0.2)', background:posted?this.C.blue:'transparent', color:'#06140c', fontSize:'14px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flex:'0 0 auto' },
       postedLabelStyle:{ fontSize:'11.5px', fontWeight:'700', color:posted?'#a9c6f7':'#8b8b93' },
       platChips:this.PLATFORMS.map(p=>{ const on=plats.includes(p); const col=this.PLAT_COLOR[p]; return { key:p, label:this.PLAT_LABEL[p], name:this.PLAT_NAME[p], on, isFb:p==='facebook', isIg:p==='instagram',
         style:{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'2px 9px 2px 7px', borderRadius:'6px', fontSize:'10.5px', fontWeight:'700', cursor:'pointer', color:on?'#06140c':col, background:on?col:this.alpha(col,0.12), border:'1px solid '+this.alpha(col,on?1:0.26) },
-        toggle:()=>this.commit(db2=>{ const x=(db2.dailyEntries||[]).find(y=>y.id===en.id); if(!x) return; const cur=Array.isArray(x.platforms)?x.platforms:[]; x.platforms=cur.includes(p)?cur.filter(y=>y!==p):[...cur,p]; if(x.posted) this.syncEntryPost(db2,x); }) }; }),
-      del:()=>this.commit(db2=>{ const i=(db2.dailyEntries||[]).findIndex(x=>x.id===en.id); if(i>=0){ const e2=db2.dailyEntries[i]; if(e2.postId){ const pi=(db2.posts||[]).findIndex(p=>p.id===e2.postId); if(pi>=0) db2.posts.splice(pi,1); } db2.dailyEntries.splice(i,1); } })
+        toggle:()=>this.commitEntry(en.id, (db2,x)=>{ const cur=Array.isArray(x.platforms)?x.platforms:[]; x.platforms=cur.includes(p)?cur.filter(y=>y!==p):[...cur,p]; if(x.posted) this.syncEntryPost(db2,x); }) }; }),
+      del:()=>this.commitEntries(db2=>{ const i=(db2.dailyEntries||[]).findIndex(x=>x.id===en.id); if(i>=0){ const e2=db2.dailyEntries[i]; if(e2.postId){ const pi=(db2.posts||[]).findIndex(p=>p.id===e2.postId); if(pi>=0) db2.posts.splice(pi,1); } db2.dailyEntries.splice(i,1); } })
     };
   }
-  afterPosted(id){ this.commit(db=>{ const x=(db.dailyEntries||[]).find(y=>y.id===id); if(x&&x.posted) this.syncEntryPost(db,x); }); }
+  afterPosted(id){ this.commitEntry(id, (db,x)=>{ if(x.posted) this.syncEntryPost(db,x); }); }
 
   builderVals(){
     const canEdit=this.canEditBuilder();
