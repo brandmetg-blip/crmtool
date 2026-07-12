@@ -2795,7 +2795,30 @@ class Component extends DCLogic {
   toggleExp(id,f){ this.setState(s=>({ expandedText:{ ...(s.expandedText||{}), [id+'_'+f]: !((s.expandedText||{})[id+'_'+f]) } })); }
   clampBox(expanded){ return { maxHeight: expanded?'none':'112px', overflow: expanded?'visible':'hidden' }; }
 
+  // entryRow() rebuilds a big object of derived props (styles, option lists, etc)
+  // for ONE row — but the Daily Builder re-renders EVERY row's entryRow() on
+  // every single keystroke typed into ANY row's hook/body/notes box, since a
+  // keystroke commits to the top-level state and the whole sheet re-renders.
+  // With several rows on screen, that's most of what made fast typing feel
+  // laggy even after mutEntry() stopped cloning the whole db.
+  // Fix: cache each row's computed props keyed by the `en` object reference.
+  // mutEntry() (see above) only swaps in a new `en` for the ONE row actually
+  // being edited — every other row keeps its exact same `en` reference — so a
+  // keystroke in one row now only recomputes that one row; every other row is
+  // served straight from cache instead of being rebuilt from scratch.
   entryRow(en, concepts, canEdit){
+    const deps = [concepts, canEdit, this.state.db.team, this.state.copiedScriptId, this.state.expandedText, this.state.role];
+    if(!this._rowCache || !this._rowDeps || deps.some((d,i)=>d!==this._rowDeps[i])){
+      this._rowCache = new Map();
+      this._rowDeps = deps;
+    }
+    const cached = this._rowCache.get(en);
+    if(cached) return cached;
+    const result = this._computeEntryRow(en, concepts, canEdit);
+    this._rowCache.set(en, result);
+    return result;
+  }
+  _computeEntryRow(en, concepts, canEdit){
     const db=this.state.db; const c=concepts.find(x=>x.id===en.conceptId); const done=en.done;
     const cvars=(c&&c.variations)||[], chooks=(c&&c.hooks)||[], cbodies=(c&&c.bodies)||[];
     const cvSel=cvars.find(x=>x.id===en.conceptVarId), hvSel=chooks.find(x=>x.id===en.hookVarId), bvSel=cbodies.find(x=>x.id===en.bodyVarId);
@@ -3241,10 +3264,26 @@ class Component extends DCLogic {
       mwBannerBg: totalLeft===0 ? 'rgba(52,224,138,0.07)' : 'rgba(240,179,65,0.07)' };
   }
 
+  // Each tab's markup lives behind its own `isXxx` sc-if block and only ever
+  // reads that ONE tab's Vals keys (verified: none of the *Vals() functions
+  // below call each other, and nothing outside a tab's own block references
+  // its keys) — so only the tab actually on screen needs to be computed.
+  // renderVals() used to spread every tab's Vals unconditionally on every
+  // render, which meant a single keystroke on ANY tab (e.g. typing a script
+  // in Daily Builder) also recomputed the full dashboard, every analytics
+  // date-range roll-up, and the leaderboard rankings — every character typed.
+  // That dwarfed the per-row builder cost the row-memoization above fixed.
+  _tabValsFns(){
+    return { dashboard:()=>this.dashVals(), mywork:()=>this.myWorkVals(), planner:()=>this.dailyVals(),
+      builder:()=>this.builderVals(), assets:()=>this.assetsVals(), leaderboard:()=>this.leaderboardVals(),
+      accounts:()=>this.accountsVals(), analytics:()=>this.analyticsVals(), logs:()=>this.logsVals(),
+      settings:()=>this.settingsVals() };
+  }
   renderVals(){
     const g=this.globalVals();
     if(!this.state.ready || !this.loggedIn()) return g;
-    return { ...g, ...this.dashVals(), ...this.myWorkVals(), ...this.dailyVals(), ...this.builderVals(), ...this.assetsVals(), ...this.leaderboardVals(), ...this.accountsVals(), ...this.analyticsVals(), ...this.logsVals(), ...this.settingsVals(), ...this.modalVals() };
+    const fn=this._tabValsFns()[this.state.tab];
+    return { ...g, ...(fn?fn():{}), ...this.modalVals() };
   }
 }
 </script>

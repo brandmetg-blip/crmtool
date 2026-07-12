@@ -324,12 +324,30 @@
   // ---- diff helpers ---------------------------------------------------------
   // Compare two arrays of {id} objects; return which rows to upsert (added or
   // changed) and which ids to delete (removed).
+  //
+  // PERF: this runs on every persist() — i.e. on every debounced keystroke
+  // flush, every add/delete row, every toggle — for EVERY collection
+  // (accounts, posts, concepts, products, team, dailyEntries), even the ones
+  // that didn't change at all. It used to JSON.stringify every single item in
+  // every array just to check "did this change", which meant: (a) accounts/
+  // concepts carrying big base64 avatar/video blobs got fully re-serialized
+  // on every keystroke even though nothing about them changed, and (b) the
+  // dailyEntries diff cost grew with the TOTAL number of scripts ever logged
+  // (not just today's), since every unchanged entry was still stringified on
+  // every save. The app's commit helpers (commit/mutEntry/commitEntry/
+  // commitEntries) always clone-on-write and never mutate an item in place,
+  // so an untouched item is guaranteed to still be the SAME object reference
+  // between prevArr and nextArr — skip the expensive stringify compare (and
+  // for a whole untouched collection, skip building the Maps at all) whenever
+  // that reference is identical.
   function diffById(prevArr, nextArr) {
+    if (prevArr === nextArr) return { upserts: [], deletes: [] };
     const prevMap = new Map(prevArr.map(it => [it.id, it]));
     const nextMap = new Map(nextArr.map(it => [it.id, it]));
     const upserts = [], deletes = [];
     for (const [id, it] of nextMap) {
       const before = prevMap.get(id);
+      if (before === it) continue; // unchanged reference — guaranteed unchanged content
       if (!before || JSON.stringify(before) !== JSON.stringify(it)) upserts.push(it);
     }
     for (const id of prevMap.keys()) { if (!nextMap.has(id)) deletes.push(id); }
