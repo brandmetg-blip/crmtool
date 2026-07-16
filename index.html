@@ -2118,6 +2118,47 @@ class Component extends DCLogic {
     this.setState({ db });
     this._schedulePersist();
   }
+  // ---- GLITCH-FREE TYPING: the fix that actually matters -------------------
+  // Every free-text box in the Daily Builder (hook / body / notes / links)
+  // used to run through mutEntry() above, which calls setState() on EVERY
+  // keystroke. In this framework setState forces a FULL synchronous re-render
+  // of the whole builder before the browser can paint the character you just
+  // typed. With more rows/scripts that render can't keep up with fast typing,
+  // so the cursor jumps, characters land out of order, and text "twitches" or
+  // drops. Making each render cheaper (the earlier fixes) only pushed the wall
+  // further out — the wall was still there. This removes it entirely.
+  //
+  // bufEntry() updates the in-memory db and schedules the save, but does NOT
+  // setState — so React does ZERO work while you type and the native <textarea>
+  // handles keystrokes at full browser speed, no matter how much data exists.
+  // We keep this.state.db pointed at the fresh db (plain assignment, no render)
+  // so any unrelated render that happens mid-typing reads the up-to-date text
+  // and can never clobber what you just typed. A short debounce afterward does
+  // ONE render to reconcile derived bits (char counts, "show more") — and
+  // because state.db already matches the textarea, that render doesn't move
+  // your cursor.
+  bufEntry(id, fn){
+    const prev = this._liveDb || this.state.db;
+    const list = prev.dailyEntries || [];
+    const idx = list.findIndex(x=>x.id===id);
+    if(idx<0) return;
+    const updated = structuredClone(list[idx]);
+    fn(updated);
+    const newList = list.slice(); newList[idx] = updated;
+    const db = { ...prev, dailyEntries: newList };
+    this._liveDb = db;
+    if(this._flushPrev === undefined) this._flushPrev = prev;
+    this._flushNext = db;
+    this._localEditAt = Date.now();
+    this.state.db = db;               // keep source-of-truth current WITHOUT a render
+    this._schedulePersist();
+    this._scheduleReconcile();        // one catch-up render after you pause
+  }
+  // One deferred render after typing stops, so char counts / expand toggles /
+  // anything derived from the text catches up. Reads the LATEST _liveDb at
+  // render time (function form) so a keystroke landing before React commits
+  // can't be rolled back to an older value.
+  _scheduleReconcile(){ clearTimeout(this._reconcileT); this._reconcileT = setTimeout(()=>{ this._reconcileT=null; this.setState(()=>({ db: this._liveDb })); }, 450); }
   // Same fast path as mutEntry() above, for row add/remove — only touches
   // dailyEntries/posts, never clones accounts/concepts (and their base64
   // avatar/video blobs). Add/Delete row used to go through commit(), which
@@ -2863,13 +2904,13 @@ class Component extends DCLogic {
       // hook source toggle (text / link)
       hookKind, hookIsText:hookKind!=='link', hookIsLink:hookKind==='link',
       hookSrcOpts:[['text','Text'],['link','Link']].map(([k,l])=>({ label:l, onClick:()=>this.mutEntry(en.id,x=>{ x.hookKind=k; }), style:this.miniToggle(hookKind===k) })),
-      hookLink, hookLinkValid:/^https?:\/\//.test(hookLink), onHookLink:e=>this.mutEntry(en.id,x=>{ x.hookLink=e.target.value; }),
+      hookLink, hookLinkValid:/^https?:\/\//.test(hookLink), onHookLink:e=>this.bufEntry(en.id,x=>{ x.hookLink=e.target.value; }),
       // body source toggle
       bodyKind, bodyIsText:bodyKind!=='link', bodyIsLink:bodyKind==='link',
       bodySrcOpts:[['text','Text'],['link','Link']].map(([k,l])=>({ label:l, onClick:()=>this.mutEntry(en.id,x=>{ x.bodyKind=k; }), style:this.miniToggle(bodyKind===k) })),
-      bodyLink, bodyLinkValid:/^https?:\/\//.test(bodyLink), onBodyLink:e=>this.mutEntry(en.id,x=>{ x.bodyLink=e.target.value; }),
+      bodyLink, bodyLinkValid:/^https?:\/\//.test(bodyLink), onBodyLink:e=>this.bufEntry(en.id,x=>{ x.bodyLink=e.target.value; }),
       // reference video
-      refVideo, refVideoValid:/^https?:\/\//.test(refVideo), onRefVideo:e=>this.mutEntry(en.id,x=>{ x.refVideo=e.target.value; }),
+      refVideo, refVideoValid:/^https?:\/\//.test(refVideo), onRefVideo:e=>this.bufEntry(en.id,x=>{ x.refVideo=e.target.value; }),
       refShowLink:/^https?:\/\//.test(refVideo), refShowText:!/^https?:\/\//.test(refVideo),
       // readonly display (mutually-exclusive booleans)
       hookShowLink: hookKind==='link' && /^https?:\/\//.test(hookLink), hookShowText: !(hookKind==='link' && /^https?:\/\//.test(hookLink)),
@@ -2909,14 +2950,14 @@ class Component extends DCLogic {
       hookVarOpts:chooks.map(h=>({ id:h.id, name:h.label+' · '+this.truncate(h.text||'',32) })),
       onHookVar:e=>{ const id=e.target.value; const h=chooks.find(x=>x.id===id); this.mutEntry(en.id, x=>{ x.hookVarId=id; if(h){ x.hook=h.text; x.hookKind='text'; } }); },
       hookVarSelStyle:selStyle(this.C.blue),
-      onHook:e=>this.mutEntry(en.id, x=>{ x.hook=e.target.value; }),
+      onHook:e=>this.bufEntry(en.id, x=>{ x.hook=e.target.value; }),
       hookVarLabel:(hvSel||{}).label||'', hasHookVarLabel:!!hvSel,
       // body variation
       bodyText:en.bodyText||'', bodyVarId:en.bodyVarId||'', hasBodyVars:cbodies.length>0,
       bodyVarOpts:cbodies.map(b=>({ id:b.id, name:b.label+' · '+this.truncate(b.text||'',32) })),
       onBodyVar:e=>{ const id=e.target.value; const b=cbodies.find(x=>x.id===id); this.mutEntry(en.id, x=>{ x.bodyVarId=id; if(b){ x.bodyText=b.text; x.bodyKind='text'; } }); },
       bodyVarSelStyle:selStyle(this.C.amber),
-      onBodyText:e=>this.mutEntry(en.id, x=>{ x.bodyText=e.target.value; }),
+      onBodyText:e=>this.bufEntry(en.id, x=>{ x.bodyText=e.target.value; }),
       bodyVarLabel:(bvSel||{}).label||'', hasBodyVarLabel:!!bvSel,
       // type + production
       type, typeColor:this.typeColor(type),
@@ -2926,7 +2967,7 @@ class Component extends DCLogic {
       // chips for readonly display
       conceptVarChipStyle:this.labelChip(), hookVarChipStyle:this.labelChip(), bodyVarChipStyle:this.labelChip(),
       // notes
-      notes:en.notes||'', onNotes:e=>this.mutEntry(en.id, x=>{ x.notes=e.target.value; }),
+      notes:en.notes||'', onNotes:e=>this.bufEntry(en.id, x=>{ x.notes=e.target.value; }),
       // ---- status: video made + finished link (makers edit; posters read-only) ----
       canMake:!this.isPoster(), cannotMake:this.isPoster(), noVideo:!vlinkValid,
       roMadeText: done?'Video made':'Not made yet',
@@ -2937,7 +2978,7 @@ class Component extends DCLogic {
       checkStyle:{ width:'24px', height:'24px', borderRadius:'7px', border:done?'none':'1.6px solid rgba(255,255,255,0.2)', background:done?this.C.green:'transparent', color:'#06140c', fontSize:'14px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flex:'0 0 auto' },
       toggleDone:()=>{ if(this.isPoster()) return; const me=this.currentUser(); this.mutEntry(en.id, x=>{ x.done=!x.done; x.doneAt=x.done?Date.now():null; x.doneBy=x.done?(me?me.id:x.doneBy):x.doneBy; }); },
       madeLabelStyle:{ fontSize:'11.5px', fontWeight:'700', color:done?'#9affc9':'#8b8b93' },
-      videoLink:vlink, videoLinkValid:vlinkValid, onVideoLink:e=>{ if(this.isPoster()) return; this.mutEntry(en.id, x=>{ x.videoLink=e.target.value; }); },
+      videoLink:vlink, videoLinkValid:vlinkValid, onVideoLink:e=>{ if(this.isPoster()) return; this.bufEntry(en.id, x=>{ x.videoLink=e.target.value; }); },
       videoInputStyle:{ flex:'1', minWidth:'0', height:'30px', padding:'0 9px', background:'#0e0e11', border:'1px solid '+(done?'rgba(52,224,138,0.4)':'rgba(255,255,255,0.1)'), borderRadius:'8px', color:'#ededf0', fontSize:'11.5px', outline:'none' },
       // ---- posted + platforms (admin/poster only) ----
       posted, postedCheck:posted?'✓':'',
