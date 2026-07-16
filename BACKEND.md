@@ -77,7 +77,7 @@ createdAt, frames [{ id, imagePrompt, videoPrompt, videoTool
 (grok|veo|omniflash), order }]`
 
 **mainScriptEntries:** `id, scriptId, accountId, done, doneAt,
-doneById/Name, videoLink, driveLink, updatedAt` — lazily created the first
+doneById/Name, videoLink, updatedAt` — lazily created the first
 time an editor ticks/edits a (script × account) cell.
 
 > **Note:** `mainScripts` and `mainScriptEntries` are NOT in `ID_COLLECTIONS`

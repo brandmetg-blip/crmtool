@@ -870,11 +870,9 @@
             <span style="{{ r.doneLabelStyle }}">{{ r.doneLabel }}</span>
             <sc-if value="{{ r.canLog }}" hint-placeholder-val="{{ true }}">
               <input value="{{ r.videoLink }}" onInput="{{ r.onVideo }}" placeholder="Finished video link…" style="{{ r.inputStyle }}" style-focus="border-color:rgba(52,224,138,0.5)"/>
-              <input value="{{ r.driveLink }}" onInput="{{ r.onDrive }}" placeholder="Google Drive link…" style="{{ r.inputStyle }}" style-focus="border-color:rgba(91,141,239,0.5)"/>
             </sc-if>
             <sc-if value="{{ r.readOnly }}" hint-placeholder-val="{{ false }}">
               <sc-if value="{{ r.hasVideoLink }}" hint-placeholder-val="{{ false }}"><a href="{{ r.videoLink }}" target="_blank" style="{{ r.linkBtnStyle }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>Video</a></sc-if>
-              <sc-if value="{{ r.hasDriveLink }}" hint-placeholder-val="{{ false }}"><a href="{{ r.driveLink }}" target="_blank" style="{{ r.driveBtnStyle }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l6 10-4 8H6l-4-8z"/></svg>Drive</a></sc-if>
             </sc-if>
           </div>
         </sc-for>
@@ -1909,7 +1907,7 @@ class Component extends DCLogic {
     if(!Array.isArray(db.mainScriptEntries)) db.mainScriptEntries=[];
     (db.mainScripts||[]).forEach(s=>{ if(!Array.isArray(s.frames)) s.frames=[]; if(s.title===undefined) s.title='';
       (s.frames||[]).forEach(f=>{ if(!f.videoTool) f.videoTool='grok'; if(f.imagePrompt===undefined) f.imagePrompt=''; if(f.videoPrompt===undefined) f.videoPrompt=''; }); });
-    (db.mainScriptEntries||[]).forEach(en=>{ if(en.done===undefined) en.done=false; if(en.videoLink===undefined) en.videoLink=''; if(en.driveLink===undefined) en.driveLink=''; });
+    (db.mainScriptEntries||[]).forEach(en=>{ if(en.done===undefined) en.done=false; if(en.videoLink===undefined) en.videoLink=''; });
     return db;
   }
   seedAssignments(db){ const vas=(db.team||[]).filter(t=>t.role==='Editor'||t.role==='Poster'||t.role==='Marketer'); const accts=db.accounts||[]; if(!vas.length||!accts.length) return;
@@ -2278,7 +2276,7 @@ class Component extends DCLogic {
   _writeMsEntry(scriptId, accountId, fn, buffered){
     const prev=this._liveDb||this.state.db; const list=(prev.mainScriptEntries||[]).slice();
     let idx=list.findIndex(en=>en.scriptId===scriptId && en.accountId===accountId); let entry;
-    if(idx<0){ entry={ id:this.uid('me'), scriptId, accountId, done:false, doneAt:null, doneById:'', doneByName:'', videoLink:'', driveLink:'', updatedAt:Date.now() }; list.push(entry); }
+    if(idx<0){ entry={ id:this.uid('me'), scriptId, accountId, done:false, doneAt:null, doneById:'', doneByName:'', videoLink:'', updatedAt:Date.now() }; list.push(entry); }
     else { entry=structuredClone(list[idx]); list[idx]=entry; }
     fn(entry); entry.updatedAt=Date.now();
     const db={ ...prev, mainScriptEntries:list };
@@ -3303,18 +3301,17 @@ class Component extends DCLogic {
           moveLeft:()=>this.moveFrame(s.id,f.id,-1), moveRight:()=>this.moveFrame(s.id,f.id,1), del:()=>this.deleteFrame(s.id,f.id) };
       });
       const acctIds = this.seesAllAccounts() ? allAccounts.map(a=>a.id) : this.myAccountIds();
-      const rows=acctIds.map(aid=>{ const a=(db.accounts||[]).find(x=>x.id===aid); if(!a) return null; const en=this.msEntry(s.id,aid)||{}; const done=!!en.done; const av=this.avatarBox(a,30); const vlink=(en.videoLink||'').trim(); const dlink=(en.driveLink||'').trim();
+      const rows=acctIds.map(aid=>{ const a=(db.accounts||[]).find(x=>x.id===aid); if(!a) return null; const en=this.msEntry(s.id,aid)||{}; const done=!!en.done; const av=this.avatarBox(a,30); const vlink=(en.videoLink||'').trim();
         return { accountId:aid, name:a.name, character:a.character||'', avatarStyle:av.style, avatarShow:av.show, avatarInitial:av.initial, done,
           rowStyle:{ display:'flex', alignItems:'center', gap:'10px', flexWrap:'wrap', padding:'10px 12px', borderRadius:'11px', border:'1px solid '+(done?'rgba(52,224,138,0.25)':'rgba(255,255,255,0.07)'), background:done?'rgba(52,224,138,0.05)':'rgba(255,255,255,0.015)' },
           canLog, readOnly:!canLog,
           checkStyle:{ width:'24px', height:'24px', borderRadius:'7px', border:done?'none':'1.6px solid rgba(255,255,255,0.2)', background:done?this.C.green:'transparent', color:'#06140c', fontSize:'14px', fontWeight:'800', cursor:canLog?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', flex:'0 0 auto' },
           doneCheck:done?'✓':'', doneLabel:done?'Video done':'Not done', doneLabelStyle:{ fontSize:'11.5px', fontWeight:'700', color:done?'#9affc9':'#8b8b93', minWidth:'82px' },
-          videoLink:en.videoLink||'', driveLink:en.driveLink||'', hasVideoLink:!!vlink, hasDriveLink:!!dlink,
-          inputStyle:{ flex:'1', minWidth:'150px', height:'30px', padding:'0 9px', background:'#0e0e11', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#ededf0', fontSize:'11.5px', outline:'none' },
+          videoLink:en.videoLink||'', hasVideoLink:!!vlink,
+          inputStyle:{ flex:'1', minWidth:'180px', height:'30px', padding:'0 9px', background:'#0e0e11', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#ededf0', fontSize:'11.5px', outline:'none' },
           linkBtnStyle:{ display:'inline-flex', alignItems:'center', gap:'5px', height:'30px', padding:'0 11px', borderRadius:'8px', border:'1px solid rgba(52,224,138,0.35)', color:'#34e08a', textDecoration:'none', fontSize:'11.5px', fontWeight:'700', whiteSpace:'nowrap' },
-          driveBtnStyle:{ display:'inline-flex', alignItems:'center', gap:'5px', height:'30px', padding:'0 11px', borderRadius:'8px', border:'1px solid rgba(91,141,239,0.35)', color:'#8fb3f7', textDecoration:'none', fontSize:'11.5px', fontWeight:'700', whiteSpace:'nowrap' },
           toggle:()=>{ if(canLog) this.toggleMsDone(s.id,aid); },
-          onVideo:e=>this.setMsLink(s.id,aid,'videoLink',e.target.value), onDrive:e=>this.setMsLink(s.id,aid,'driveLink',e.target.value) };
+          onVideo:e=>this.setMsLink(s.id,aid,'videoLink',e.target.value) };
       }).filter(Boolean);
       const idx=scripts.findIndex(x=>x.id===s.id);
       msDetail={ id:s.id, title:s.title||'', num:String(idx+1), titleReadonly:!canEdit, titleDisplay:(s.title||'').trim()||('Script '+(idx+1)),
