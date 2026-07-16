@@ -86,8 +86,12 @@ platforms[], videoLink, conceptId/hookVarId/bodyVarId, postId, …`
 **dailyMetrics:** `{ "2026-07-01": { date, clicks, revenue, sales }, … }`
 
 **mainScripts:** `id, date (YYYY-MM-DD), title, order, createdById/Name,
-createdAt, frames [{ id, imagePrompt, videoPrompt, videoTool
-(grok|veo|omniflash), order }]`
+createdAt, concept (conceptId), type (Growth|Product), prod
+(Assembly|Scratch|Repost), hook, body, referenceVideo, notes,
+frames [{ id, imagePrompt, videoPrompt, videoTool (grok|veo|omniflash),
+image (base64 data URL), order }]` — the script-level fields + per-frame
+`image` are a shared creative spec edited by admin/marketing-manager; editors
+see them read-only with copy buttons.
 
 **mainScriptEntries:** `id, scriptId, accountId, done, doneAt,
 doneById/Name, videoLink, updatedAt` — lazily created the first
@@ -99,6 +103,12 @@ time an editor ticks/edits a (script × account) cell.
 > change (no new Supabase table/SQL). If concurrent completion edits ever need
 > row-level safety, promote `mainScriptEntries` to its own table (add it to
 > `ID_COLLECTIONS` **and** create the table first — see `GO-LIVE.md` §A3).
+>
+> **Frame images** are stored as base64 data URLs inside `mainScripts` (the
+> `app_meta` blob), so every save rewrites the whole meta row. Fine for a few
+> reasonably-sized reference stills per day; if editors start uploading many
+> large images, that's the trigger to promote `mainScripts` to its own table
+> (same steps as above) so each script row is written independently.
 
 ---
 

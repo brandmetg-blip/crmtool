@@ -823,6 +823,19 @@
             </sc-if>
           </div>
 
+          <sc-if value="{{ f.hasFrameImage }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <img src="{{ f.frameImage }}" style="width:100%;height:150px;object-fit:cover;border-radius:9px;border:1px solid rgba(255,255,255,0.08);display:block"/>
+            <sc-if value="{{ f.canEdit }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:6px">
+              <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;height:28px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#a1a1aa;font-size:11px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(52,224,138,0.4);color:#34e08a">Replace<input type="file" accept="image/*" onChange="{{ f.onImageFile }}" style="display:none"/></label>
+              <button onClick="{{ f.clearImage }}" title="Remove image" style="width:34px;height:28px;flex:0 0 auto;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#5e5e66;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="border-color:rgba(240,88,78,0.4);color:#f0584e"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg></button>
+            </div></sc-if>
+          </div>
+          </sc-if>
+          <sc-if value="{{ f.noFrameImage }}" hint-placeholder-val="{{ true }}"><sc-if value="{{ f.canEdit }}" hint-placeholder-val="{{ true }}">
+          <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:96px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.14);border-radius:9px;color:#8b8b93;font-size:11px;font-weight:600;cursor:pointer" style-hover="border-color:rgba(91,213,239,0.5);color:#8fe3f5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>Upload frame image<input type="file" accept="image/*" onChange="{{ f.onImageFile }}" style="display:none"/></label>
+          </sc-if></sc-if>
+
           <div style="display:flex;flex-direction:column;gap:6px">
             <div style="display:flex;align-items:center;gap:7px">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5bd5ef" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
@@ -852,6 +865,53 @@
         </div>
       </sc-for>
       <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><div onClick="{{ msDetail.addFrame }}" style="flex:0 0 132px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.14);border-radius:14px;color:#8b8b93;cursor:pointer;min-height:180px" style-hover="border-color:rgba(154,123,255,0.5);color:#c3b0ff"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg><span style="font-size:12px;font-weight:700">Add frame</span></div></sc-if>
+    </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)">
+      <div style="font-size:10.5px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:12px">SCRIPT DETAILS</div>
+      <div style="background:linear-gradient(160deg,#16191b 0%,#0d1110 100%);border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:16px">
+
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:190px"><div style="font-size:10px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:6px">CONCEPT</div>
+            <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><select value="{{ msDetail.concept }}" onChange="{{ msDetail.onConcept }}" style="{{ msDetail.conceptSelStyle }}"><sc-for list="{{ msDetail.conceptOpts }}" as="o" hint-placeholder-count="3"><option value="{{ o.id }}">{{ o.name }}</option></sc-for></select></sc-if>
+            <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><span style="font-size:13.5px;font-weight:700;color:#f4f4f5">{{ msDetail.conceptDisplay }}</span></sc-if>
+          </div>
+          <div style="width:150px;flex:0 0 auto"><div style="font-size:10px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:6px">TYPE</div>
+            <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:5px"><sc-for list="{{ msDetail.typeOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></sc-if>
+            <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><span style="{{ msDetail.typeChipStyle }}">{{ msDetail.typeLabel }}</span></sc-if>
+          </div>
+          <div style="width:230px;flex:0 0 auto"><div style="font-size:10px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:6px">PRODUCTION</div>
+            <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:5px"><sc-for list="{{ msDetail.prodOpts }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></sc-if>
+            <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><span style="{{ msDetail.prodChipStyle }}">{{ msDetail.prodLabel }}</span></sc-if>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b8def" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M16 4h2a2 2 0 0 1 2 2v10a4 4 0 0 1-8 0V7a2.5 2.5 0 0 0-5 0v9"/><path d="M5 12H2l3 4 3-4H5"/></svg><span style="font-size:10.5px;color:#9fbef7;font-weight:700;letter-spacing:.4px">HOOK</span><div style="flex:1"></div><button onClick="{{ msDetail.copyHook }}" title="Copy hook" style="{{ msDetail.blkCopyStyle }}" style-hover="border-color:rgba(52,224,138,0.4);color:#34e08a"><sc-if value="{{ msDetail.hookCopied }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34e08a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Copied</sc-if><sc-if value="{{ msDetail.hookNotCopied }}" hint-placeholder-val="{{ true }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</sc-if></button></div>
+          <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><textarea value="{{ msDetail.hook }}" onInput="{{ msDetail.onHook }}" placeholder="The hook / opening line…" style="{{ msDetail.blkAreaStyle }}" style-focus="border-color:rgba(91,141,239,0.5)"></textarea></sc-if>
+          <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><div style="{{ msDetail.blkRoStyle }}">{{ msDetail.hookDisplay }}</div></sc-if>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f0b341" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h6"/></svg><span style="font-size:10.5px;color:#f0c97a;font-weight:700;letter-spacing:.4px">BODY</span><div style="flex:1"></div><button onClick="{{ msDetail.copyBody }}" title="Copy body" style="{{ msDetail.blkCopyStyle }}" style-hover="border-color:rgba(52,224,138,0.4);color:#34e08a"><sc-if value="{{ msDetail.bodyCopied }}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34e08a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Copied</sc-if><sc-if value="{{ msDetail.bodyNotCopied }}" hint-placeholder-val="{{ true }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</sc-if></button></div>
+          <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><textarea value="{{ msDetail.body }}" onInput="{{ msDetail.onBody }}" placeholder="The body / script…" style="{{ msDetail.blkAreaStyle }}" style-focus="border-color:rgba(240,179,65,0.5)"></textarea></sc-if>
+          <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><div style="{{ msDetail.blkRoStyle }}">{{ msDetail.bodyDisplay }}</div></sc-if>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9a7bff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="m22 8-6 4 6 4V8z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span style="font-size:10.5px;color:#bfa9f7;font-weight:700;letter-spacing:.4px">REFERENCE VIDEO</span><span style="font-size:10px;color:#5e5e66">the video the frames are based on</span></div>
+          <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input value="{{ msDetail.refVideo }}" onInput="{{ msDetail.onRefVideo }}" placeholder="Paste the reference video link…" style="{{ msDetail.blkInputStyle }}" style-focus="border-color:rgba(154,123,255,0.5)"/><sc-if value="{{ msDetail.refVideoValid }}" hint-placeholder-val="{{ false }}"><a href="{{ msDetail.refVideo }}" target="_blank" style="{{ msDetail.blkLinkStyle }}" style-hover="background:rgba(154,123,255,0.12)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg>Open</a></sc-if></div></sc-if>
+          <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><sc-if value="{{ msDetail.hasRefVideo }}" hint-placeholder-val="{{ true }}"><a href="{{ msDetail.refVideo }}" target="_blank" style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#bfa9f7;text-decoration:none;font-weight:600;word-break:break-all" style-hover="text-decoration:underline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg>Open reference video</a></sc-if></sc-if>
+          <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><sc-if value="{{ msDetail.hasRefVideo }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#5e5e66">No reference video</div></sc-if></sc-if>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:7px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34e08a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg><span style="font-size:10.5px;color:#7fcfa3;font-weight:700;letter-spacing:.4px">NOTES</span></div>
+          <sc-if value="{{ msCanEdit }}" hint-placeholder-val="{{ true }}"><textarea value="{{ msDetail.notes }}" onInput="{{ msDetail.onNotes }}" placeholder="Anything the editors should know…" style="{{ msDetail.blkAreaStyle }}" style-focus="border-color:rgba(52,224,138,0.5)"></textarea></sc-if>
+          <sc-if value="{{ msDetail.titleReadonly }}" hint-placeholder-val="{{ false }}"><div style="{{ msDetail.blkRoStyle }}">{{ msDetail.notesDisplay }}</div></sc-if>
+        </div>
+
+      </div>
     </div>
 
     <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06)">
@@ -1939,8 +1999,10 @@ class Component extends DCLogic {
     // ---- Main Scripts (per-day master scripts + frames) & their per-account completion ----
     if(!Array.isArray(db.mainScripts)) db.mainScripts=[];
     if(!Array.isArray(db.mainScriptEntries)) db.mainScriptEntries=[];
-    (db.mainScripts||[]).forEach(s=>{ if(!Array.isArray(s.frames)) s.frames=[]; if(s.title===undefined) s.title='';
-      (s.frames||[]).forEach(f=>{ if(!f.videoTool) f.videoTool='grok'; if(f.imagePrompt===undefined) f.imagePrompt=''; if(f.videoPrompt===undefined) f.videoPrompt=''; }); });
+    (db.mainScripts||[]).forEach(s=>{ if(!Array.isArray(s.frames)) s.frames=[]; if(s.title===undefined) s.title=''; if(s.referenceVideo===undefined) s.referenceVideo='';
+      // script-level creative spec (shared master, edited by admin/marketing-manager)
+      if(s.concept===undefined) s.concept=''; if(s.type===undefined) s.type='Product'; if(s.prod===undefined) s.prod='Assembly'; if(s.hook===undefined) s.hook=''; if(s.body===undefined) s.body=''; if(s.notes===undefined) s.notes='';
+      (s.frames||[]).forEach(f=>{ if(!f.videoTool) f.videoTool='grok'; if(f.imagePrompt===undefined) f.imagePrompt=''; if(f.videoPrompt===undefined) f.videoPrompt=''; if(f.image===undefined) f.image=''; }); });
     (db.mainScriptEntries||[]).forEach(en=>{ if(en.done===undefined) en.done=false; if(en.videoLink===undefined) en.videoLink=''; });
     return db;
   }
@@ -2308,7 +2370,13 @@ class Component extends DCLogic {
     else { this.setState({ db }); this._schedulePersist(); }
   }
   setScriptTitle(id, val){ if(!this.canEditMainScripts()) return; this.mutScript(id, s=>{ s.title=val; }, true); }
-  addFrame(scriptId){ if(!this.canEditMainScripts()) return; this.mutScript(scriptId, s=>{ if(!Array.isArray(s.frames)) s.frames=[]; s.frames.push({ id:this.uid('fr'), imagePrompt:'', videoPrompt:'', videoTool:'grok', order:s.frames.length }); }); }
+  // free-text script fields (hook/body/notes/referenceVideo) — buffered like bufEntry
+  setScriptField(id, key, val){ if(!this.canEditMainScripts()) return; this.mutScript(id, s=>{ s[key]=val; }, true); }
+  // pick fields (concept/type/prod) — immediate re-render
+  setScriptSelect(id, key, val){ if(!this.canEditMainScripts()) return; this.mutScript(id, s=>{ s[key]=val; }); }
+  addFrame(scriptId){ if(!this.canEditMainScripts()) return; this.mutScript(scriptId, s=>{ if(!Array.isArray(s.frames)) s.frames=[]; s.frames.push({ id:this.uid('fr'), imagePrompt:'', videoPrompt:'', videoTool:'grok', image:'', order:s.frames.length }); }); }
+  uploadFrameImage(scriptId, frameId, e){ if(!this.canEditMainScripts()) return; const file=e.target.files&&e.target.files[0]; if(!file) return; const r=new FileReader(); r.onload=()=>this.mutScript(scriptId, s=>{ const f=(s.frames||[]).find(x=>x.id===frameId); if(f) f.image=r.result; }); r.readAsDataURL(file); }
+  clearFrameImage(scriptId, frameId){ if(!this.canEditMainScripts()) return; this.mutScript(scriptId, s=>{ const f=(s.frames||[]).find(x=>x.id===frameId); if(f) f.image=''; }); }
   deleteFrame(scriptId, frameId){ if(!this.canEditMainScripts()) return; this.mutScript(scriptId, s=>{ s.frames=(s.frames||[]).filter(f=>f.id!==frameId); s.frames.forEach((f,i)=>f.order=i); }); }
   moveFrame(scriptId, frameId, dir){ if(!this.canEditMainScripts()) return; this.mutScript(scriptId, s=>{ const fr=(s.frames||[]).slice().sort((a,b)=>(a.order||0)-(b.order||0)); const i=fr.findIndex(f=>f.id===frameId); const j=i+dir; if(i<0||j<0||j>=fr.length) return; const t=fr[i]; fr[i]=fr[j]; fr[j]=t; fr.forEach((f,k)=>f.order=k); s.frames=fr; }); }
   setFrameTool(scriptId, frameId, tool){ if(!this.canEditMainScripts()) return; this.mutScript(scriptId, s=>{ const f=(s.frames||[]).find(x=>x.id===frameId); if(f) f.videoTool=tool; }); }
@@ -3352,6 +3420,7 @@ class Component extends DCLogic {
           copyImage:()=>this.copyPrompt(f.imagePrompt,imgKey), copyVideo:()=>this.copyPrompt(f.videoPrompt,vidKey),
           imgCopied:this.state.copiedPromptKey===imgKey, imgNotCopied:this.state.copiedPromptKey!==imgKey,
           vidCopied:this.state.copiedPromptKey===vidKey, vidNotCopied:this.state.copiedPromptKey!==vidKey,
+          frameImage:f.image||'', hasFrameImage:!!(f.image||''), noFrameImage:!(f.image||''), onImageFile:e=>this.uploadFrameImage(s.id,f.id,e), clearImage:()=>this.clearFrameImage(s.id,f.id),
           moveLeft:()=>this.moveFrame(s.id,f.id,-1), moveRight:()=>this.moveFrame(s.id,f.id,1), del:()=>this.deleteFrame(s.id,f.id) };
       });
       const acctIds = this.seesAllAccounts() ? allAccounts.map(a=>a.id) : this.myAccountIds();
@@ -3373,6 +3442,24 @@ class Component extends DCLogic {
         titleStyle:{ height:'34px', minWidth:'220px', padding:'0 11px', background:'#0e0e11', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'9px', color:'#f4f4f5', fontSize:'15px', fontWeight:'700', outline:'none' },
         frames, hasFrames:frames.length>0, addFrame:()=>this.addFrame(s.id), del:()=>this.deleteMainScript(s.id), back:()=>this.closeScript(),
         rows, hasRows:rows.length>0, noRows:rows.length===0,
+        // ---- script builder block (shared creative spec, below the frames) ----
+        canEdit,
+        concept:s.concept||'', conceptName:(this.conceptById(s.concept)||{}).name||'', conceptDisplay:(this.conceptById(s.concept)||{}).name||'— No concept —', hasConcept:!!(this.conceptById(s.concept)),
+        hookDisplay:(s.hook||'').trim()||'—', bodyDisplay:(s.body||'').trim()||'—', notesDisplay:(s.notes||'').trim()||'—',
+        conceptOpts:[{ id:'', name:'— No concept —' }].concat((db.concepts||[]).map(c=>({ id:c.id, name:c.name }))),
+        onConcept:e=>this.setScriptSelect(s.id,'concept',e.target.value), conceptSelStyle:selStyle(this.C.green),
+        type:s.type||'Product', typeLabel:s.type||'Product', typeChipStyle:this.pillStyle(this.typeColor(s.type||'Product')),
+        typeOpts:['Growth','Product'].map(t=>({ label:t, style:this.rowSeg((s.type||'Product')===t,this.typeColor(t)), onClick:()=>this.setScriptSelect(s.id,'type',t) })),
+        prod:s.prod||'Assembly', prodLabel:s.prod||'Assembly', prodChipStyle:this.pillStyle(this.C.blue),
+        prodOpts:['Assembly','Scratch','Repost'].map(k=>({ label:k, style:this.rowSeg((s.prod||'Assembly')===k,this.C.blue), onClick:()=>this.setScriptSelect(s.id,'prod',k) })),
+        hook:s.hook||'', hasHook:!!(s.hook||'').trim(), onHook:e=>this.setScriptField(s.id,'hook',e.target.value), copyHook:()=>this.copyPrompt(s.hook,'hook_'+s.id), hookCopied:this.state.copiedPromptKey==='hook_'+s.id, hookNotCopied:this.state.copiedPromptKey!=='hook_'+s.id,
+        body:s.body||'', hasBody:!!(s.body||'').trim(), onBody:e=>this.setScriptField(s.id,'body',e.target.value), copyBody:()=>this.copyPrompt(s.body,'body_'+s.id), bodyCopied:this.state.copiedPromptKey==='body_'+s.id, bodyNotCopied:this.state.copiedPromptKey!=='body_'+s.id,
+        notes:s.notes||'', hasNotes:!!(s.notes||'').trim(), onNotes:e=>this.setScriptField(s.id,'notes',e.target.value),
+        refVideo:s.referenceVideo||'', refVideoValid:/^https?:\/\//.test(s.referenceVideo||''), hasRefVideo:!!(s.referenceVideo||'').trim(), onRefVideo:e=>this.setScriptField(s.id,'referenceVideo',e.target.value),
+        blkAreaStyle:{ width:'100%', minHeight:'70px', padding:'8px 10px', background:'#0e0e11', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'9px', color:'#ededf0', fontSize:'12.5px', lineHeight:'1.5', outline:'none', resize:'vertical', fontFamily:'inherit', whiteSpace:'pre-wrap' },
+        blkRoStyle:{ fontSize:'12.5px', color:'#cfd0d4', lineHeight:'1.5', whiteSpace:'pre-wrap', wordBreak:'break-word' },
+        blkInputStyle:{ flex:'1', minWidth:'200px', height:'32px', padding:'0 11px', background:'#0e0e11', border:'1px solid rgba(255,255,255,0.1)', borderRadius:'8px', color:'#ededf0', fontSize:'12px', outline:'none' },
+        blkCopyStyle:copyBtn, blkLinkStyle:{ display:'inline-flex', alignItems:'center', gap:'6px', height:'32px', padding:'0 12px', flex:'0 0 auto', border:'1px solid rgba(154,123,255,0.4)', borderRadius:'8px', color:'#bfa9f7', textDecoration:'none', fontSize:'12px', fontWeight:'700' },
         completionHeading: this.seesAllAccounts()?'Completion · all accounts':'Your accounts — log your finished video',
         emptyRowsText: this.seesAllAccounts()?'No accounts yet.':'No accounts assigned to you yet — ask an admin to assign you under Settings.' };
     }
