@@ -40,6 +40,7 @@ One object with these collections. IDs are short strings (`acc_…`, `p_…`, et
 | `posts` | array | every logged post (drives all the analytics) |
 | `concepts` | array | content concepts, each with `variations`, `hooks`, `bodies` |
 | `products` | array | products the accounts promote |
+| `profiles` | array | named FB/IG identities an account is associated with |
 | `team` | array | users + their role + assignments (**holds passwords today**) |
 | `dailyEntries` | array | the daily content-builder rows (planned/made/posted) |
 | `dailyMetrics` | object | keyed by date → `{ clicks, revenue, sales }` |
@@ -52,8 +53,20 @@ One object with these collections. IDs are short strings (`acc_…`, `p_…`, et
 
 **accounts:** `id, name, character, product (productId), phase (P1–P4),
 status (Active|Warming|…), followers, followersHistory [{date,value}],
-platforms {facebook:handle, …}, metaBusinessSuiteUrl, notes, repostCount,
-target, avatar`
+platforms {facebook:handle, instagram:handle}, facebookProfileId,
+instagramProfileId, metaBusinessSuiteUrl, notes, repostCount, target, avatar`
+
+> **Platforms are locked to Facebook + Instagram.** `migrate()` forces
+> `db.platforms` to just those two and strips any other key from each
+> `account.platforms`; the "add a platform" UI was removed.
+
+**profiles:** `id, name, platform (facebook|instagram)` — a named identity an
+account is associated with. Facebook: one profile → many accounts ("main profile
+that makes the pages"). Instagram: one profile = one account/page/avatar (1:1).
+Accounts reference them by id (`facebookProfileId`/`instagramProfileId`) so a
+rename updates everywhere. Created inline from the account modal ("+ New
+profile…"). The Accounts tab can filter by Facebook profile. Rides in the
+`app_meta` blob (not `ID_COLLECTIONS`), so no Supabase table is needed.
 
 **posts:** `id, accountId, date (YYYY-MM-DD), type (Growth|Product),
 concept, conceptId, prod (Assembly|Scratch|Repost), platforms [..], done,
