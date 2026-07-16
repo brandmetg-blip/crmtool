@@ -45,6 +45,8 @@ One object with these collections. IDs are short strings (`acc_…`, `p_…`, et
 | `dailyMetrics` | object | keyed by date → `{ clicks, revenue, sales }` |
 | `characterMeta` | object | per-character metadata |
 | `assetLinks` | object | `{ baseImages, hooks, bodies }` shared drive links |
+| `mainScripts` | array | per-day master scripts, each with ordered `frames` (Main Scripts feature) |
+| `mainScriptEntries` | array | per-(script × account) completion for main scripts |
 
 ### Key fields per collection
 
@@ -70,6 +72,21 @@ platforms[], videoLink, conceptId/hookVarId/bodyVarId, postId, …`
 
 **dailyMetrics:** `{ "2026-07-01": { date, clicks, revenue, sales }, … }`
 
+**mainScripts:** `id, date (YYYY-MM-DD), title, order, createdById/Name,
+createdAt, frames [{ id, imagePrompt, videoPrompt, videoTool
+(grok|veo|omniflash), order }]`
+
+**mainScriptEntries:** `id, scriptId, accountId, done, doneAt,
+doneById/Name, videoLink, driveLink, updatedAt` — lazily created the first
+time an editor ticks/edits a (script × account) cell.
+
+> **Note:** `mainScripts` and `mainScriptEntries` are NOT in `ID_COLLECTIONS`
+> in `slate-store.js`; like `characterMeta`/`assetLinks`/`notifications` they
+> ride in the single `app_meta` row. That keeps the feature a pure front-end
+> change (no new Supabase table/SQL). If concurrent completion edits ever need
+> row-level safety, promote `mainScriptEntries` to its own table (add it to
+> `ID_COLLECTIONS` **and** create the table first — see `GO-LIVE.md` §A3).
+
 ---
 
 ## 3. Roles (already enforced in the front-end)
@@ -77,6 +94,11 @@ platforms[], videoLink, conceptId/hookVarId/bodyVarId, postId, …`
 - **Admin** — full access to everything.
 - **Poster** — a VA who can post across all accounts.
 - **Editor** — a VA limited to the accounts/platforms in their `assignments`.
+  In the Daily Builder, editors see ONLY the Main Scripts area (not the
+  per-account character cards).
+- **Marketer** (role key `Marketer`, shown as "Marketing Manager") — limited to
+  their assigned accounts like an Editor, but can also see the per-account
+  character cards AND create/edit main scripts + frames (`canEditMainScripts`).
 
 The UI already gates tabs and visible accounts by role. When you add server-side
 auth, enforce the SAME rules in the database (row-level security) so a user can't
