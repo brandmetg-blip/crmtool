@@ -67,8 +67,11 @@
       catch (e) { return { __failed: true }; } // parse error, not "empty" — see SupabaseStore note above
     }
     // Local storage has no concurrency to worry about — just save the whole db.
+    // Reports success/failure the same way SupabaseStore does — a full quota
+    // error used to be swallowed here too, losing the write with no warning.
     persist(prevDb, nextDb) {
-      try { localStorage.setItem(DB_KEY, JSON.stringify(nextDb)); } catch (e) {}
+      try { localStorage.setItem(DB_KEY, JSON.stringify(nextDb)); return { ok: true, errors: [] }; }
+      catch (e) { console.error('[store] local persist failed', e); return { ok: false, errors: [e] }; }
     }
     subscribe(onChange) { return function () {}; } // no live sync locally
     loadSession() { try { return localStorage.getItem(SESSION_KEY); } catch (e) { return null; } }
@@ -251,8 +254,26 @@
       }
 
       // Fire them; log (don't throw) so the optimistic UI never crashes.
+      //
+      // DATA-LOSS FIX — read this before changing it.
+      // supabase-js RESOLVES with { data, error } when a write fails; it does
+      // NOT reject. So the old check here (`s.status === 'rejected'` only)
+      // never fired for a real database failure: an RLS denial, a statement
+      // timeout, a constraint violation all arrive as status 'fulfilled' with
+      // an `error` payload. Every one of those was silently discarded — the
+      // app believed the save succeeded, and the next realtime/poll refetch
+      // pulled the OLDER server row back over the user's work. That is how
+      // typed scripts and uploaded images "deleted themselves".
+      // A failed write must be detectable by the caller so it can retry and
+      // refuse to let the server overwrite unsaved local edits.
       const settled = await Promise.allSettled(ops);
-      settled.forEach(s => { if (s.status === 'rejected') console.error('[store] persist op failed', s.reason); });
+      const errors = [];
+      settled.forEach(s => {
+        if (s.status === 'rejected') errors.push(s.reason);
+        else if (s.value && s.value.error) errors.push(s.value.error); // resolved-but-failed
+      });
+      errors.forEach(e => console.error('[store] persist op failed', e));
+      return { ok: errors.length === 0, errors };
     }
 
     // ---- realtime: notify the app whenever anyone changes anything ----------

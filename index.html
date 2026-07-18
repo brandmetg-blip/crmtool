@@ -166,6 +166,12 @@
       <sc-if value="{{ headerCanLog }}" hint-placeholder-val="{{ false }}"><button onClick="{{ openLogPost }}" style="display:flex;align-items:center;gap:6px;height:36px;padding:0 15px;background:#34e08a;color:#06140c;border:none;border-radius:9px;font-weight:700;font-size:13px;cursor:pointer" style-hover="background:#46e89a"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06140c" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>Log post</button></sc-if>
     </header>
 
+    <sc-if value="{{ saveFailed }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;top:0;left:0;right:0;z-index:400;display:flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(90deg,#3a1414,#4a1a1a);border-bottom:1px solid rgba(240,88,78,0.55);color:#ffd9d6;padding:10px 18px;font-size:13px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,0.5)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0584e" stroke-width="2.4" stroke-linecap="round"><path d="M12 8v5"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
+        <span>Couldn’t save your last change — retrying. Keep this tab open; your work is still here and nothing will be overwritten.</span>
+      </div>
+    </sc-if>
     <sc-if value="{{ flashShow }}" hint-placeholder-val="{{ false }}">
       <div style="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:200;background:#1a2620;border:1px solid rgba(52,224,138,0.4);color:#c9ffe2;padding:11px 18px;border-radius:11px;font-size:13px;font-weight:600;box-shadow:0 12px 36px rgba(0,0,0,0.55);animation:fadein .18s ease">{{ flashText }}</div>
     </sc-if>
@@ -651,18 +657,28 @@
             </div>
             </sc-if>
 
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:13px;margin-top:14px">
+            <!-- ================= THE SCRIPT — the main thing on this page ================= -->
+            <div style="margin-top:15px;border-radius:17px;padding:1.5px;background:linear-gradient(135deg,rgba(91,141,239,0.6) 0%,rgba(52,224,138,0.35) 48%,rgba(240,179,65,0.6) 100%);box-shadow:0 10px 34px rgba(0,0,0,0.5)">
+              <div style="background:linear-gradient(165deg,#15181a 0%,#0c0f10 100%);border-radius:15.5px;padding:15px 16px 17px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+                  <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:9px;flex:0 0 auto;background:linear-gradient(135deg,#5b8def,#34e08a);box-shadow:0 3px 12px rgba(52,224,138,0.45)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#06140c" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg></span>
+                  <span style="font-size:13.5px;font-weight:800;letter-spacing:.7px;color:#eaf4ff">THE SCRIPT</span>
+                  <span style="font-size:10.5px;color:#6a6a72;font-weight:600;letter-spacing:.2px">hook + body — this is what gets filmed</span>
+                  <div style="flex:1"></div>
+                  <span style="height:1px;flex:0 0 60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.16))"></span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:17px">
 
               <div style="display:flex;flex-direction:column;gap:8px">
                 <div style="display:flex;align-items:center;gap:7px">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5b8def" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M16 4h2a2 2 0 0 1 2 2v10a4 4 0 0 1-8 0V7a2.5 2.5 0 0 0-5 0v9"/><path d="M5 12H2l3 4 3-4H5"/></svg>
-                  <span style="font-size:10.5px;color:#9fbef7;font-weight:700;letter-spacing:.4px">HOOK</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5b8def" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M16 4h2a2 2 0 0 1 2 2v10a4 4 0 0 1-8 0V7a2.5 2.5 0 0 0-5 0v9"/><path d="M5 12H2l3 4 3-4H5"/></svg>
+                  <span style="font-size:11.5px;color:#9fbef7;font-weight:800;letter-spacing:.5px">HOOK</span>
                   <div style="flex:1"></div>
                   <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:4px"><sc-for list="{{ r.hookSrcOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></sc-if>
                 </div>
                 <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}">
                   <sc-if value="{{ r.hasHookVars }}" hint-placeholder-val="{{ true }}"><select value="{{ r.hookVarId }}" onChange="{{ r.onHookVar }}" style="{{ r.hookVarSelStyle }}"><option value="">Hook variation — custom</option><sc-for list="{{ r.hookVarOpts }}" as="v" hint-placeholder-count="2"><option value="{{ v.id }}">{{ v.name }}</option></sc-for></select></sc-if>
-                  <sc-if value="{{ r.hookIsText }}" hint-placeholder-val="{{ true }}"><textarea value="{{ r.hook }}" onInput="{{ r.onHook }}" rows="3" placeholder="Type the hook…" style="width:100%;padding:8px 10px;background:#0e0e11;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#ededf0;font-size:12.5px;line-height:1.45;outline:none;resize:vertical;font-family:inherit" style-focus="border-color:rgba(91,141,239,0.5)"></textarea></sc-if>
+                  <sc-if value="{{ r.hookIsText }}" hint-placeholder-val="{{ true }}"><textarea value="{{ r.hook }}" onInput="{{ r.onHook }}" rows="4" placeholder="Type the hook…" style="width:100%;padding:11px 12px;background:#090b0c;border:1px solid rgba(91,141,239,0.22);border-radius:11px;color:#f2f4f7;font-size:13.5px;line-height:1.5;outline:none;resize:vertical;font-family:inherit" style-focus="border-color:rgba(91,141,239,0.75)"></textarea></sc-if>
                   <sc-if value="{{ r.hookIsLink }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:6px;align-items:center"><input value="{{ r.hookLink }}" onInput="{{ r.onHookLink }}" placeholder="Paste hook link…" style="flex:1;min-width:0;height:34px;padding:0 10px;background:#0e0e11;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#ededf0;font-size:12px;outline:none" style-focus="border-color:rgba(91,141,239,0.5)"/><sc-if value="{{ r.hookLinkValid }}" hint-placeholder-val="{{ false }}"><a href="{{ r.hookLink }}" target="_blank" style="width:34px;height:34px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border:1px solid rgba(91,141,239,0.4);border-radius:9px;color:#9fbef7;text-decoration:none" style-hover="background:rgba(91,141,239,0.12)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg></a></sc-if></div></sc-if>
                 </sc-if>
                 <sc-if value="{{ r.readonly }}" hint-placeholder-val="{{ false }}">
@@ -675,13 +691,13 @@
               <div style="display:flex;flex-direction:column;gap:8px">
                 <div style="display:flex;align-items:center;gap:7px">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f0b341" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto"><path d="M5 3h9l5 5v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h6"/></svg>
-                  <span style="font-size:10.5px;color:#f0c97a;font-weight:700;letter-spacing:.4px">BODY</span>
+                  <span style="font-size:11.5px;color:#f0c97a;font-weight:800;letter-spacing:.5px">BODY</span>
                   <div style="flex:1"></div>
                   <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:4px"><sc-for list="{{ r.bodySrcOpts }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></sc-if>
                 </div>
                 <sc-if value="{{ r.canEdit }}" hint-placeholder-val="{{ true }}">
                   <sc-if value="{{ r.hasBodyVars }}" hint-placeholder-val="{{ true }}"><select value="{{ r.bodyVarId }}" onChange="{{ r.onBodyVar }}" style="{{ r.bodyVarSelStyle }}"><option value="">Body variation — custom</option><sc-for list="{{ r.bodyVarOpts }}" as="v" hint-placeholder-count="2"><option value="{{ v.id }}">{{ v.name }}</option></sc-for></select></sc-if>
-                  <sc-if value="{{ r.bodyIsText }}" hint-placeholder-val="{{ true }}"><textarea value="{{ r.bodyText }}" onInput="{{ r.onBodyText }}" rows="3" placeholder="Body + CTA…" style="width:100%;padding:8px 10px;background:#0e0e11;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#cfd0d4;font-size:12px;line-height:1.5;outline:none;resize:vertical;font-family:inherit" style-focus="border-color:rgba(240,179,65,0.5)"></textarea></sc-if>
+                  <sc-if value="{{ r.bodyIsText }}" hint-placeholder-val="{{ true }}"><textarea value="{{ r.bodyText }}" onInput="{{ r.onBodyText }}" rows="4" placeholder="Body + CTA…" style="width:100%;padding:11px 12px;background:#090b0c;border:1px solid rgba(240,179,65,0.22);border-radius:11px;color:#e8e9ec;font-size:13px;line-height:1.55;outline:none;resize:vertical;font-family:inherit" style-focus="border-color:rgba(240,179,65,0.75)"></textarea></sc-if>
                   <sc-if value="{{ r.bodyIsLink }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:6px;align-items:center"><input value="{{ r.bodyLink }}" onInput="{{ r.onBodyLink }}" placeholder="Paste body link…" style="flex:1;min-width:0;height:34px;padding:0 10px;background:#0e0e11;border:1px solid rgba(255,255,255,0.1);border-radius:9px;color:#ededf0;font-size:12px;outline:none" style-focus="border-color:rgba(240,179,65,0.5)"/><sc-if value="{{ r.bodyLinkValid }}" hint-placeholder-val="{{ false }}"><a href="{{ r.bodyLink }}" target="_blank" style="width:34px;height:34px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border:1px solid rgba(240,179,65,0.4);border-radius:9px;color:#f0c97a;text-decoration:none" style-hover="background:rgba(240,179,65,0.12)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 17 17 7"/><path d="M9 7h8v8"/></svg></a></sc-if></div></sc-if>
                 </sc-if>
                 <sc-if value="{{ r.readonly }}" hint-placeholder-val="{{ false }}">
@@ -690,6 +706,12 @@
                   <sc-if value="{{ r.bodyShowText }}" hint-placeholder-val="{{ true }}"><div style="{{ r.bodyBoxStyle }}">{{ r.bodyOut }}</div><sc-if value="{{ r.bodyLong }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.bodyToggle }}" style="{{ r.expandToggleStyle }}">{{ r.bodyToggleLabel }}</button></sc-if></sc-if>
                 </sc-if>
               </div>
+
+                </div>
+              </div>
+            </div>
+            <!-- =============== supporting details (secondary to the script) =============== -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(248px,1fr));gap:13px;margin-top:13px">
 
               <div style="display:flex;flex-direction:column;gap:8px">
                 <div style="display:flex;align-items:center;gap:7px">
@@ -975,7 +997,11 @@
       <sc-for list="{{ acctList }}" as="a" hint-placeholder-count="6">
         <div onClick="{{ a.openDetail }}" style="background:linear-gradient(155deg,#16191b 0%,#0d1110 100%);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:16px;cursor:pointer;transition:border-color .12s" style-hover="border-color:rgba(52,224,138,0.32)">
           <div style="display:flex;align-items:center;gap:12px">
-            <div style="width:42px;height:42px;border-radius:13px;flex:0 0 auto;overflow:hidden;{{ a.avCss }}"><sc-if value="{{ a.show }}" hint-placeholder-val="{{ true }}">{{ a.initial }}</sc-if></div>
+            <div style="{{ a.avatarWrapStyle }}">
+              <div style="width:42px;height:42px;border-radius:13px;flex:0 0 auto;overflow:hidden;{{ a.avCss }}"><sc-if value="{{ a.show }}" hint-placeholder-val="{{ true }}">{{ a.initial }}</sc-if></div>
+              <span style="{{ a.liveDotStyle }}"></span>
+              <sc-if value="{{ a.hasType }}" hint-placeholder-val="{{ true }}"><span style="{{ a.typeBadgeStyle }}" title="{{ a.typeLabel }}">{{ a.typeShort }}</span></sc-if>
+            </div>
             <div style="flex:1;min-width:0"><div style="font-family:'JetBrains Mono',monospace;font-size:13.5px;color:#f4f4f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ a.name }}</div><div style="font-size:11.5px;color:#6a6a72;margin-top:2px">{{ a.character }}</div></div>
             <span style="{{ a.statusStyle }}"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ a.statusColor }}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{ a.statusPath }}"/></svg>{{ a.status }}</span>
           </div>
@@ -1668,7 +1694,8 @@
         <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">PRODUCT</div><div style="display:flex;gap:7px;flex-wrap:wrap"><sc-for list="{{ productOptions }}" as="o" hint-placeholder-count="3"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.name }}</button></sc-for></div></div>
         <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">FOLLOWERS</div><input onInput="{{ onFollowers }}" value="{{ fFollowers }}" placeholder="e.g. 12500" style="{{ fieldStyle }}"/><div style="font-size:11px;color:#5e5e66;margin-top:5px">Sets phase automatically — <span style="color:#9bbdf5;font-weight:600">{{ followerBand }}</span> followers. You can still override the phase below.</div></div>
         <div style="display:flex;gap:14px"><div style="flex:1"><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">PHASE</div><div style="display:flex;gap:6px"><sc-for list="{{ phaseOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div></div>
-        <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">STATUS</div><div style="display:flex;gap:6px"><sc-for list="{{ statusOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div></div>
+        <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">STATUS</div><div style="display:flex;gap:6px"><sc-for list="{{ statusOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div><div style="font-size:11px;color:#5e5e66;margin-top:6px">Only <span style="color:#7fcfa3;font-weight:600">Active</span> and <span style="color:#f0c97a;font-weight:600">Warming</span> accounts count toward targets.</div></div>
+        <div><div style="font-size:11px;color:#5e5e66;font-weight:700;letter-spacing:.4px;margin-bottom:8px">ACCOUNT TYPE</div><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ typeOptions }}" as="o" hint-placeholder-count="4"><button type="button" onClick="{{ o.onClick }}" style="{{ o.style }}">{{ o.label }}</button></sc-for></div><div style="font-size:11px;color:#5e5e66;margin-top:6px">Shows as a badge on the account’s picture in the Accounts tab.</div></div>
         <div style="display:flex;flex-direction:column;gap:14px;padding:14px;background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.06);border-radius:12px">
           <div style="display:flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:3px;flex:0 0 auto;background:#5b8def"></span><span style="font-size:11.5px;color:#9fbef7;font-weight:700;letter-spacing:.4px">FACEBOOK</span><span style="font-size:10.5px;color:#5e5e66">one profile makes many pages</span></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -1789,6 +1816,15 @@
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;}}">
 class Component extends DCLogic {
   PHASE_TARGET = { P1: 3, P2: 5, P3: 6, P4: 9 };
+  // How an account's content is produced. Shown as a badge on the account
+  // avatar (Accounts tab) so an admin can tell the pipeline at a glance.
+  ACCOUNT_TYPES = [
+    { id:'', label:'—', short:'', color:'#8b8b93' },
+    { id:'VEO', label:'Full VEO', short:'VEO', color:'#5b8def' },
+    { id:'Grok', label:'Full Grok', short:'GRK', color:'#f0b341' },
+    { id:'HeyGen', label:'Full HeyGen', short:'HG', color:'#9a7bff' },
+  ];
+  accountTypeMeta(id){ return this.ACCOUNT_TYPES.find(t=>t.id===(id||'')) || this.ACCOUNT_TYPES[0]; }
   DEFAULT_PLATFORMS = [{ id:'facebook', name:'Facebook', label:'FB', color:'#5b8def' }, { id:'instagram', name:'Instagram', label:'IG', color:'#e879b9' }];
   PLAT_PALETTE = ['#9a7bff','#5bd5ef','#f0b341','#e879b9','#34e08a','#f0584e','#f97b5a','#6ee7b7'];
   get platformDefs(){ const db=this.state&&this.state.db; const arr=(db&&Array.isArray(db.platforms)&&db.platforms.length)?db.platforms:this.DEFAULT_PLATFORMS; return arr; }
@@ -2131,11 +2167,38 @@ class Component extends DCLogic {
     this._schedulePersist();
   }
   _schedulePersist(){ clearTimeout(this._persistT); this._persistT = setTimeout(()=>this._flushPersist(), 500); }
+  // DATA-LOSS FIX — the pending change is now cleared ONLY after the server
+  // confirms the write. Previously it was dropped immediately (before the
+  // write even resolved) and the store swallowed failures, so a failed save
+  // was gone forever: the edit vanished from the pending queue, nobody
+  // retried it, and the next refetch pulled the older server row back over
+  // the user's work. Now:
+  //   • success  -> clear the pending diff, clear any "unsaved" warning
+  //   • failure  -> KEEP the pending diff and retry with backoff. Keeping
+  //     _flushNext set also keeps reloadFromStore() deferring (its guard
+  //     checks _flushNext), so a background refetch can never overwrite work
+  //     that hasn't made it to the server yet.
   _flushPersist(){
     clearTimeout(this._persistT); this._persistT = null;
     const prev = this._flushPrev, next = this._flushNext;
-    this._flushPrev = undefined; this._flushNext = null;
-    if(this.store && next){ this._persisting = true; try{ Promise.resolve(this.store.persist(prev, next)).catch(()=>{}).finally(()=>{ this._persisting = false; }); }catch(e){ this._persisting = false; } }
+    if(!(this.store && next)){ this._flushPrev = undefined; this._flushNext = null; return; }
+    this._persisting = true;
+    const onFail = ()=>{
+      this._saveRetry = (this._saveRetry||0) + 1;
+      if(!this.state.saveError) this.setState({ saveError:true });
+      clearTimeout(this._persistT);
+      this._persistT = setTimeout(()=>this._flushPersist(), Math.min(2000*this._saveRetry, 15000));
+    };
+    try{
+      Promise.resolve(this.store.persist(prev, next)).then(res=>{
+        if(res && res.ok === false){ onFail(); return; }
+        // Confirmed written. Only clear if no NEWER edit arrived while this
+        // write was in flight — if it did, leave it queued for the next flush.
+        if(this._flushNext === next){ this._flushPrev = undefined; this._flushNext = null; }
+        this._saveRetry = 0;
+        if(this.state.saveError) this.setState({ saveError:false });
+      }).catch(()=>onFail()).finally(()=>{ this._persisting = false; });
+    }catch(e){ this._persisting = false; onFail(); }
   }
 
   // ---------- date helpers ----------
@@ -2244,7 +2307,7 @@ class Component extends DCLogic {
   openLogPost(e){ const vis=this.visibleAccounts(); const id=(e&&e.currentTarget&&e.currentTarget.dataset.id)||this.state.drillId||(vis[0]&&vis[0].id)||(this.state.db?this.state.db.accounts[0].id:null); const a=this.state.db.accounts.find(x=>x.id===id); let plats=this.PLATFORMS.filter(p=>a&&a.platforms&&a.platforms[p]); if(!this.isAdmin()){ const ap=this.assignedPlatforms(id); if(ap.length) plats=plats.filter(p=>ap.includes(p)); } this.setState({ modal:{ type:'log', accountId:id }, form:{ date:this.state.date||this.todayStr(), type:'Product', concept:(this.state.db.concepts[0]||{}).name||'', prod:'Assembly', platforms: plats.length?plats.slice(0,1):['facebook'], split:false } }); }
   openAddAccount(){ if(!this.isAdmin()) return; this.openAccount(null); }
   openEditAccount(e){ this.openAccount(e.currentTarget.dataset.id); }
-  openAccount(editId){ const a=editId?this.state.db.accounts.find(x=>x.id===editId):null; const plats={}; this.PLATFORMS.forEach(p=>plats[p]=(a&&a.platforms&&a.platforms[p])||''); this.setState({ modal:{ type:'account', editId }, form:{ name:a?a.name:'', character:a?a.character:'', product:a?a.product:((this.state.db.products[0]||{}).id||''), phase:a?a.phase:'P1', status:a?a.status:'Warming', followers:a&&a.followers!=null?String(a.followers):'', meta:a?(a.metaBusinessSuiteUrl||''):'', notes:a?(a.notes||''):'', avatar:a?(a.avatar||null):null, plats,
+  openAccount(editId){ const a=editId?this.state.db.accounts.find(x=>x.id===editId):null; const plats={}; this.PLATFORMS.forEach(p=>plats[p]=(a&&a.platforms&&a.platforms[p])||''); this.setState({ modal:{ type:'account', editId }, form:{ name:a?a.name:'', character:a?a.character:'', product:a?a.product:((this.state.db.products[0]||{}).id||''), phase:a?a.phase:'P1', status:a?a.status:'Warming', accountType:a?(a.accountType||''):'', followers:a&&a.followers!=null?String(a.followers):'', meta:a?(a.metaBusinessSuiteUrl||''):'', notes:a?(a.notes||''):'', avatar:a?(a.avatar||null):null, plats,
     fbProfileId:a?(a.facebookProfileId||''):'', fbProfileNew:'', igProfileId:a?(a.instagramProfileId||''):'', igProfileNew:'' } }); }
   openRepost(e){ const id=e.currentTarget.dataset.id; const a=this.state.db.accounts.find(x=>x.id===id); const plats=this.PLATFORMS.filter(p=>a&&a.platforms&&a.platforms[p]); this.setState({ modal:{ type:'repost', accountId:id }, form:{ type:'Product', concept:'', platforms: plats.length?plats:['facebook'] } }); }
   openAddConcept(){ this.openConcept(null); }
@@ -2271,7 +2334,7 @@ class Component extends DCLogic {
     const followers=Math.max(0, parseInt((f.followers||'').toString().replace(/[^0-9]/g,''))||0);
     const phase=f.phase||this.followersToPhase(followers);
     const name=f.name.trim();
-    const data={ name, character:name, product:f.product, phase, status:f.status, followers, platforms, metaBusinessSuiteUrl:(f.meta||'').trim(), notes:(f.notes||'').trim(), avatar:(f.avatar||null), target:this.PHASE_TARGET[phase] };
+    const data={ name, character:name, product:f.product, phase, status:f.status, accountType:f.accountType||'', followers, platforms, metaBusinessSuiteUrl:(f.meta||'').trim(), notes:(f.notes||'').trim(), avatar:(f.avatar||null), target:this.PHASE_TARGET[phase] };
     const today=this.todayStr();
     // Resolve the FB/IG profile the account is associated with — creating a new
     // managed profile when "+ New profile…" was chosen (reusing a same-named one).
@@ -2762,6 +2825,7 @@ class Component extends DCLogic {
       notifOpen:this.state.notifOpen, toggleNotif:()=>this.toggleNotif(),
       ...this.notifVals(),
       flashShow:!!this.state.flash, flashText:(this.state.flash||{}).msg||'',
+      saveFailed:!!this.state.saveError,
       loginEmail:this.state.loginEmail, loginPassword:this.state.loginPassword, loginError:this.state.loginError, hasLoginError:!!this.state.loginError,
       loginBusy:!!this.state.loginBusy, loginBtnLabel: this.state.loginBusy?'Signing in…':'Sign in',
       loginBtnStyle:{ height:'44px', background: this.state.loginBusy?'#2a8f61':'#34e08a', color:'#06140c', border:'none', borderRadius:'10px', fontSize:'14px', fontWeight:'700', cursor: this.state.loginBusy?'default':'pointer', marginTop:'2px', display:'flex', alignItems:'center', justifyContent:'center' },
@@ -2949,7 +3013,14 @@ class Component extends DCLogic {
     const list=db.accounts.filter(a=> (filter==='all'||a.status===filter) && (profFilter==='all'||a.facebookProfileId===profFilter) && (!q || a.name.toLowerCase().includes(q)||(a.character||'').toLowerCase().includes(q)) );
     const profChip=(name,color)=>({display:'inline-flex',alignItems:'center',gap:'4px',padding:'2px 8px',borderRadius:'6px',fontSize:'10.5px',fontWeight:'700',color,background:this.alpha(color,0.13),border:'1px solid '+this.alpha(color,0.26),maxWidth:'140px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'});
     const cardOf=a=>{ const pr=this.productById(a.product); const chips=this.PLATFORMS.filter(p=>a.platforms&&a.platforms[p]).map(p=>this.platChip(p)); const ac=this.avatarCss(a); const ph=this.phaseChip(a.phase); const st=this.statusChip(a.status); const d=todayDone(a.id); const fbN=this.profileName(a.facebookProfileId); const igN=this.profileName(a.instagramProfileId);
+      const tm=this.accountTypeMeta(a.accountType); const isLive=a.status==='Active'||a.status==='Warming';
       return { id:a.id, name:a.name, character:a.character, avCss:ac.css, show:ac.show, initial:ac.initial, product:pr?pr.short:'—', phase:ph.label, phaseStyle:ph.style, phaseDots:ph.dots, status:a.status, statusStyle:st.style, statusColor:st.color, statusPath:st.path, plats:chips,
+        // ---- at-a-glance badges on the avatar (admin view) ----
+        hasType:!!tm.id, typeShort:tm.short, typeLabel:tm.label,
+        typeBadgeStyle:{ position:'absolute', bottom:'-3px', right:'-4px', display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:'19px', height:'15px', padding:'0 4px', borderRadius:'5px', fontSize:'8.5px', fontWeight:'800', letterSpacing:'.3px', color:'#0b0b0d', background:tm.color, border:'1.5px solid #0e0e11', boxShadow:'0 2px 6px rgba(0,0,0,0.5)', whiteSpace:'nowrap' },
+        isInactive:!isLive,
+        liveDotStyle:{ position:'absolute', top:'-2px', right:'-2px', width:'11px', height:'11px', borderRadius:'50%', background:st.color, border:'2px solid #0e0e11', boxShadow:isLive?('0 0 7px '+this.alpha(st.color,0.85)):'none' },
+        avatarWrapStyle:{ position:'relative', display:'inline-flex', flex:'0 0 auto', opacity:isLive?1:0.45, filter:isLive?'none':'grayscale(0.7)' },
         fbProfile:fbN, hasFbProfile:!!fbN, fbProfileStyle:profChip(fbN,'#5b8def'), igProfile:igN, hasIgProfile:!!igN, igProfileStyle:profChip(igN,'#e879b9'), hasProfile:!!(fbN||igN),
         followers:this.fmtFollowers(a.followers||0), reposts:a.repostCount||0, lastRepost:a.lastRepostDate?this.fmtDate(a.lastRepostDate):'no reposts', target:a.target+'/day', barPct:Math.min(100,Math.round(d/Math.max(1,a.target)*100)), barGrad:this.barGrad(d,a.target), ratio:d+'/'+a.target, onDragStart:e=>this.onDragStartCard(e), openDetail:()=>this.setState({ detailId:a.id }) }; };
     const mapped=list.map(cardOf);
@@ -3671,6 +3742,9 @@ class Component extends DCLogic {
       v.followerBand={P1:'0 – 500',P2:'500 – 5k',P3:'5k – 30k',P4:'30k – 50k+'}[f.phase]||'';
       v.phaseOptions=['P1','P2','P3','P4'].map(p=>({ label:p, style:this.segBtn(f.phase===p, this.phaseColor(p)), onClick:()=>this.setForm({phase:p}) }));
       v.statusOptions=['Active','Warming','Paused','Banned'].map(s=>({ label:s, style:this.segBtn(f.status===s, this.statusColor(s)), onClick:()=>this.setForm({status:s}) }));
+      // What the account's content is produced with — shown as a badge on the
+      // avatar in the Accounts tab so an admin can tell at a glance.
+      v.typeOptions=this.ACCOUNT_TYPES.map(t=>({ label:t.label, style:this.segBtn((f.accountType||'')===t.id, t.color), onClick:()=>this.setForm({accountType:t.id}) }));
       // Platforms are locked to Facebook + Instagram. Each account is associated
       // with a named FB profile (shared) and IG profile (1:1) — pick or create.
       const setPlat=(k,v2)=>this.setState(s=>({ form:{...s.form, plats:{...s.form.plats, [k]:v2}} }));
