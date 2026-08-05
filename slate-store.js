@@ -49,14 +49,44 @@
     ['products', 'products'],
     ['team', 'team'],
     ['dailyEntries', 'daily_entries'],
+    // ---- Phase 1: split out of the shared app_meta blob into per-item rows so
+    // concurrent edits stop clobbering each other. Requires the matching tables
+    // (REBUILD.md §3a). Until those tables exist, reads degrade gracefully (see
+    // loadTables) and a one-time backfill (see _backfill) migrates existing data
+    // out of app_meta — data stays in app_meta until confirmed copied, so a
+    // failed/mistimed migration never loses anything.
+    ['mainScripts', 'main_scripts'],
+    ['mainScriptEntries', 'main_script_entries'],
+    ['profiles', 'profiles'],
+    ['notifications', 'notifications'],
   ];
+  // The just-split collections (were in app_meta before Phase 1).
+  const SPLIT_COLLECTIONS = [
+    ['mainScripts', 'main_scripts'],
+    ['mainScriptEntries', 'main_script_entries'],
+    ['profiles', 'profiles'],
+    ['notifications', 'notifications'],
+  ];
+  const SPLIT_KEYS = new Set(SPLIT_COLLECTIONS.map(c => c[0]));
+  // A missing table (Phase-1 SQL not run yet) surfaces as one of these.
+  function isMissingTable(e) {
+    if (!e) return false;
+    const code = e.code || '';
+    const msg = ((e.message || '') + ' ' + (e.details || '') + ' ' + (e.hint || '')).toLowerCase();
+    return code === '42P01' || code === 'PGRST205' || code === 'PGRST202' ||
+      /does not exist|could not find the table|schema cache|no such table/.test(msg);
+  }
   // dailyMetrics is an object keyed by date -> one row per date.
   const METRICS_TABLE = 'daily_metrics';
   // Everything else (characterMeta, assetLinks, flags…) rides in one meta row.
   const META_TABLE = 'app_meta';
-  const META_KEYS_EXCLUDED = new Set(
-    ID_COLLECTIONS.map(c => c[0]).concat(['dailyMetrics'])
-  );
+  // Keys that live in their OWN table, not the app_meta blob.
+  //  FULL = once the Phase-1 split is active (the split tables exist).
+  //  BASE = fallback used until those tables exist, so the split collections keep
+  //         riding in app_meta and can never be dropped by a code-before-SQL deploy.
+  const ORIGINAL_ID_KEYS = ['accounts', 'posts', 'concepts', 'products', 'team', 'dailyEntries'];
+  const META_KEYS_EXCLUDED_FULL = new Set(ID_COLLECTIONS.map(c => c[0]).concat(['dailyMetrics']));
+  const META_KEYS_EXCLUDED_BASE = new Set(ORIGINAL_ID_KEYS.concat(['dailyMetrics']));
 
   // ==========================================================================
   // LocalStore — prototype default. Whole db in this browser. Not shared.
@@ -141,7 +171,14 @@
     // truly empty project". These must never be conflated — a caller that
     // treats a failed fetch as "empty" will reseed demo data and WRITE it over
     // a real, populated database. See loadTables() below.
-    async loadData() { return this.loadTables(this.allTableNames()); }
+    async loadData() {
+      const db = await this.loadTables(this.allTableNames());
+      // One-time Phase-1 migration: move split collections out of app_meta into
+      // their own tables. Only runs when the tables exist (_splitActive) and there
+      // is un-migrated data (_needBackfill). Fail-safe (see _backfill).
+      if (db && !db.__failed && this._splitActive && this._needBackfill) await this._backfill(db);
+      return db;
+    }
 
     // ---- read: assemble ONLY the given tables into a partial db object ------
     // This is the key egress fix: a change to daily_entries (small rows, no
@@ -180,11 +217,25 @@
         // requests keep each individual query small and reliable; the total
         // wall-clock cost is still well under the client's timeout.
         const db = {};
+        const attemptedSplit = SPLIT_COLLECTIONS.every(([, t]) => want.has(t));
+        let splitMissing = false;
         for (const [key, table] of idKeys) {
-          const r = await this.sb.from(table).select('data').order('id').abortSignal(controller.signal);
-          if (r.error) throw r.error;
-          db[key] = (r.data || []).map(row => row.data);
+          try {
+            const r = await this.sb.from(table).select('data').order('id').abortSignal(controller.signal);
+            if (r.error) throw r.error;
+            db[key] = (r.data || []).map(row => row.data);
+          } catch (e) {
+            // Phase-1 tables may not exist yet (SQL in §3a not run). Degrade to
+            // empty for THOSE only, so the app still loads (the split collections
+            // then come from app_meta via adoption below). A missing CORE table
+            // is a real error and must still surface.
+            if (SPLIT_KEYS.has(key) && isMissingTable(e)) { db[key] = []; splitMissing = true; }
+            else throw e;
+          }
         }
+        // Mark whether the split tables are live (only decide it on a fetch that
+        // actually asked for them — partial reloads leave the prior verdict).
+        if (attemptedSplit) this._splitActive = !splitMissing;
         if (wantMetrics) {
           const r = await this.sb.from(METRICS_TABLE).select('date,data').order('date').abortSignal(controller.signal);
           if (r.error) throw r.error;
@@ -194,7 +245,24 @@
         if (wantMeta) {
           const r = await this.sb.from(META_TABLE).select('data').eq('id', this.META_ID).maybeSingle().abortSignal(controller.signal);
           if (r.error) throw r.error;
-          if (r.data && r.data.data) Object.assign(db, r.data.data);
+          const meta = (r.data && r.data.data) ? r.data.data : {};
+          if (this._splitActive === true) {
+            if (meta.__splitDone) {
+              // Migration done — ignore any stale copies still sitting in app_meta.
+              for (const k of SPLIT_KEYS) delete meta[k];
+            } else {
+              // Pre-split data still in app_meta: adopt it for any collection whose
+              // new table is still empty, and flag a one-time backfill.
+              for (const k of SPLIT_KEYS) {
+                if ((!db[k] || !db[k].length) && Array.isArray(meta[k]) && meta[k].length) db[k] = meta[k];
+                delete meta[k];
+              }
+              this._needBackfill = true;
+            }
+          }
+          // If the split tables aren't live yet, leave meta[k] in place so the
+          // split collections load from app_meta exactly as before (no regression).
+          Object.assign(db, meta);
         }
 
         // Only treat as "nothing exists yet" when this was a full-db fetch AND
@@ -219,6 +287,34 @@
       }
     }
 
+    // ---- Phase-1 one-time migration -----------------------------------------
+    // Copy the split collections OUT of app_meta into their own tables, then mark
+    // __splitDone. FAIL-SAFE: the flag is flipped only after every table write AND
+    // the app_meta cleanup succeed. If anything fails we leave app_meta untouched
+    // (it still holds the data) and retry on the next load — so a partial or
+    // interrupted migration can never lose an edit.
+    async _backfill(db) {
+      try {
+        const now = new Date().toISOString();
+        for (const [key, table] of SPLIT_COLLECTIONS) {
+          const rows = (db[key] || []).filter(it => it && it.id).map(it => ({ id: it.id, data: it, updated_at: now }));
+          if (rows.length) { const r = await this.sb.from(table).upsert(rows); if (r.error) throw r.error; }
+        }
+        const cur = await this.sb.from(META_TABLE).select('data').eq('id', this.META_ID).maybeSingle();
+        const meta = (cur.data && cur.data.data) ? cur.data.data : {};
+        for (const k of SPLIT_KEYS) delete meta[k];
+        meta.__splitDone = true;
+        const w = await this.sb.from(META_TABLE).upsert({ id: this.META_ID, data: meta, updated_at: now });
+        if (w.error) throw w.error;
+        this._needBackfill = false;
+        db.__splitDone = true;
+        console.log('[store] Phase-1 migration complete — main_scripts / main_script_entries / profiles / notifications now have their own rows');
+      } catch (e) {
+        // Left app_meta intact; will retry on the next load. No data lost.
+        console.error('[store] Phase-1 migration deferred (app_meta kept intact, retrying next load)', e);
+      }
+    }
+
     // ---- write: diff old vs new, write only what changed --------------------
     async persist(prevDb, nextDb) {
       const now = new Date().toISOString();
@@ -227,8 +323,14 @@
       const CH = 100;
       const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
 
+      // While the Phase-1 tables don't exist yet, the split collections keep
+      // riding in app_meta (BASE exclusion below) and must NOT be written to
+      // their tables — so a code-before-SQL deploy is a no-op, never a loss.
+      const splitActive = this._splitActive === true;
+
       // id-keyed collections
       for (const [key, table] of ID_COLLECTIONS) {
+        if (!splitActive && SPLIT_KEYS.has(key)) continue; // still in app_meta
         const { upserts, deletes } = diffById((prevDb && prevDb[key]) || [], (nextDb && nextDb[key]) || []);
         for (const grp of chunk(upserts, CH)) ops.push(this.sb.from(table).upsert(grp.map(it => ({ id: it.id, data: it, updated_at: now }))));
         for (const grp of chunk(deletes, CH)) ops.push(this.sb.from(table).delete().in('id', grp));
@@ -247,8 +349,11 @@
       for (const grp of chunk(mUpserts, CH)) ops.push(this.sb.from(METRICS_TABLE).upsert(grp));
       for (const grp of chunk(mDeletes, CH)) ops.push(this.sb.from(METRICS_TABLE).delete().in('date', grp));
 
-      // meta (everything else) — one row, written only when it changed
-      const metaPrev = pickMeta(prevDb), metaNext = pickMeta(nextDb);
+      // meta (everything else) — one row, written only when it changed. Use the
+      // FULL exclusion once the split is live (split keys now live in their own
+      // tables); otherwise BASE, which keeps the split collections in app_meta.
+      const metaExclude = splitActive ? META_KEYS_EXCLUDED_FULL : META_KEYS_EXCLUDED_BASE;
+      const metaPrev = pickMeta(prevDb, metaExclude), metaNext = pickMeta(nextDb, metaExclude);
       if (JSON.stringify(metaPrev) !== JSON.stringify(metaNext)) {
         ops.push(this.sb.from(META_TABLE).upsert({ id: this.META_ID, data: metaNext, updated_at: now }));
       }
@@ -375,10 +480,11 @@
     return { upserts, deletes };
   }
   // Everything in db that isn't an id-collection or dailyMetrics -> the meta row.
-  function pickMeta(db) {
+  function pickMeta(db, exclude) {
     const out = {};
     if (!db) return out;
-    for (const k of Object.keys(db)) { if (!META_KEYS_EXCLUDED.has(k)) out[k] = db[k]; }
+    const ex = exclude || META_KEYS_EXCLUDED_FULL;
+    for (const k of Object.keys(db)) { if (!ex.has(k)) out[k] = db[k]; }
     return out;
   }
 
