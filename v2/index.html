@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remote Commerce — Content Ops</title>
+<link rel="icon" type="image/png" href="./favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/app.css">
+<!-- Supabase client. Loads harmlessly in local mode; used when config.js MODE='supabase'. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="app">
+    <div class="boot">
+      <div class="boot-spin"></div>
+      <span>Loading workspace…</span>
+    </div>
+  </div>
+
+  <!-- A module that fails to parse throws before anything renders, leaving a blank
+       page with the error only in the console. Surface it on screen instead. -->
+  <script>
+    window.addEventListener('error', function (e) {
+      if (!e.message && !e.error) return;               // resource load, not a JS error
+      var app = document.getElementById('app');
+      if (!app || app.dataset.booted === '1') return;   // app is up; it handles its own errors
+      app.innerHTML = '<div class="login-wrap"><div class="card login-card col">' +
+        '<b>The app failed to start</b>' +
+        '<div class="hint">This is a bug, not a data problem — nothing was changed.</div>' +
+        '<div class="error" style="font-family:ui-monospace,monospace;font-size:11.5px"></div></div></div>';
+      app.querySelector('.error').textContent = e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ':' + e.lineno + ')' : '');
+    }, true);
+  </script>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
