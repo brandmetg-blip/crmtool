@@ -22,6 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { presence } from '../presence.js';
+import { overlay } from './accounts.js';
 
 const TOOLS = [['grok', 'Grok'], ['veo', 'Veo'], ['omniflash', 'Omni Flash']];
 const TYPES = ['Growth', 'Product'];
@@ -86,6 +87,10 @@ function head(u) {
 
   if (scriptsOn && can.editScripts(u) && !state.openScript) {
     wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ Add script'));
+  }
+  // Write the brief once, drop it on as many avatars as you like.
+  if (!scriptsOn && can.editVideos(u) && !state.builderAvatar) {
+    wrap.appendChild(el('button', { class: 'btn violet', onclick: () => openMassAdd(u) }, '+ Mass add script'));
   }
   return wrap;
 }
@@ -239,6 +244,147 @@ async function addEntry(a) {
     win: false, createdBy: state.user.name, createdAt: Date.now(),
   });
   emit();
+}
+
+// ---------------------------------------------------------------------------
+// Mass add — write the brief once, create one video per selected avatar.
+// ---------------------------------------------------------------------------
+function openMassAdd(u) {
+  const accounts = builderAccounts(u, state.db)
+    .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const editors = state.db.team.filter(t => t.role === 'editor');
+  const dayEntries = state.db.dailyEntries.filter(e => e.date === state.date);
+
+  // Start with every avatar that isn't paused — the usual case is "all of them".
+  const picked = new Set(accounts.filter(a => (a.status || 'Active') !== 'Paused').map(a => a.id));
+
+  const draft = {
+    type: 'Product', prod: 'Assembly', assign: 'auto',
+    concept: '', hook: '', body: '', refVideo: '', notes: '',
+  };
+
+  const body = el('div', { class: 'modal-body' });
+  body.appendChild(el('div', { class: 'hint' },
+    'Fill this in once. Every avatar you tick gets its own copy in their Daily Builder for ' + fmtDate(state.date) + ', which they can then complete independently.'));
+
+  // ---- the brief
+  body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
+    el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'TYPE'),
+      el('div', { class: 'seg mini' }, TYPES.map(t => {
+        const b = el('button', { class: draft.type === t ? 'on' : '', onclick: () => { draft.type = t; repaintSegs(); } }, t);
+        b.dataset.seg = 'type'; b.dataset.val = t; return b;
+      }))),
+    el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'PRODUCTION'),
+      el('div', { class: 'seg mini' }, PROD.map(p => {
+        const b = el('button', { class: draft.prod === p ? 'on' : '', onclick: () => { draft.prod = p; repaintSegs(); } }, p);
+        b.dataset.seg = 'prod'; b.dataset.val = p; return b;
+      })))));
+
+  function repaintSegs() {
+    body.querySelectorAll('[data-seg]').forEach(b => {
+      b.classList.toggle('on', draft[b.dataset.seg] === b.dataset.val);
+    });
+  }
+
+  const field = (key, label, ph, tag) => el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, label),
+    el(tag || 'input', { class: 'input', placeholder: ph, oninput: e => draft[key] = e.target.value }));
+
+  body.appendChild(field('concept', 'CONCEPT', 'e.g. Transformation, Villain…'));
+  body.appendChild(field('hook', 'HOOK', 'The hook / opening line…', 'textarea'));
+  body.appendChild(field('body', 'BODY', 'The body / script…', 'textarea'));
+  body.appendChild(field('refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…'));
+  body.appendChild(field('notes', 'NOTES', 'Anything the editors should know…', 'textarea'));
+
+  // ---- who edits it
+  const assignSel = el('select', { class: 'input', onchange: e => draft.assign = e.target.value },
+    [el('option', { value: 'auto' }, 'Each avatar’s own editor (recommended)'),
+     el('option', { value: '' }, 'Anyone')]
+      .concat(editors.map(t => el('option', { value: t.id }, t.name))));
+  assignSel.value = 'auto';
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'ASSIGN TO'), assignSel,
+    el('span', { class: 'hint' }, '“Each avatar’s own editor” uses the assignments you set under Team. An avatar with no editor, or more than one, is left unassigned.')));
+
+  // ---- avatar picker
+  const pickWrap = el('div', { class: 'col', style: 'gap:7px' });
+  const countLabel = el('span', { class: 'hint' });
+  const addBtn = el('button', { class: 'btn primary' });
+
+  function refresh() {
+    countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected';
+    addBtn.textContent = picked.size
+      ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars')
+      : 'Pick at least one avatar';
+    addBtn.disabled = !picked.size;
+    addBtn.style.opacity = picked.size ? '' : '.5';
+    pickWrap.querySelectorAll('[data-acct]').forEach(row => {
+      const on = picked.has(row.dataset.acct);
+      row.style.borderColor = on ? 'rgba(52,224,138,0.35)' : '';
+      const c = row.querySelector('.check');
+      c.classList.toggle('on', on);
+      c.textContent = on ? '✓' : '';
+    });
+  }
+
+  pickWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
+    el('span', { class: 'label' }, 'AVATARS'), countLabel,
+    el('span', { class: 'spacer' }),
+    el('button', { class: 'btn small', onclick: () => { accounts.forEach(a => picked.add(a.id)); refresh(); } }, 'Select all'),
+    el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
+
+  accounts.forEach(a => {
+    const already = dayEntries.filter(e => e.accountId === a.id).length;
+    const paused = (a.status || 'Active') === 'Paused';
+    pickWrap.appendChild(el('div', {
+      class: 'card row', style: 'padding:8px 11px;gap:10px;cursor:pointer', 'data-acct': a.id,
+      onclick: () => { picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
+    },
+      el('span', { class: 'check' }),
+      avatar(a, 28),
+      el('div', { style: 'min-width:0;flex:1' },
+        el('b', { style: 'font-size:12.5px;display:block' }, a.name || 'Untitled'),
+        el('span', { class: 'hint' }, a.character || 'No character')),
+      paused && el('span', { class: 'chip gray' }, 'Paused'),
+      already ? el('span', { class: 'hint' }, already + ' already today') : null));
+  });
+  body.appendChild(pickWrap);
+
+  // ---- footer
+  addBtn.onclick = async () => {
+    const { save } = await import('../app.js');
+    const chosen = accounts.filter(a => picked.has(a.id));
+    chosen.forEach(a => {
+      save('dailyEntries', {
+        id: uid('de'), date: state.date, accountId: a.id,
+        type: draft.type, prod: draft.prod,
+        assignedEditorId: editorFor(a, draft.assign, editors),
+        concept: draft.concept, hook: draft.hook, hookKind: 'text', hookLink: '',
+        body: draft.body, bodyKind: 'text', bodyLink: '',
+        refVideo: draft.refVideo, notes: draft.notes,
+        done: false, doneAt: null, doneBy: '', videoLink: '',
+        posted: false, postedAt: null, postedDate: '', platforms: [],
+        win: false, createdBy: state.user.name, createdAt: Date.now(),
+      });
+    });
+    state.modal = null; forceEmit();
+  };
+
+  body.appendChild(el('div', { class: 'row', style: 'gap:9px;padding-top:4px' },
+    el('span', { class: 'spacer' }),
+    el('button', { class: 'btn', onclick: () => { state.modal = null; forceEmit(); } }, 'Cancel'),
+    addBtn));
+
+  refresh();
+  state.modal = overlay('Mass add script — ' + fmtDate(state.date), body);
+  forceEmit();
+}
+
+// 'auto' = the editor this avatar belongs to, but only when it is unambiguous.
+function editorFor(account, mode, editors) {
+  if (mode !== 'auto') return mode;
+  const owners = editors.filter(t => (t.assignments || []).includes(account.id));
+  return owners.length === 1 ? owners[0].id : '';
 }
 
 async function eQuiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('dailyEntries', id, fn); }
