@@ -18,6 +18,8 @@ export const state = {
   modal: null,                // { type, ... } | null
   loginError: null,
   authEmail: null,            // cloud mode: the signed-in Supabase Auth email
+  anFrom: null, anTo: null,   // analytics date range (defaults to last 30 days)
+  anGroup: 'day',             // day | week | month
 };
 
 const subs = [];
@@ -94,8 +96,8 @@ export function builderAccounts(u, db) {
 }
 export function tabsFor(u) {
   if (!u) return [];
-  if (u.role === 'admin') return ['builder', 'accounts', 'team'];
-  if (u.role === 'manager') return ['builder', 'accounts'];
+  if (u.role === 'admin') return ['builder', 'accounts', 'analytics', 'team'];
+  if (u.role === 'manager') return ['builder', 'accounts', 'analytics'];
   return ['builder'];   // video editor
 }
 export function myAccounts(u, db) {

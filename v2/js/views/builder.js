@@ -253,19 +253,46 @@ function openMassAdd(u) {
   const accounts = builderAccounts(u, state.db)
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const editors = state.db.team.filter(t => t.role === 'editor');
-  const dayEntries = state.db.dailyEntries.filter(e => e.date === state.date);
 
   // Start with every avatar that isn't paused — the usual case is "all of them".
   const picked = new Set(accounts.filter(a => (a.status || 'Active') !== 'Paused').map(a => a.id));
 
   const draft = {
-    type: 'Product', prod: 'Assembly', assign: 'auto',
-    concept: '', hook: '', body: '', refVideo: '', notes: '',
+    date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
+    concept: '', hook: '', hookKind: 'text', hookLink: '',
+    body: '', bodyKind: 'text', bodyLink: '', refVideo: '', notes: '',
   };
 
   const body = el('div', { class: 'modal-body' });
-  body.appendChild(el('div', { class: 'hint' },
-    'Fill this in once. Every avatar you tick gets its own copy in their Daily Builder for ' + fmtDate(state.date) + ', which they can then complete independently.'));
+  const blurb = el('div', { class: 'hint' });
+  body.appendChild(blurb);
+
+  // ---- which day these land on (defaults to the day you're looking at)
+  const dayCount = el('span', { class: 'hint' });
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'DATE'),
+    el('div', { class: 'row wrap', style: 'gap:9px' },
+      el('input', {
+        class: 'input', type: 'date', style: 'width:170px', value: draft.date,
+        onchange: e => { if (e.target.value) { draft.date = e.target.value; refreshDate(); } }
+      }),
+      el('button', { class: 'btn small', onclick: () => setDate(todayStr()) }, 'Today'),
+      el('button', { class: 'btn small', onclick: () => setDate(shiftDate(todayStr(), 1)) }, 'Tomorrow'),
+      dayCount)));
+
+  function setDate(d) {
+    draft.date = d;
+    const inp = body.querySelector('input[type=date]');
+    if (inp) inp.value = d;
+    refreshDate();
+  }
+  function refreshDate() {
+    blurb.textContent = 'Fill this in once. Every avatar you tick gets its own copy in their Daily Builder for '
+      + fmtDate(draft.date) + ', which they can then complete independently.';
+    const n = state.db.dailyEntries.filter(e => e.date === draft.date).length;
+    dayCount.textContent = n ? n + (n === 1 ? ' video already on this day' : ' videos already on this day') : 'Nothing on this day yet';
+    if (typeof refresh === 'function') refresh();
+  }
 
   // ---- the brief
   body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
@@ -291,8 +318,8 @@ function openMassAdd(u) {
     el(tag || 'input', { class: 'input', placeholder: ph, oninput: e => draft[key] = e.target.value }));
 
   body.appendChild(field('concept', 'CONCEPT', 'e.g. Transformation, Villain…'));
-  body.appendChild(field('hook', 'HOOK', 'The hook / opening line…', 'textarea'));
-  body.appendChild(field('body', 'BODY', 'The body / script…', 'textarea'));
+  body.appendChild(draftSource(draft, 'hook', 'HOOK', 'The hook / opening line…'));
+  body.appendChild(draftSource(draft, 'body', 'BODY', 'The body / script…'));
   body.appendChild(field('refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…'));
   body.appendChild(field('notes', 'NOTES', 'Anything the editors should know…', 'textarea'));
 
@@ -319,11 +346,15 @@ function openMassAdd(u) {
     addBtn.disabled = !picked.size;
     addBtn.style.opacity = picked.size ? '' : '.5';
     pickWrap.querySelectorAll('[data-acct]').forEach(row => {
-      const on = picked.has(row.dataset.acct);
+      const id = row.dataset.acct;
+      const on = picked.has(id);
       row.style.borderColor = on ? 'rgba(52,224,138,0.35)' : '';
       const c = row.querySelector('.check');
       c.classList.toggle('on', on);
       c.textContent = on ? '✓' : '';
+      // how many that avatar already has on the CHOSEN day, not today
+      const n = state.db.dailyEntries.filter(e => e.date === draft.date && e.accountId === id).length;
+      row.querySelector('.already').textContent = n ? n + ' already' : '';
     });
   }
 
@@ -334,7 +365,6 @@ function openMassAdd(u) {
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
 
   accounts.forEach(a => {
-    const already = dayEntries.filter(e => e.accountId === a.id).length;
     const paused = (a.status || 'Active') === 'Paused';
     pickWrap.appendChild(el('div', {
       class: 'card row', style: 'padding:8px 11px;gap:10px;cursor:pointer', 'data-acct': a.id,
@@ -346,7 +376,7 @@ function openMassAdd(u) {
         el('b', { style: 'font-size:12.5px;display:block' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
       paused && el('span', { class: 'chip gray' }, 'Paused'),
-      already ? el('span', { class: 'hint' }, already + ' already today') : null));
+      el('span', { class: 'hint already' })));
   });
   body.appendChild(pickWrap);
 
@@ -356,18 +386,22 @@ function openMassAdd(u) {
     const chosen = accounts.filter(a => picked.has(a.id));
     chosen.forEach(a => {
       save('dailyEntries', {
-        id: uid('de'), date: state.date, accountId: a.id,
+        id: uid('de'), date: draft.date, accountId: a.id,
         type: draft.type, prod: draft.prod,
         assignedEditorId: editorFor(a, draft.assign, editors),
-        concept: draft.concept, hook: draft.hook, hookKind: 'text', hookLink: '',
-        body: draft.body, bodyKind: 'text', bodyLink: '',
+        concept: draft.concept,
+        hook: draft.hook, hookKind: draft.hookKind, hookLink: draft.hookLink,
+        body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
         refVideo: draft.refVideo, notes: draft.notes,
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
         win: false, createdBy: state.user.name, createdAt: Date.now(),
       });
     });
-    state.modal = null; forceEmit();
+    state.modal = null;
+    state.date = draft.date;        // jump to the day you just filled, so you see it
+    state.builderAvatar = null;
+    forceEmit();
   };
 
   body.appendChild(el('div', { class: 'row', style: 'gap:9px;padding-top:4px' },
@@ -375,9 +409,36 @@ function openMassAdd(u) {
     el('button', { class: 'btn', onclick: () => { state.modal = null; forceEmit(); } }, 'Cancel'),
     addBtn));
 
-  refresh();
-  state.modal = overlay('Mass add script — ' + fmtDate(state.date), body);
+  refreshDate();   // fills the blurb, the day count and the per-avatar counts
+  state.modal = overlay('Mass add script', body);
   forceEmit();
+}
+
+// Hook/body in the mass-add form, with the same Text/Link choice the manual
+// row has — so a brief that lives in a Google Doc can be linked, not pasted.
+function draftSource(draft, key, label, ph) {
+  const kindKey = key + 'Kind', linkKey = key + 'Link';
+  const seg = el('div', { class: 'seg mini' });
+  const slot = el('div');
+
+  const paint = () => {
+    const isLink = draft[kindKey] === 'link';
+    seg.innerHTML = '';
+    [['text', 'Text'], ['link', 'Link']].forEach(([k, l]) => seg.appendChild(
+      el('button', { class: draft[kindKey] === k ? 'on' : '', onclick: () => { draft[kindKey] = k; paint(); } }, l)));
+    slot.innerHTML = '';
+    slot.appendChild(isLink
+      ? el('input', {
+        class: 'input', placeholder: 'Paste the ' + label.toLowerCase() + ' link…', value: draft[linkKey],
+        oninput: e => draft[linkKey] = e.target.value
+      })
+      : el('textarea', { class: 'input', placeholder: ph, oninput: e => draft[key] = e.target.value }, draft[key]));
+  };
+  paint();
+
+  return el('div', { class: 'col', style: 'gap:6px' },
+    el('div', { class: 'row' }, el('span', { class: 'label' }, label), el('span', { class: 'spacer' }), seg),
+    slot);
 }
 
 // 'auto' = the editor this avatar belongs to, but only when it is unambiguous.

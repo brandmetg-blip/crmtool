@@ -13,6 +13,7 @@ import { renderLogin } from './views/login.js';
 import { renderBuilder } from './views/builder.js';
 import { renderAccounts } from './views/accounts.js';
 import { renderTeam } from './views/team.js';
+import { renderAnalytics } from './views/analytics.js';
 
 export const store = createStore();
 
@@ -88,6 +89,7 @@ async function boot() {
 const NAV = [
   ['builder', 'Daily Builder', 'M3 4.5h18M3 12h18M3 19.5h12'],
   ['accounts', 'Avatars', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8'],
+  ['analytics', 'Analytics', 'M3 3v18h18M7 15l4-4 3 3 5-6'],
   ['team', 'Team', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
 ];
 const icon = d => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
@@ -128,6 +130,7 @@ function renderShell(mode) {
   const main = el('div', { class: 'main' });
   if (state.route === 'builder') renderBuilder(main);
   else if (state.route === 'accounts') renderAccounts(main);
+  else if (state.route === 'analytics') renderAnalytics(main);
   else if (state.route === 'team') renderTeam(main);
 
   root.appendChild(side);
@@ -168,11 +171,13 @@ function signOutState() {
 function onlineRow() {
   const others = presence.peers().filter(p => p.userId !== state.user.id);
   if (!others.length) return null;
+  const firstName = p => (p.name || '').trim().split(/\s+/)[0] || 'Someone';
   return el('div', { style: 'margin-top:auto;padding:10px 10px 4px' },
     el('div', { class: 'label', style: 'margin-bottom:6px' }, 'ONLINE NOW'),
-    el('div', { class: 'peers', title: others.map(p => p.name).join(', ') },
-      others.slice(0, 6).map(p => avatar(p, 24)),
-      others.length > 6 && el('span', { class: 'hint', style: 'margin-left:8px' }, '+' + (others.length - 6))));
+    el('div', { class: 'col', style: 'gap:5px' },
+      others.slice(0, 6).map(p => el('div', { class: 'peer', title: p.name },
+        avatar(p, 22), el('span', null, firstName(p)))),
+      others.length > 6 && el('span', { class: 'hint' }, '+' + (others.length - 6) + ' more')));
 }
 
 // save-status pill used by every page head
