@@ -124,9 +124,11 @@ function openAccount(existing) {
       id: uid('a'), name: '', character: '', status: 'Active', phase: 'P1',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
-      metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', notes: '', createdAt: Date.now(),
+      metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
+      notes: '', createdAt: Date.now(),
     };
   if (!a.platforms) a.platforms = { facebook: '', instagram: '' };
+  if (!Array.isArray(a.bodyLinks)) a.bodyLinks = [];   // added after the first avatars existed
 
   const body = el('div', { class: 'modal-body' });
 
@@ -204,6 +206,41 @@ function openAccount(existing) {
     }),
     el('span', { class: 'hint' }, 'Shown to the video editors assigned to this avatar, under Assets.')));
 
+  // ---- pre-made bodies, one Drive folder per concept --------------------------
+  // Concepts are whatever you type in the Daily Builder, so these are free text
+  // rather than a fixed list — the label just has to match how the team says it.
+  const bodies = el('div', { class: 'col', style: 'gap:7px' });
+  function paintBodies() {
+    bodies.innerHTML = '';
+    bodies.appendChild(el('span', { class: 'label' }, 'BODIES BY CONCEPT'));
+    bodies.appendChild(el('span', { class: 'hint' },
+      'A link to this character’s pre-made bodies for each concept. Editors see them as buttons under Assets.'));
+
+    a.bodyLinks.forEach(b => {
+      bodies.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
+        el('input', {
+          class: 'input', style: 'flex:0 0 150px;height:32px;font-size:12px', value: b.concept || '',
+          placeholder: 'Concept…', oninput: e => b.concept = e.target.value
+        }),
+        el('input', {
+          class: 'input', style: 'flex:1;min-width:170px;height:32px;font-size:12px', value: b.url || '',
+          placeholder: 'Drive folder link…', oninput: e => b.url = e.target.value
+        }),
+        el('button', {
+          class: 'iconbtn danger', title: 'Remove this concept',
+          onclick: () => { a.bodyLinks = a.bodyLinks.filter(x => x.id !== b.id); paintBodies(); }
+        }, '✕')));
+    });
+
+    if (!a.bodyLinks.length) bodies.appendChild(el('span', { class: 'hint' }, 'None yet.'));
+    bodies.appendChild(el('button', {
+      class: 'btn small', style: 'align-self:flex-start',
+      onclick: () => { a.bodyLinks.push({ id: uid('bl'), concept: '', url: '' }); paintBodies(); }
+    }, '+ Add concept'));
+  }
+  paintBodies();
+  body.appendChild(bodies);
+
   body.appendChild(field('NOTES', el('textarea', {
     class: 'input', placeholder: 'Anything the team should know about this avatar…',
     oninput: e => a.notes = e.target.value
@@ -229,6 +266,10 @@ function openAccount(existing) {
       class: 'btn primary', onclick: async () => {
         if (!a.name.trim()) { err.textContent = 'Give the avatar a name.'; err.style.display = ''; return; }
         a.name = a.name.trim();
+        // drop rows the user added but never filled in
+        a.bodyLinks = a.bodyLinks
+          .filter(b => (b.concept || '').trim() || (b.url || '').trim())
+          .map(b => ({ ...b, concept: (b.concept || '').trim(), url: (b.url || '').trim() }));
         const { save } = await import('../app.js');
         save('accounts', a);
         closeModal();

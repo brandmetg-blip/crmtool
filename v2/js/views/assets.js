@@ -64,5 +64,35 @@ function card(a) {
   }
 
   box.appendChild(linkCol);
+  box.appendChild(bodiesBlock(a));
   return box;
+}
+
+// The pre-made bodies for this character, one folder per concept.
+function bodiesBlock(a) {
+  const rows = (a.bodyLinks || []).filter(b => (b.concept || '').trim() || (b.url || '').trim());
+
+  const col = el('div', { class: 'col', style: 'gap:8px;border-top:1px solid var(--line);padding-top:12px' },
+    el('div', { class: 'row' },
+      el('span', { class: 'label' }, 'BODIES BY CONCEPT'),
+      el('span', { class: 'spacer' }),
+      rows.length ? el('span', { class: 'hint' }, rows.length + (rows.length === 1 ? ' concept' : ' concepts')) : null));
+
+  if (!rows.length) {
+    col.appendChild(el('span', { class: 'hint' }, 'No concepts set up for this character yet.'));
+    return col;
+  }
+
+  rows.forEach(b => {
+    const label = (b.concept || '').trim() || 'Untitled concept';
+    const url = (b.url || '').trim();
+    const isUrl = /^https?:\/\//.test(url);
+    col.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+      el('span', { style: 'flex:1;min-width:90px;font-size:12.5px;font-weight:700' }, label),
+      isUrl
+        ? el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open bodies ↗')
+        : el('span', { class: 'hint' }, url || 'No link'),
+      isUrl ? el('button', { class: 'btn small', onclick: e => copyText(url, e.currentTarget) }, 'Copy') : null));
+  });
+  return col;
 }
