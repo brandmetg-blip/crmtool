@@ -161,6 +161,7 @@ function signOutState() {
   state.route = 'login';
   state.builderMode = 'videos';
   state.builderAvatar = null;
+  state.builderEditor = 'all';
   state.openScript = null;
   state.modal = null;
   state.loginError = null;

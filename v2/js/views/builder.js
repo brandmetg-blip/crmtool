@@ -29,6 +29,44 @@ const TYPES = ['Growth', 'Product'];
 const PROD = ['Assembly', 'Scratch', 'Repost'];
 const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
 
+// ---- pre-made bodies -------------------------------------------------------
+// Assembly means the body already exists: each avatar keeps its own Drive
+// folder per concept (set under Avatars, shown under Assets). An entry stores
+// the CONCEPT NAME, not the URL, and the link is resolved from the avatar every
+// time it is shown — so fixing a moved folder once fixes every video using it.
+//
+// Concept labels are free text, so match them the way a person would: trimmed
+// and case-insensitive.
+const normConcept = s => (s || '').trim().toLowerCase();
+
+function bodyLinkFor(account, conceptLabel) {
+  const want = normConcept(conceptLabel);
+  if (!want || !account) return '';
+  const hit = (account.bodyLinks || []).find(b => normConcept(b.concept) === want);
+  return hit ? (hit.url || '').trim() : '';
+}
+
+// Every concept label across the given avatars, de-duped case-insensitively.
+// Where spellings differ ("Transformation" vs "transformation") show the most
+// common one, preferring a capitalised spelling on a tie — matching stays
+// case-insensitive either way, this is only what the human reads.
+function conceptsAcross(accounts) {
+  const tally = new Map();   // normalised -> Map(spelling -> count)
+  accounts.forEach(a => (a.bodyLinks || []).forEach(b => {
+    const k = normConcept(b.concept);
+    if (!k) return;
+    const spellings = tally.get(k) || new Map();
+    const s = (b.concept || '').trim();
+    spellings.set(s, (spellings.get(s) || 0) + 1);
+    tally.set(k, spellings);
+  }));
+
+  const best = spellings => [...spellings.entries()].sort((x, y) =>
+    (y[1] - x[1]) || (/^[A-Z]/.test(y[0]) - /^[A-Z]/.test(x[0])) || x[0].localeCompare(y[0]))[0][0];
+
+  return [...tally.values()].map(best).sort((x, y) => x.localeCompare(y));
+}
+
 // A script/brief field two people could type into at once. Focusing it claims
 // it; everyone else sees it read-only with who has it, until they move away.
 // Claims expire on their own, so nothing can get permanently stuck.
@@ -131,26 +169,144 @@ function dayStrip(u) {
 // VIDEOS MODE
 // ===========================================================================
 function videosMode(root, u) {
-  const accounts = builderAccounts(u, state.db);
+  const all = builderAccounts(u, state.db);
   const dayAll = state.db.dailyEntries.filter(e => e.date === state.date);
-  const day = visibleEntries(u, dayAll, accounts);
+  const day = visibleEntries(u, dayAll, all);
 
   if (state.builderAvatar) {
-    const acct = byId(accounts, state.builderAvatar);
+    const acct = byId(all, state.builderAvatar);
     if (acct) { root.appendChild(sheet(acct, day.filter(e => e.accountId === acct.id), u)); return; }
     state.builderAvatar = null;   // avatar vanished (deleted, or access changed)
   }
 
-  if (!accounts.length) {
+  if (!all.length) {
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
       can.seesAllAccounts(u) ? 'No avatars yet — add them under Avatars.' : 'No avatars assigned to you yet — ask an admin.'));
     return;
   }
 
-  root.appendChild(summary(day, u));
-  root.appendChild(el('div', { class: 'grid' },
-    accounts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-      .map(a => avatarCard(a, day.filter(e => e.accountId === a.id), u))));
+  // narrow to one editor's avatars, if a filter is set
+  const accounts = filterByEditor(all);
+
+  const main = el('div', { style: 'flex:1;min-width:0' });
+  if (can.editVideos(u)) main.appendChild(editorFilter(all));
+  main.appendChild(summary(day.filter(e => accounts.some(a => a.id === e.accountId)), u));
+
+  if (!accounts.length) {
+    main.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
+      'That editor has no avatars assigned yet.'));
+  } else {
+    main.appendChild(el('div', { class: 'grid' },
+      accounts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+        .map(a => avatarCard(a, day.filter(e => e.accountId === a.id), u))));
+  }
+
+  // The admin gets a standing overview of what each editor still owes.
+  if (u.role === 'admin') {
+    root.appendChild(el('div', { class: 'with-aside' }, main, outstandingPanel(dayAll, all)));
+  } else {
+    root.appendChild(main);
+  }
+}
+
+// Which avatars a given editor can work on — the same rule the editor's own
+// session uses, so the filter shows exactly what they would see.
+function accountsForEditor(editor, all) {
+  const ids = new Set(editor.assignments || []);
+  state.db.dailyEntries.forEach(e => { if (e.assignedEditorId === editor.id) ids.add(e.accountId); });
+  return all.filter(a => ids.has(a.id));
+}
+
+function filterByEditor(all) {
+  const id = state.builderEditor;
+  if (!id || id === 'all') return all;
+  const ed = byId(state.db.team, id);
+  if (!ed) { state.builderEditor = 'all'; return all; }
+  return accountsForEditor(ed, all);
+}
+
+function editorFilter(all) {
+  const editors = state.db.team.filter(t => t.role === 'editor');
+  if (!editors.length) return el('span');
+
+  const sel = el('select', {
+    class: 'input', style: 'width:auto;min-width:200px',
+    onchange: e => { state.builderEditor = e.target.value; forceEmit(); }
+  }, [el('option', { value: 'all' }, 'All avatars')].concat(editors.map(t => {
+    const n = accountsForEditor(t, all).length;
+    return el('option', { value: t.id }, t.name + ' (' + n + ')');
+  })));
+  sel.value = state.builderEditor || 'all';
+
+  const row = el('div', { class: 'row wrap', style: 'gap:9px;margin-bottom:14px' },
+    el('span', { class: 'label' }, 'SHOW'), sel);
+  if (state.builderEditor && state.builderEditor !== 'all') {
+    row.appendChild(el('button', {
+      class: 'btn small', onclick: () => { state.builderEditor = 'all'; forceEmit(); }
+    }, 'Clear filter'));
+  }
+  return row;
+}
+
+// ---- admin-only: what each editor still has open ----------------------------
+function outstandingPanel(dayAll, all) {
+  const editors = state.db.team.filter(t => t.role === 'editor');
+  const aside = el('div', { class: 'aside' },
+    el('div', { class: 'row', style: 'margin-bottom:10px' },
+      el('span', { class: 'label' }, 'STILL TO FINISH'),
+      el('span', { class: 'spacer' }),
+      el('span', { class: 'hint' }, fmtDate(state.date).split(',')[0])));
+
+  const open = dayAll.filter(e => !e.done);
+  if (!open.length) {
+    aside.appendChild(el('div', { class: 'card', style: 'padding:14px;text-align:center;color:var(--dim);font-size:12px' },
+      dayAll.length ? 'Everything for this day is made.' : 'Nothing planned for this day.'));
+    return aside;
+  }
+
+  const block = (title, entries, tone) => {
+    if (!entries.length) return null;
+    // one line per avatar, however many videos are open on it
+    const perAcct = new Map();
+    entries.forEach(e => perAcct.set(e.accountId, (perAcct.get(e.accountId) || 0) + 1));
+
+    const card = el('div', { class: 'card col', style: 'gap:8px;padding:12px 13px' },
+      el('div', { class: 'row' },
+        el('b', { style: 'font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, title),
+        el('span', { class: 'spacer' }),
+        el('span', { class: 'chip ' + tone }, String(entries.length))));
+
+    [...perAcct.entries()].forEach(([id, n]) => {
+      const a = byId(all, id) || byId(state.db.accounts, id);
+      if (!a) return;
+      card.appendChild(el('div', {
+        class: 'row', style: 'gap:8px;cursor:pointer',
+        onclick: () => { state.builderAvatar = a.id; forceEmit(); }
+      },
+        avatar(a, 22),
+        el('span', { style: 'flex:1;min-width:0;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, a.name || 'Untitled'),
+        n > 1 ? el('span', { class: 'hint' }, '×' + n) : null));
+    });
+    return card;
+  };
+
+  editors.forEach(t => {
+    const mine = open.filter(e => e.assignedEditorId === t.id);
+    const c = block(t.name, mine, 'amber');
+    if (c) aside.appendChild(c);
+  });
+
+  const unassigned = open.filter(e => !e.assignedEditorId);
+  const uc = block('Unassigned', unassigned, 'gray');
+  if (uc) aside.appendChild(uc);
+
+  // an editor with nothing open is worth seeing too — it means they are clear
+  const clear = editors.filter(t => !open.some(e => e.assignedEditorId === t.id));
+  if (clear.length) {
+    aside.appendChild(el('div', { class: 'hint', style: 'padding:2px 2px' },
+      'All done: ' + clear.map(t => (t.name || '').split(/\s+/)[0]).join(', ')));
+  }
+  return aside;
 }
 
 function summary(day, u) {
@@ -260,7 +416,8 @@ function openMassAdd(u) {
   const draft = {
     date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
     concept: '', hook: '', hookKind: 'text', hookLink: '',
-    body: '', bodyKind: 'text', bodyLink: '', refVideo: '', notes: '',
+    body: '', bodyKind: 'text', bodyLink: '', bodyConcept: '',
+    refVideo: '', notes: '',
   };
 
   const body = el('div', { class: 'modal-body' });
@@ -303,7 +460,19 @@ function openMassAdd(u) {
       }))),
     el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'PRODUCTION'),
       el('div', { class: 'seg mini' }, PROD.map(p => {
-        const b = el('button', { class: draft.prod === p ? 'on' : '', onclick: () => { draft.prod = p; repaintSegs(); } }, p);
+        const b = el('button', {
+          class: draft.prod === p ? 'on' : '',
+          onclick: () => {
+            draft.prod = p;
+            // Assembly means the body is already made, so reach for the
+            // pre-made folders by default — unless something was typed.
+            if (p === 'Assembly' && draft.bodyKind === 'text' && !draft.body) {
+              draft.bodyKind = 'concept';
+              bodyField.repaint();
+            }
+            repaintSegs(); refresh();
+          }
+        }, p);
         b.dataset.seg = 'prod'; b.dataset.val = p; return b;
       })))));
 
@@ -317,9 +486,24 @@ function openMassAdd(u) {
     el('span', { class: 'label' }, label),
     el(tag || 'input', { class: 'input', placeholder: ph, oninput: e => draft[key] = e.target.value }));
 
-  body.appendChild(field('concept', 'CONCEPT', 'e.g. Transformation, Villain…'));
+  const conceptField = field('concept', 'CONCEPT', 'e.g. Transformation, Villain…');
+  body.appendChild(conceptField);
   body.appendChild(draftSource(draft, 'hook', 'HOOK', 'The hook / opening line…'));
-  body.appendChild(draftSource(draft, 'body', 'BODY', 'The body / script…'));
+
+  const coverage = el('div');
+  const bodyField = draftSource(draft, 'body', 'BODY', 'The body / script…', {
+    concepts: () => conceptsAcross(accounts),
+    coverage: () => coverage,
+    onKind: () => refresh(),
+    onConcept: () => {
+      // picking a concept also names the video, so the builder shows it
+      draft.concept = draft.bodyConcept;
+      const inp = conceptField.querySelector('input');
+      if (inp) inp.value = draft.bodyConcept;
+      refresh();
+    },
+  });
+  body.appendChild(bodyField);
   body.appendChild(field('refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…'));
   body.appendChild(field('notes', 'NOTES', 'Anything the editors should know…', 'textarea'));
 
@@ -339,6 +523,28 @@ function openMassAdd(u) {
   const addBtn = el('button', { class: 'btn primary' });
 
   function refresh() {
+    // ---- how many of the avatars actually have this concept set up
+    const useConcept = draft.bodyKind === 'concept' && !!draft.bodyConcept;
+    coverage.innerHTML = '';
+    if (useConcept) {
+      const covered = accounts.filter(a => bodyLinkFor(a, draft.bodyConcept));
+      const missing = accounts.filter(a => !bodyLinkFor(a, draft.bodyConcept));
+      coverage.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('span', { class: 'chip ' + (missing.length ? 'amber' : 'green') },
+          covered.length + ' of ' + accounts.length + ' avatars have bodies for this'),
+        missing.length && covered.length
+          ? el('button', {
+            class: 'btn small',
+            onclick: () => { picked.clear(); covered.forEach(a => picked.add(a.id)); refresh(); }
+          }, 'Select only those')
+          : null));
+      if (missing.length) {
+        coverage.appendChild(el('span', { class: 'hint' },
+          'No link yet: ' + missing.map(a => a.name || 'Untitled').join(', ')
+          + ' — they still get the video, just with an empty body.'));
+      }
+    }
+
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected';
     addBtn.textContent = picked.size
       ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars')
@@ -355,6 +561,17 @@ function openMassAdd(u) {
       // how many that avatar already has on the CHOSEN day, not today
       const n = state.db.dailyEntries.filter(e => e.date === draft.date && e.accountId === id).length;
       row.querySelector('.already').textContent = n ? n + ' already' : '';
+
+      // whether this avatar has the picked concept's bodies
+      const cover = row.querySelector('.cover');
+      const acct = accounts.find(a => a.id === id);
+      cover.textContent = '';
+      cover.className = 'chip cover';
+      if (useConcept && acct) {
+        const has = !!bodyLinkFor(acct, draft.bodyConcept);
+        cover.textContent = has ? '✓ bodies' : 'no bodies';
+        cover.className = 'chip cover ' + (has ? 'green' : 'gray');
+      }
     });
   }
 
@@ -376,6 +593,7 @@ function openMassAdd(u) {
         el('b', { style: 'font-size:12.5px;display:block' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
       paused && el('span', { class: 'chip gray' }, 'Paused'),
+      el('span', { class: 'chip cover' }),
       el('span', { class: 'hint already' })));
   });
   body.appendChild(pickWrap);
@@ -392,6 +610,7 @@ function openMassAdd(u) {
         concept: draft.concept,
         hook: draft.hook, hookKind: draft.hookKind, hookLink: draft.hookLink,
         body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
+        bodyConcept: draft.bodyConcept,   // resolved against the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
@@ -416,18 +635,47 @@ function openMassAdd(u) {
 
 // Hook/body in the mass-add form, with the same Text/Link choice the manual
 // row has — so a brief that lives in a Google Doc can be linked, not pasted.
-function draftSource(draft, key, label, ph) {
+// The body gets a third choice, "From concept": pick a concept once and every
+// avatar receives its OWN pre-made bodies folder for it.
+function draftSource(draft, key, label, ph, opts) {
+  opts = opts || {};
   const kindKey = key + 'Kind', linkKey = key + 'Link';
+  const kinds = opts.concepts
+    ? [['text', 'Text'], ['link', 'Link'], ['concept', 'From concept']]
+    : [['text', 'Text'], ['link', 'Link']];
+
   const seg = el('div', { class: 'seg mini' });
-  const slot = el('div');
+  const slot = el('div', { class: 'col', style: 'gap:6px' });
 
   const paint = () => {
-    const isLink = draft[kindKey] === 'link';
     seg.innerHTML = '';
-    [['text', 'Text'], ['link', 'Link']].forEach(([k, l]) => seg.appendChild(
-      el('button', { class: draft[kindKey] === k ? 'on' : '', onclick: () => { draft[kindKey] = k; paint(); } }, l)));
+    kinds.forEach(([k, l]) => seg.appendChild(el('button', {
+      class: draft[kindKey] === k ? 'on' : '',
+      onclick: () => { draft[kindKey] = k; paint(); if (opts.onKind) opts.onKind(); }
+    }, l)));
+
     slot.innerHTML = '';
-    slot.appendChild(isLink
+    if (draft[kindKey] === 'concept') {
+      const list = opts.concepts();
+      if (!list.length) {
+        slot.appendChild(el('div', { class: 'hint' },
+          'No avatar has any pre-made bodies set up yet. Add them under Avatars → Bodies by concept.'));
+        return;
+      }
+      const sel = el('select', {
+        class: 'input',
+        onchange: e => { draft.bodyConcept = e.target.value; if (opts.onConcept) opts.onConcept(); }
+      }, [el('option', { value: '' }, 'Pick a concept…')]
+        .concat(list.map(c => el('option', { value: c }, c))));
+      sel.value = draft.bodyConcept || '';
+      slot.appendChild(sel);
+      slot.appendChild(el('div', { class: 'hint' },
+        'Each avatar gets its own bodies folder for this concept. The video stores the concept, not the link, so fixing a folder later fixes every video using it.'));
+      if (opts.coverage) slot.appendChild(opts.coverage());
+      return;
+    }
+
+    slot.appendChild(draft[kindKey] === 'link'
       ? el('input', {
         class: 'input', placeholder: 'Paste the ' + label.toLowerCase() + ' link…', value: draft[linkKey],
         oninput: e => draft[linkKey] = e.target.value
@@ -435,10 +683,11 @@ function draftSource(draft, key, label, ph) {
       : el('textarea', { class: 'input', placeholder: ph, oninput: e => draft[key] = e.target.value }, draft[key]));
   };
   paint();
-
-  return el('div', { class: 'col', style: 'gap:6px' },
+  const wrap = el('div', { class: 'col', style: 'gap:6px' },
     el('div', { class: 'row' }, el('span', { class: 'label' }, label), el('span', { class: 'spacer' }), seg),
     slot);
+  wrap.repaint = paint;
+  return wrap;
 }
 
 // 'auto' = the editor this avatar belongs to, but only when it is unambiguous.
@@ -498,8 +747,8 @@ function entryRow(en, a, num, u) {
           () => el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—'))
       : el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—')));
 
-  card.appendChild(sourceBlock(en, 'hook', 'HOOK', 'The hook / opening line…', canEdit));
-  card.appendChild(sourceBlock(en, 'body', 'BODY', 'The body / script…', canEdit));
+  card.appendChild(sourceBlock(en, 'hook', 'HOOK', 'The hook / opening line…', canEdit, a));
+  card.appendChild(sourceBlock(en, 'body', 'BODY', 'The body / script…', canEdit, a));
 
   card.appendChild(linkBlock(en, 'refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…', canEdit));
 
@@ -566,15 +815,24 @@ function editorRow(en, u, canEdit) {
 }
 
 // Hook and body can each be typed in, or given as a link to somewhere else.
-function sourceBlock(en, key, label, ph, canEdit) {
+function sourceBlock(en, key, label, ph, canEdit, acct) {
   const kindKey = key + 'Kind', linkKey = key + 'Link';
   const isLink = (en[kindKey] || 'text') === 'link';
   const value = isLink ? (en[linkKey] || '') : (en[key] || '');
 
+  // The body can point at the avatar's own pre-made bodies for a concept. The
+  // entry holds the concept name; the link is resolved from the avatar here, so
+  // it is always current.
+  const kind = en[kindKey] || 'text';
+  if (key === 'body' && kind === 'concept') return conceptBody(en, acct, canEdit);
+
   const head = el('div', { class: 'row' }, el('span', { class: 'label' }, label));
   if (canEdit) {
-    head.appendChild(el('div', { class: 'seg mini' }, [['text', 'Text'], ['link', 'Link']].map(([k, l]) =>
-      el('button', { class: (isLink ? 'link' : 'text') === k ? 'on' : '', onclick: () => eLoud(en.id, x => x[kindKey] = k) }, l))));
+    const kinds = key === 'body'
+      ? [['text', 'Text'], ['link', 'Link'], ['concept', 'From concept']]
+      : [['text', 'Text'], ['link', 'Link']];
+    head.appendChild(el('div', { class: 'seg mini' }, kinds.map(([k, l]) =>
+      el('button', { class: kind === k ? 'on' : '', onclick: () => eLoud(en.id, x => x[kindKey] = k) }, l))));
   }
   head.appendChild(el('span', { class: 'spacer' }));
   head.appendChild(el('button', { class: 'btn small', onclick: e => copyText(value, e.currentTarget) }, 'Copy'));
@@ -594,6 +852,48 @@ function sourceBlock(en, key, label, ph, canEdit) {
     : ro();
 
   return el('div', { class: 'col', style: 'gap:6px' }, head, body);
+}
+
+// Body = "this avatar's pre-made bodies for concept X". The link is looked up
+// on the avatar every render, never copied into the entry.
+function conceptBody(en, acct, canEdit) {
+  const label = (en.bodyConcept || '').trim();
+  const url = bodyLinkFor(acct, label);
+  const head = el('div', { class: 'row' }, el('span', { class: 'label' }, 'BODY'));
+
+  if (canEdit) {
+    head.appendChild(el('div', { class: 'seg mini' }, [['text', 'Text'], ['link', 'Link'], ['concept', 'From concept']].map(([k, l]) =>
+      el('button', { class: k === 'concept' ? 'on' : '', onclick: () => eLoud(en.id, x => x.bodyKind = k) }, l))));
+  }
+  head.appendChild(el('span', { class: 'spacer' }));
+  if (url) head.appendChild(el('button', { class: 'btn small', onclick: e => copyText(url, e.currentTarget) }, 'Copy'));
+
+  const row = el('div', { class: 'row wrap', style: 'gap:8px' });
+
+  if (canEdit) {
+    // only this avatar's own concepts can be picked
+    const mine = (acct.bodyLinks || []).map(b => (b.concept || '').trim()).filter(Boolean);
+    const opts = mine.slice();
+    if (label && !mine.some(c => normConcept(c) === normConcept(label))) opts.unshift(label);
+    const sel = el('select', {
+      class: 'input', style: 'width:auto;min-width:170px;height:32px',
+      onchange: e => eLoud(en.id, x => x.bodyConcept = e.target.value)
+    }, [el('option', { value: '' }, 'Pick a concept…')].concat(opts.map(c => el('option', { value: c }, c))));
+    sel.value = label;
+    row.appendChild(sel);
+  } else {
+    row.appendChild(el('span', { class: 'chip violet' }, label || 'No concept'));
+  }
+
+  if (url) {
+    row.appendChild(el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open bodies ↗'));
+  } else {
+    row.appendChild(el('span', { class: 'hint' }, label
+      ? 'No bodies link set for “' + label + '” on this avatar — add it under Avatars.'
+      : 'Pick which concept’s bodies to use.'));
+  }
+
+  return el('div', { class: 'col', style: 'gap:6px' }, head, row);
 }
 
 function linkBlock(en, key, label, ph, canEdit) {
