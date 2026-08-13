@@ -96,9 +96,9 @@ export function builderAccounts(u, db) {
 }
 export function tabsFor(u) {
   if (!u) return [];
-  if (u.role === 'admin') return ['builder', 'accounts', 'analytics', 'team'];
-  if (u.role === 'manager') return ['builder', 'accounts', 'analytics'];
-  return ['builder'];   // video editor
+  if (u.role === 'admin') return ['builder', 'accounts', 'assets', 'analytics', 'team'];
+  if (u.role === 'manager') return ['builder', 'accounts', 'assets', 'analytics'];
+  return ['builder', 'assets'];   // video editor
 }
 export function myAccounts(u, db) {
   if (can.seesAllAccounts(u)) return db.accounts;

@@ -124,7 +124,7 @@ function openAccount(existing) {
       id: uid('a'), name: '', character: '', status: 'Active', phase: 'P1',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
-      metaBusinessSuiteUrl: '', avatarUrl: '', notes: '', createdAt: Date.now(),
+      metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', notes: '', createdAt: Date.now(),
     };
   if (!a.platforms) a.platforms = { facebook: '', instagram: '' };
 
@@ -194,6 +194,15 @@ function openAccount(existing) {
     class: 'input', value: a.metaBusinessSuiteUrl || '', placeholder: 'https://business.facebook.com/…',
     oninput: e => a.metaBusinessSuiteUrl = e.target.value
   })));
+
+  // Where this avatar's base images live. Editors see it on the Assets tab.
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'BASE IMAGE LINK'),
+    el('input', {
+      class: 'input', value: a.baseImageLink || '', placeholder: 'Drive folder with this avatar’s base images…',
+      oninput: e => a.baseImageLink = e.target.value
+    }),
+    el('span', { class: 'hint' }, 'Shown to the video editors assigned to this avatar, under Assets.')));
 
   body.appendChild(field('NOTES', el('textarea', {
     class: 'input', placeholder: 'Anything the team should know about this avatar…',

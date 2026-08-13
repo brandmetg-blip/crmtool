@@ -14,6 +14,7 @@ import { renderBuilder } from './views/builder.js';
 import { renderAccounts } from './views/accounts.js';
 import { renderTeam } from './views/team.js';
 import { renderAnalytics } from './views/analytics.js';
+import { renderAssets } from './views/assets.js';
 
 export const store = createStore();
 
@@ -89,6 +90,7 @@ async function boot() {
 const NAV = [
   ['builder', 'Daily Builder', 'M3 4.5h18M3 12h18M3 19.5h12'],
   ['accounts', 'Avatars', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8'],
+  ['assets', 'Assets', 'M21 15l-5-5L5 21M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5zM8.5 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3'],
   ['analytics', 'Analytics', 'M3 3v18h18M7 15l4-4 3 3 5-6'],
   ['team', 'Team', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
 ];
@@ -130,6 +132,7 @@ function renderShell(mode) {
   const main = el('div', { class: 'main' });
   if (state.route === 'builder') renderBuilder(main);
   else if (state.route === 'accounts') renderAccounts(main);
+  else if (state.route === 'assets') renderAssets(main);
   else if (state.route === 'analytics') renderAnalytics(main);
   else if (state.route === 'team') renderTeam(main);
 
