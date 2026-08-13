@@ -9,7 +9,7 @@ import { MODE } from '../config.js';
 
 const ROLE_NOTE = {
   admin: 'Everything — scripts, avatars, the team.',
-  manager: 'Writes the briefs and scripts, manages avatars, assigns editors. Cannot manage the team.',
+  manager: 'Sees everything — every avatar, every video, the analytics — and can change none of it.',
   editor: 'Read-only. Copies the script and logs their finished video link. Sees only what is assigned to them.',
 };
 const ROLE_CHIP = { admin: 'green', manager: 'violet', editor: 'blue' };

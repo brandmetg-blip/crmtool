@@ -189,7 +189,8 @@ function videosMode(root, u) {
   const accounts = filterByEditor(all);
 
   const main = el('div', { style: 'flex:1;min-width:0' });
-  if (can.editVideos(u)) main.appendChild(editorFilter(all));
+  // narrowing the view is reading, not writing — managers get it too
+  if (can.seesAllAccounts(u)) main.appendChild(editorFilter(all));
   main.appendChild(summary(day.filter(e => accounts.some(a => a.id === e.accountId)), u));
 
   if (!accounts.length) {
@@ -323,7 +324,7 @@ function summary(day, u) {
     bar.appendChild(el('span', { class: 'chip amber' }, left + (left === 1 ? ' video' : ' videos') + ' still to make'));
     bar.appendChild(el('span', { class: 'chip gray' }, done + ' / ' + day.length + ' done'));
   }
-  if (can.markPosted(u) && day.length) bar.appendChild(el('span', { class: 'chip blue' }, posted + ' posted'));
+  if (can.seesAllAccounts(u) && day.length) bar.appendChild(el('span', { class: 'chip blue' }, posted + ' posted'));
   return bar;
 }
 
@@ -353,7 +354,7 @@ function avatarCard(a, entries, u) {
     el('div', { class: 'row' },
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
-      can.markPosted(u) && entries.length ? el('span', { class: 'hint' }, posted + ' posted') : null));
+      can.seesAllAccounts(u) && entries.length ? el('span', { class: 'hint' }, posted + ' posted') : null));
 
   if (paused) card.appendChild(el('span', { class: 'chip gray', style: 'align-self:flex-start' }, 'Paused'));
   return card;
@@ -787,8 +788,9 @@ function entryRow(en, a, num, u) {
   if (done && en.doneBy) made.appendChild(el('span', { class: 'hint' }, 'by ' + en.doneBy));
   card.appendChild(made);
 
-  // ---- status: posted + platforms (admins and posters)
-  if (canPost || en.posted) card.appendChild(postedRow(en, canPost));
+  // ---- status: posted + platforms. The admin ticks it; a manager always sees
+  // it (read-only); an editor only sees it once it has actually been posted.
+  if (canPost || en.posted || can.seesAllAccounts(u)) card.appendChild(postedRow(en, canPost));
   return card;
 }
 

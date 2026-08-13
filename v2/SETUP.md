@@ -119,16 +119,25 @@ ever written to the database.**
 
 ### 2d. Who can do what
 
+**Only the admin changes anything.** A marketing manager sees the whole
+workspace and can change none of it; a video editor sees only what is assigned
+to them, and the one thing they may change is marking their own video made.
+
 | | Admin | Marketing Manager | Video Editor |
 |---|---|---|---|
-| Daily Builder | ✅ | ✅ | only what's assigned to them |
-| Write the brief (concept, hook, body, notes, type, production) | ✅ | ✅ | ❌ read-only |
-| Assign a video to an editor | ✅ | ✅ | ❌ |
+| See the Daily Builder | ✅ everything | ✅ everything | only what's assigned to them |
+| Add / mass add scripts and videos | ✅ | ❌ | ❌ |
+| Write the brief (concept, hook, body, notes, type, production) | ✅ | ❌ view only | ❌ view only |
+| Assign a video to an editor | ✅ | ❌ view only | ❌ |
 | Copy the script | ✅ | ✅ | ✅ |
-| Tick "video made" + paste the finished link | ✅ | ✅ | ✅ |
-| Mark posted + platforms | ✅ | ✅ | ❌ |
-| Main Scripts (frames, prompts) | ✅ | ✅ | ❌ read-only + copy |
-| Avatars | ✅ | ✅ | ❌ |
+| Tick "video made" + paste the finished link | ✅ | ❌ | ✅ |
+| Mark posted + platforms | ✅ | ❌ view only | sees it once posted |
+| Filter by video editor | ✅ | ✅ | ❌ |
+| "Still to finish" panel | ✅ | ❌ | ❌ |
+| Main Scripts (frames, prompts) | ✅ | ❌ view + copy | ❌ view + copy |
+| Avatars | ✅ | ❌ view only | ❌ |
+| Assets | ✅ | ✅ all | ✅ theirs only |
+| Analytics | ✅ | ✅ | ❌ |
 | Team | ✅ | ❌ | ❌ |
 
 ---

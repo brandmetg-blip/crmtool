@@ -62,20 +62,27 @@ export const ROLES = [
 export const ALL_ROLES = [['admin', 'Admin']].concat(ROLES);
 export function roleLabel(r) { const f = ALL_ROLES.find(x => x[0] === r); return f ? f[1] : r; }
 
-// A video editor can read everything they are given, copy any of it, and log
-// that their video is made (with the link). They cannot change a single field
-// of the brief. Admin and manager write everything.
-const writes = u => !!u && (u.role === 'admin' || u.role === 'manager');
+// Only the admin changes anything.
+//
+// A marketing manager sees the whole workspace — every avatar, every video,
+// the analytics — and can change none of it. No adding, no editing, no ticking.
+// A video editor sees only what is assigned to them, can copy any of it, and
+// the single thing they may change is marking their own video made and pasting
+// the finished link.
+const isAdmin = u => !!u && u.role === 'admin';
+const isManager = u => !!u && u.role === 'manager';
+const isEditor = u => !!u && u.role === 'editor';
+
 export const can = {
-  editScripts: writes,
-  editAccounts: writes,
-  manageTeam: u => !!u && u.role === 'admin',
-  logCompletion: u => !!u,
-  seesAllAccounts: writes,
+  editScripts: isAdmin,
+  editAccounts: isAdmin,
+  manageTeam: isAdmin,
+  seesAllAccounts: u => isAdmin(u) || isManager(u),   // viewing, not writing
   // daily builder
-  editVideos: writes,                  // write the brief, assign editors
-  makeVideo: u => !!u,                 // tick "made" + paste the finished link
-  markPosted: writes,                  // tick "posted" + platforms
+  editVideos: isAdmin,                                // write the brief, assign editors
+  makeVideo: u => isAdmin(u) || isEditor(u),          // tick "made" + paste the link
+  logCompletion: u => isAdmin(u) || isEditor(u),      // main-script completion
+  markPosted: isAdmin,                                // tick "posted" + platforms
 };
 
 // Which daily-builder videos a person may see. An assigned video belongs to
