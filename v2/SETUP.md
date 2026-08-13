@@ -130,7 +130,8 @@ to them, and the one thing they may change is marking their own video made.
 | Write the brief (concept, hook, body, notes, type, production) | ✅ | ❌ view only | ❌ view only |
 | Assign a video to an editor | ✅ | ❌ view only | ❌ |
 | Copy the script | ✅ | ✅ | ✅ |
-| Tick "video made" + paste the finished link | ✅ | ❌ | ✅ |
+| Be assigned a video | — | ✅ | ✅ |
+| Tick "video made" + paste the finished link | ✅ any | ✅ only videos assigned to them | ✅ |
 | Mark posted + platforms | ✅ | ❌ view only | sees it once posted |
 | Filter by video editor | ✅ | ✅ | ❌ |
 | "Still to finish" panel | ✅ | ❌ | ❌ |

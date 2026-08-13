@@ -57,8 +57,7 @@ export function renderTeam(root) {
           el('span', { class: 'hint', style: 'word-break:break-all' }, m.email || 'no email')),
         el('span', { class: 'chip ' + (ROLE_CHIP[m.role] || 'gray') }, roleLabel(m.role))),
       el('div', { class: 'hint' },
-        m.role === 'editor'
-          ? (assigned ? assigned + (assigned === 1 ? ' avatar assigned' : ' avatars assigned') : 'No avatars assigned yet')
+        assigned ? assigned + (assigned === 1 ? ' avatar assigned' : ' avatars assigned')
           : ROLE_NOTE[m.role] || ''));
   })));
 }
@@ -103,10 +102,10 @@ function openMember(existing) {
     })));
   }
 
-  // assignments — only meaningful for editors
+  // assignments — for anyone who can be handed a video (editors and managers)
   function renderAssignments() {
     assignWrap.innerHTML = '';
-    if (m.role !== 'editor') return;
+    if (m.role !== 'editor' && m.role !== 'manager') return;
     assignWrap.appendChild(el('span', { class: 'label' }, 'ASSIGNED AVATARS'));
     const accounts = state.db.accounts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     if (!accounts.length) {
@@ -152,7 +151,7 @@ function openMember(existing) {
         m.name = m.name.trim(); m.email = m.email.trim().toLowerCase();
         if (m._newPassword) m.password = m._newPassword;
         delete m._newPassword;
-        if (m.role !== 'editor') m.assignments = [];
+        if (m.role !== 'editor' && m.role !== 'manager') m.assignments = [];
         const { save } = await import('../app.js');
         save('team', m);
         closeModal();

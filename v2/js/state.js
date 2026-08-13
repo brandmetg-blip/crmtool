@@ -80,10 +80,30 @@ export const can = {
   seesAllAccounts: u => isAdmin(u) || isManager(u),   // viewing, not writing
   // daily builder
   editVideos: isAdmin,                                // write the brief, assign editors
-  makeVideo: u => isAdmin(u) || isEditor(u),          // tick "made" + paste the link
   logCompletion: u => isAdmin(u) || isEditor(u),      // main-script completion
   markPosted: isAdmin,                                // tick "posted" + platforms
 };
+
+// Who may tick "video made" and paste the finished link on THIS video.
+// It is a per-video question, not a per-role one: a manager is view-only
+// everywhere except the videos actually assigned to them.
+export function canMakeThis(u, entry) {
+  if (!u || !entry) return false;
+  if (u.role === 'admin') return true;
+  if (entry.assignedEditorId) return entry.assignedEditorId === u.id;
+  // Unassigned: an editor may still do it (they only ever see their own
+  // avatars' videos). A manager may not — they see everything, so falling
+  // through here would hand them the whole workspace.
+  return u.role === 'editor';
+}
+
+// Anyone a video can be handed to: video editors, and marketing managers who
+// also take work. Sorted so the list reads the same everywhere.
+export function assignableMembers(db) {
+  return (db.team || [])
+    .filter(t => t.role === 'editor' || t.role === 'manager')
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+}
 
 // Which daily-builder videos a person may see. An assigned video belongs to
 // that editor alone; an unassigned one falls back to avatar access, so nothing

@@ -18,7 +18,7 @@
 
 import {
   state, emit, forceEmit, uid, todayStr, shiftDate, fmtDate, byId, can,
-  myAccounts, visibleEntries, builderAccounts,
+  myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { presence } from '../presence.js';
@@ -227,7 +227,7 @@ function filterByEditor(all) {
 }
 
 function editorFilter(all) {
-  const editors = state.db.team.filter(t => t.role === 'editor');
+  const editors = assignableMembers(state.db);
   if (!editors.length) return el('span');
 
   const sel = el('select', {
@@ -251,7 +251,7 @@ function editorFilter(all) {
 
 // ---- admin-only: what each editor still has open ----------------------------
 function outstandingPanel(dayAll, all) {
-  const editors = state.db.team.filter(t => t.role === 'editor');
+  const editors = assignableMembers(state.db);
   const aside = el('div', { class: 'aside' },
     el('div', { class: 'row', style: 'margin-bottom:10px' },
       el('span', { class: 'label' }, 'STILL TO FINISH'),
@@ -409,7 +409,7 @@ async function addEntry(a) {
 function openMassAdd(u) {
   const accounts = builderAccounts(u, state.db)
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const editors = state.db.team.filter(t => t.role === 'editor');
+  const editors = assignableMembers(state.db);
 
   // Start with every avatar that isn't paused — the usual case is "all of them".
   const picked = new Set(accounts.filter(a => (a.status || 'Active') !== 'Paused').map(a => a.id));
@@ -510,13 +510,13 @@ function openMassAdd(u) {
 
   // ---- who edits it
   const assignSel = el('select', { class: 'input', onchange: e => draft.assign = e.target.value },
-    [el('option', { value: 'auto' }, 'Each avatar’s own editor (recommended)'),
+    [el('option', { value: 'auto' }, 'Whoever the avatar belongs to (recommended)'),
      el('option', { value: '' }, 'Anyone')]
-      .concat(editors.map(t => el('option', { value: t.id }, t.name))));
+      .concat(editors.map(t => el('option', { value: t.id }, memberLabel(t)))));
   assignSel.value = 'auto';
   body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
     el('span', { class: 'label' }, 'ASSIGN TO'), assignSel,
-    el('span', { class: 'hint' }, '“Each avatar’s own editor” uses the assignments you set under Team. An avatar with no editor, or more than one, is left unassigned.')));
+    el('span', { class: 'hint' }, 'Editors and managers can both be picked. “Whoever the avatar belongs to” uses the assignments set under Team; an avatar with nobody, or more than one, is left unassigned.')));
 
   // ---- avatar picker
   const pickWrap = el('div', { class: 'col', style: 'gap:7px' });
@@ -703,7 +703,7 @@ async function eLoud(id, fn) { const { mutate } = await import('../app.js'); mut
 
 function entryRow(en, a, num, u) {
   const canEdit = can.editVideos(u);
-  const canMake = can.makeVideo(u);
+  const canMake = canMakeThis(u, en);
   const canPost = can.markPosted(u);
   const done = !!en.done;
 
@@ -764,7 +764,8 @@ function entryRow(en, a, num, u) {
   // ---- status: made + link
   const made = el('div', { class: 'row wrap', style: 'gap:10px;border-top:1px solid var(--line);padding-top:12px' },
     el('button', {
-      class: 'check' + (done ? ' on' : ''), disabled: !canMake, title: canMake ? 'Mark the video as made' : 'Only the video makers tick this',
+      class: 'check' + (done ? ' on' : ''), disabled: !canMake,
+      title: canMake ? 'Mark the video as made' : 'Only whoever this video is assigned to can tick it',
       onclick: () => canMake && eLoud(en.id, x => {
         x.done = !x.done;
         x.doneAt = x.done ? Date.now() : null;
@@ -795,25 +796,33 @@ function entryRow(en, a, num, u) {
 }
 
 function editorRow(en, u, canEdit) {
-  const editors = state.db.team.filter(t => t.role === 'editor');
+  const editors = assignableMembers(state.db);
   const assigned = byId(state.db.team, en.assignedEditorId);
 
   if (!canEdit) {
     return el('div', { class: 'row' },
-      el('span', { class: 'label' }, 'EDITOR'),
+      el('span', { class: 'label' }, 'ASSIGNED TO'),
       el('span', { class: 'chip violet' }, assigned ? assigned.name : 'Anyone'));
   }
+  // Managers appear here too — a video can be handed to either.
   const sel = el('select', {
-    class: 'input', style: 'width:auto;min-width:170px;height:32px',
+    class: 'input', style: 'width:auto;min-width:190px;height:32px',
     onchange: e => eLoud(en.id, x => x.assignedEditorId = e.target.value)
   },
-    [el('option', { value: '' }, 'Anyone')].concat(editors.map(t => el('option', { value: t.id }, t.name))));
+    [el('option', { value: '' }, 'Anyone')]
+      .concat(editors.map(t => el('option', { value: t.id }, memberLabel(t)))));
   sel.value = en.assignedEditorId || '';
 
   const row = el('div', { class: 'row wrap', style: 'gap:9px' },
-    el('span', { class: 'label' }, 'EDITOR'), sel);
-  if (!editors.length) row.appendChild(el('span', { class: 'hint' }, 'No video editors on the team yet — add them under Team.'));
+    el('span', { class: 'label' }, 'ASSIGNED TO'), sel);
+  if (!editors.length) row.appendChild(el('span', { class: 'hint' }, 'Nobody to assign to yet — add editors or managers under Team.'));
   return row;
+}
+
+// "Ana Editor" for an editor, "Max Manager · Manager" for a manager, so the
+// two are never confused in a dropdown.
+function memberLabel(t) {
+  return t.role === 'manager' ? t.name + ' · ' + roleLabel(t.role) : t.name;
 }
 
 // Hook and body can each be typed in, or given as a link to somewhere else.
