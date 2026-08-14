@@ -47,6 +47,7 @@ edits from overwriting each other — they are physically different rows.
 create table if not exists team           ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists accounts       ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists profiles       ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
+create table if not exists products       ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists scripts        ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists script_entries ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists daily_entries  ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
@@ -56,7 +57,7 @@ create table if not exists daily_entries  ( id text primary key, data jsonb not 
 -- point: the anon key ships inside the app, so it must not be a password.
 do $$ declare t text;
 begin
-  foreach t in array array['team','accounts','profiles','scripts','script_entries','daily_entries'] loop
+  foreach t in array array['team','accounts','profiles','products','scripts','script_entries','daily_entries'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists "signed in read"  on %I', t);
     execute format('drop policy if exists "signed in write" on %I', t);
@@ -66,7 +67,7 @@ begin
 end $$;
 
 -- ---------- live sync ----------
-alter publication supabase_realtime add table team, accounts, profiles, scripts, script_entries, daily_entries;
+alter publication supabase_realtime add table team, accounts, profiles, products, scripts, script_entries, daily_entries;
 
 -- ---------- image storage ----------
 -- Frame stills and avatar photos go here as files. The database only ever

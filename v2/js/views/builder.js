@@ -21,6 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
+import { productChip } from './accounts.js';
 import { presence } from '../presence.js';
 import { overlay } from './accounts.js';
 
@@ -350,6 +351,7 @@ function avatarCard(a, entries, u) {
         el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
+    productChip(a) ? el('div', { class: 'row wrap', style: 'gap:6px' }, productChip(a)) : null,
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
     el('div', { class: 'row' },
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
@@ -372,6 +374,7 @@ function sheet(a, entries, u) {
     el('div', null,
       el('b', { style: 'font-size:15px' }, a.name || 'Untitled'),
       el('div', { class: 'hint' }, a.character || 'No character')),
+    productChip(a),
     el('span', { class: 'spacer' }),
     el('span', { class: 'chip ' + (entries.length && done === entries.length ? 'green' : 'gray') },
       done + ' / ' + entries.length + ' made'),
@@ -593,6 +596,7 @@ function openMassAdd(u) {
       el('div', { style: 'min-width:0;flex:1' },
         el('b', { style: 'font-size:12.5px;display:block' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
+      productChip(a) || el('span', { class: 'hint' }, 'No product'),
       paused && el('span', { class: 'chip gray' }, 'Paused'),
       el('span', { class: 'chip cover' }),
       el('span', { class: 'hint already' })));

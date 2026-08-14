@@ -42,6 +42,7 @@ export const TABLES = {
   team: 'team',
   accounts: 'accounts',
   profiles: 'profiles',
+  products: 'products',
   scripts: 'scripts',
   entries: 'script_entries',
   dailyEntries: 'daily_entries',
@@ -49,6 +50,15 @@ export const TABLES = {
 const KEYS = Object.keys(TABLES); // app-side collection names
 
 function emptyDb() { const o = {}; KEYS.forEach(k => o[k] = []); return o; }
+
+// PostgREST reports an unknown table as PGRST205 (not in the schema cache) or
+// Postgres 42P01 (undefined_table), depending on where it is caught.
+function isMissingTable(err) {
+  const code = (err && err.code) || '';
+  const msg = ((err && err.message) || '').toLowerCase();
+  return code === 'PGRST205' || code === '42P01'
+    || (msg.includes('could not find the table') || msg.includes('does not exist'));
+}
 
 const DB_KEY = 'slate2_db';
 const SESSION_KEY = 'slate2_session';
@@ -190,7 +200,19 @@ class CloudStore {
       const out = {};
       for (const k of KEYS) {
         const r = await this.sb.from(TABLES[k]).select('data').order('id');
-        if (r.error) throw r.error;
+        if (r.error) {
+          // A table that doesn't exist yet is treated as empty, not as a
+          // failure. That way shipping a feature before its SQL has been run
+          // degrades to "this collection is empty" instead of taking the whole
+          // workspace down — and the app recovers by itself once the table
+          // appears. Any other error is real and still fails the load.
+          if (isMissingTable(r.error)) {
+            console.warn('[store] table "' + TABLES[k] + '" not found — treating as empty. Run the SQL in SETUP.md.');
+            out[k] = [];
+            continue;
+          }
+          throw r.error;
+        }
         out[k] = (r.data || []).map(row => row.data);
       }
       return out;

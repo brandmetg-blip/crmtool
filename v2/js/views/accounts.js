@@ -42,6 +42,7 @@ function head(canEdit, n) {
   // spacer so the pill sits to their left either way
   import('../app.js').then(({ statusPill }) => wrap.insertBefore(statusPill(), spacer.nextSibling));
   if (canEdit) {
+    wrap.appendChild(el('button', { class: 'btn', onclick: openProducts }, 'Products'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProfiles }, 'Profiles'));
     wrap.appendChild(el('button', { class: 'btn primary', onclick: () => openAccount(null) }, '+ New avatar'));
   }
@@ -90,6 +91,7 @@ function card(a, canEdit) {
 
     el('div', { class: 'row wrap', style: 'gap:6px' },
       a.phase && el('span', { class: 'chip gray' }, a.phase),
+      productChip(a),
       handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
@@ -98,6 +100,11 @@ function card(a, canEdit) {
       a.notes.trim().slice(0, 140) + (a.notes.trim().length > 140 ? '…' : '')));
   }
   return c;
+}
+
+export function productChip(a) {
+  const p = byId(state.db.products, a && a.productId);
+  return p ? el('span', { class: 'chip amber', title: 'Promotes ' + p.name }, p.name) : null;
 }
 
 function handleChip(platform, handle, profile) {
@@ -122,6 +129,7 @@ function openAccount(existing) {
     ? JSON.parse(JSON.stringify(existing))
     : {
       id: uid('a'), name: '', character: '', status: 'Active', phase: 'P1',
+      productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
@@ -169,6 +177,12 @@ function openAccount(existing) {
     class: 'input', value: a.character || '', placeholder: 'The persona this avatar plays',
     oninput: e => a.character = e.target.value
   })));
+
+  // what this avatar promotes
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'PRODUCT'),
+    productSelect(a.productId, v => a.productId = v),
+    el('span', { class: 'hint' }, 'Shown beside the avatar when mass adding, so you can tell at a glance what each one is promoting.')));
 
   // status + phase
   body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
@@ -336,6 +350,83 @@ function openProfiles() {
     el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
 
   state.modal = overlay('Profiles', body);
+  forceEmit();
+}
+
+// Products are a shared list, so several avatars promoting the same thing stay
+// in step and a rename updates everywhere. New ones can be created inline.
+function productSelect(current, onset) {
+  const list = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const sel = el('select', {
+    class: 'input',
+    onchange: async e => {
+      if (e.target.value === '__new') {
+        const name = prompt('Name of the new product:');
+        if (!name || !name.trim()) { sel.value = current || ''; return; }
+        const { save } = await import('../app.js');
+        const p = { id: uid('pr'), name: name.trim(), createdAt: Date.now() };
+        save('products', p);
+        sel.insertBefore(el('option', { value: p.id }, p.name), sel.lastChild);
+        sel.value = p.id; current = p.id; onset(p.id);
+        return;
+      }
+      current = e.target.value; onset(e.target.value);
+    }
+  },
+    [el('option', { value: '' }, 'No product')]
+      .concat(list.map(p => el('option', { value: p.id }, p.name)))
+      .concat([el('option', { value: '__new' }, '+ New product…')]));
+  sel.value = current || '';
+  return sel;
+}
+
+function openProducts() {
+  const body = el('div', { class: 'modal-body' });
+  body.appendChild(el('div', { class: 'hint' },
+    'The products your avatars promote. Renaming one here updates every avatar using it.'));
+
+  const list = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const col = el('div', { class: 'col', style: 'gap:7px' });
+
+  list.forEach(p => {
+    const used = state.db.accounts.filter(a => a.productId === p.id).length;
+    col.appendChild(el('div', { class: 'card row', style: 'padding:8px 11px;gap:9px' },
+      el('input', {
+        class: 'input', style: 'height:30px;font-size:12.5px;flex:1', value: p.name,
+        oninput: async e => {
+          const { mutateQuiet } = await import('../app.js');
+          mutateQuiet('products', p.id, x => x.name = e.target.value);
+        }
+      }),
+      el('span', { class: 'hint', style: 'white-space:nowrap' }, used + (used === 1 ? ' avatar' : ' avatars')),
+      el('button', {
+        class: 'iconbtn danger', title: 'Delete product', onclick: async () => {
+          if (used && !confirm('This product is set on ' + used + ' avatar(s). Delete it anyway? They will simply have no product set.')) return;
+          const { removeItem, save } = await import('../app.js');
+          state.db.accounts.filter(a => a.productId === p.id).forEach(a => { a.productId = ''; save('accounts', a); });
+          removeItem('products', p.id);
+          openProducts();
+        }
+      }, '✕')));
+  });
+  if (!list.length) col.appendChild(el('div', { class: 'hint' }, 'None yet.'));
+
+  col.appendChild(el('button', {
+    class: 'btn small', style: 'align-self:flex-start', onclick: async () => {
+      const name = prompt('Name of the new product:');
+      if (!name || !name.trim()) return;
+      const { save } = await import('../app.js');
+      save('products', { id: uid('pr'), name: name.trim(), createdAt: Date.now() });
+      openProducts();
+    }
+  }, '+ Add product'));
+
+  body.appendChild(col);
+  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
+    el('span', { class: 'spacer' }),
+    el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
+
+  state.modal = overlay('Products', body);
   forceEmit();
 }
 
