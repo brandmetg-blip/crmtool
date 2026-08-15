@@ -186,17 +186,17 @@ function videosMode(root, u) {
     return;
   }
 
-  // narrow to one editor's avatars, if a filter is set
-  const accounts = filterByEditor(all);
+  // narrow by editor and/or product, if either filter is set
+  const accounts = filterAccounts(all);
 
   const main = el('div', { style: 'flex:1;min-width:0' });
   // narrowing the view is reading, not writing — managers get it too
-  if (can.seesAllAccounts(u)) main.appendChild(editorFilter(all));
+  if (can.seesAllAccounts(u)) main.appendChild(builderFilters(all));
   main.appendChild(summary(day.filter(e => accounts.some(a => a.id === e.accountId)), u));
 
   if (!accounts.length) {
     main.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
-      'That editor has no avatars assigned yet.'));
+      'No avatars match these filters.'));
   } else {
     main.appendChild(el('div', { class: 'grid' },
       accounts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
@@ -219,33 +219,68 @@ function accountsForEditor(editor, all) {
   return all.filter(a => ids.has(a.id));
 }
 
-function filterByEditor(all) {
-  const id = state.builderEditor;
-  if (!id || id === 'all') return all;
-  const ed = byId(state.db.team, id);
-  if (!ed) { state.builderEditor = 'all'; return all; }
-  return accountsForEditor(ed, all);
+// Both filters narrow the same list and stack: "Ana's avatars promoting X".
+function filterAccounts(all) {
+  let out = all;
+
+  const eid = state.builderEditor;
+  if (eid && eid !== 'all') {
+    const ed = byId(state.db.team, eid);
+    if (!ed) state.builderEditor = 'all';
+    else out = accountsForEditor(ed, out);
+  }
+
+  const pid = state.builderProduct;
+  if (pid && pid !== 'all') {
+    if (pid === 'none') out = out.filter(a => !a.productId);
+    else if (!byId(state.db.products, pid)) state.builderProduct = 'all';
+    else out = out.filter(a => a.productId === pid);
+  }
+  return out;
 }
 
-function editorFilter(all) {
+function builderFilters(all) {
   const editors = assignableMembers(state.db);
-  if (!editors.length) return el('span');
-
-  const sel = el('select', {
-    class: 'input', style: 'width:auto;min-width:200px',
-    onchange: e => { state.builderEditor = e.target.value; forceEmit(); }
-  }, [el('option', { value: 'all' }, 'All avatars')].concat(editors.map(t => {
-    const n = accountsForEditor(t, all).length;
-    return el('option', { value: t.id }, t.name + ' (' + n + ')');
-  })));
-  sel.value = state.builderEditor || 'all';
+  const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  if (!editors.length && !products.length) return el('span');
 
   const row = el('div', { class: 'row wrap', style: 'gap:9px;margin-bottom:14px' },
-    el('span', { class: 'label' }, 'SHOW'), sel);
-  if (state.builderEditor && state.builderEditor !== 'all') {
+    el('span', { class: 'label' }, 'SHOW'));
+
+  if (editors.length) {
+    const sel = el('select', {
+      class: 'input', style: 'width:auto;min-width:190px',
+      onchange: e => { state.builderEditor = e.target.value; forceEmit(); }
+    }, [el('option', { value: 'all' }, 'Everyone')].concat(editors.map(t => {
+      const n = accountsForEditor(t, all).length;
+      return el('option', { value: t.id }, memberLabel(t) + ' (' + n + ')');
+    })));
+    sel.value = state.builderEditor || 'all';
+    row.appendChild(sel);
+  }
+
+  if (products.length) {
+    const noneCount = all.filter(a => !a.productId).length;
+    const sel = el('select', {
+      class: 'input', style: 'width:auto;min-width:170px',
+      onchange: e => { state.builderProduct = e.target.value; forceEmit(); }
+    }, [el('option', { value: 'all' }, 'Any product')]
+      .concat(products.map(p => {
+        const n = all.filter(a => a.productId === p.id).length;
+        return el('option', { value: p.id }, p.name + ' (' + n + ')');
+      }))
+      .concat(noneCount ? [el('option', { value: 'none' }, 'No product (' + noneCount + ')')] : []));
+    sel.value = state.builderProduct || 'all';
+    row.appendChild(sel);
+  }
+
+  const filtered = (state.builderEditor && state.builderEditor !== 'all')
+    || (state.builderProduct && state.builderProduct !== 'all');
+  if (filtered) {
     row.appendChild(el('button', {
-      class: 'btn small', onclick: () => { state.builderEditor = 'all'; forceEmit(); }
-    }, 'Clear filter'));
+      class: 'btn small',
+      onclick: () => { state.builderEditor = 'all'; state.builderProduct = 'all'; forceEmit(); }
+    }, 'Clear filters'));
   }
   return row;
 }

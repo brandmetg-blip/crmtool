@@ -6,7 +6,7 @@
 // too, because they only ever exist to be attached to an avatar.
 
 import { state, emit, forceEmit, uid, byId, can, myAccounts } from '../state.js';
-import { el, avatar } from '../ui.js';
+import { el, avatar, nameColor } from '../ui.js';
 
 const STATUSES = [['Active', 'green'], ['Warming', 'amber'], ['Paused', 'gray'], ['Banned', 'red']];
 const PHASES = ['P1', 'P2', 'P3', 'P4'];
@@ -102,9 +102,27 @@ function card(a, canEdit) {
   return c;
 }
 
+// Colours a product can wear. Fixed set rather than a free colour picker:
+// every one of these is legible on the dark surface, and the label always
+// carries the product NAME too, so identity never rests on colour alone.
+export const PRODUCT_COLORS = [
+  '#34e08a', '#5b8def', '#9a7bff', '#f0b341', '#e879b9',
+  '#5bd5ef', '#f97b5a', '#6ee7b7', '#f0584e', '#8b8b93',
+];
+
+export function productColor(p) {
+  if (!p) return '';
+  return p.color || nameColor(p.name || '');   // deterministic default until one is picked
+}
+
 export function productChip(a) {
   const p = byId(state.db.products, a && a.productId);
-  return p ? el('span', { class: 'chip amber', title: 'Promotes ' + p.name }, p.name) : null;
+  if (!p) return null;
+  const c = productColor(p);
+  return el('span', {
+    class: 'chip', title: 'Promotes ' + p.name,
+    style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
+  }, p.name);
 }
 
 function handleChip(platform, handle, profile) {
@@ -390,24 +408,49 @@ function openProducts() {
 
   list.forEach(p => {
     const used = state.db.accounts.filter(a => a.productId === p.id).length;
-    col.appendChild(el('div', { class: 'card row', style: 'padding:8px 11px;gap:9px' },
-      el('input', {
-        class: 'input', style: 'height:30px;font-size:12.5px;flex:1', value: p.name,
-        oninput: async e => {
-          const { mutateQuiet } = await import('../app.js');
-          mutateQuiet('products', p.id, x => x.name = e.target.value);
-        }
-      }),
-      el('span', { class: 'hint', style: 'white-space:nowrap' }, used + (used === 1 ? ' avatar' : ' avatars')),
+    const current = productColor(p);
+
+    const preview = el('span', { class: 'chip' }, p.name || 'Untitled');
+    const paintPreview = c => preview.style.cssText = 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55';
+    paintPreview(current);
+
+    const swatches = el('div', { class: 'row wrap', style: 'gap:6px' }, PRODUCT_COLORS.map(c =>
       el('button', {
-        class: 'iconbtn danger', title: 'Delete product', onclick: async () => {
-          if (used && !confirm('This product is set on ' + used + ' avatar(s). Delete it anyway? They will simply have no product set.')) return;
-          const { removeItem, save } = await import('../app.js');
-          state.db.accounts.filter(a => a.productId === p.id).forEach(a => { a.productId = ''; save('accounts', a); });
-          removeItem('products', p.id);
-          openProducts();
+        class: 'swatch' + (c.toLowerCase() === current.toLowerCase() ? ' on' : ''),
+        style: 'background:' + c, title: c,
+        // capture the button BEFORE awaiting — currentTarget is nulled once the
+        // handler yields, which silently killed the repaint below
+        onclick: async e => {
+          const btn = e.currentTarget;
+          const { mutate } = await import('../app.js');
+          mutate('products', p.id, x => x.color = c);
+          swatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('on'));
+          btn.classList.add('on');
+          paintPreview(c);
         }
-      }, '✕')));
+      })));
+
+    col.appendChild(el('div', { class: 'card col', style: 'padding:10px 11px;gap:9px' },
+      el('div', { class: 'row', style: 'gap:9px' },
+        el('input', {
+          class: 'input', style: 'height:30px;font-size:12.5px;flex:1', value: p.name,
+          oninput: async e => {
+            const { mutateQuiet } = await import('../app.js');
+            mutateQuiet('products', p.id, x => x.name = e.target.value);
+            preview.textContent = e.target.value || 'Untitled';
+          }
+        }),
+        el('span', { class: 'hint', style: 'white-space:nowrap' }, used + (used === 1 ? ' avatar' : ' avatars')),
+        el('button', {
+          class: 'iconbtn danger', title: 'Delete product', onclick: async () => {
+            if (used && !confirm('This product is set on ' + used + ' avatar(s). Delete it anyway? They will simply have no product set.')) return;
+            const { removeItem, save } = await import('../app.js');
+            state.db.accounts.filter(a => a.productId === p.id).forEach(a => { a.productId = ''; save('accounts', a); });
+            removeItem('products', p.id);
+            openProducts();
+          }
+        }, '✕')),
+      el('div', { class: 'row wrap', style: 'gap:9px' }, swatches, preview)));
   });
   if (!list.length) col.appendChild(el('div', { class: 'hint' }, 'None yet.'));
 

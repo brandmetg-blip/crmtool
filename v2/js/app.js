@@ -162,6 +162,7 @@ function signOutState() {
   state.builderMode = 'videos';
   state.builderAvatar = null;
   state.builderEditor = 'all';
+  state.builderProduct = 'all';
   state.openScript = null;
   state.modal = null;
   state.loginError = null;

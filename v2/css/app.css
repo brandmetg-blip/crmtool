@@ -132,6 +132,10 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
 
+/* product colour swatches */
+.swatch { width: 20px; height: 20px; padding: 0; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); cursor: pointer; flex: 0 0 auto; }
+.swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
+
 /* ---- bar chart (analytics) ---- */
 .chart-plot { display: flex; align-items: flex-end; gap: 3px; height: 172px; border-bottom: 1px solid var(--line2); }
 .chart-col { flex: 1 1 0; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; position: relative; }
