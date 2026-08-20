@@ -119,6 +119,13 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .check.on { background: var(--green); border: none; }
 .check[disabled] { cursor: default; opacity: .7; }
 
+/* ---- product grouping in the builder ---- */
+.group-head {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.group-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+
 /* ---- avatar progress cards (videos mode) ---- */
 .av-card.paused { opacity: .55; cursor: not-allowed; }
 .bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }

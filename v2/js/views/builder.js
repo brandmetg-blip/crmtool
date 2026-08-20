@@ -198,9 +198,7 @@ function videosMode(root, u) {
     main.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
       'No avatars match these filters.'));
   } else {
-    main.appendChild(el('div', { class: 'grid' },
-      accounts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-        .map(a => avatarCard(a, day.filter(e => e.accountId === a.id), u))));
+    main.appendChild(avatarGroups(accounts, day, u));
   }
 
   // The admin gets a standing overview of what each editor still owes.
@@ -364,6 +362,48 @@ function summary(day, u) {
   return bar;
 }
 
+// Avatars grouped under the product they promote, so it is obvious at a glance
+// which pages belong to which product — and each product carries its own
+// progress. Falls back to one plain grid when there are no products to group
+// by, rather than showing a lone "No product" heading over everything.
+function avatarGroups(accounts, day, u) {
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '');
+  const sorted = accounts.slice().sort(byName);
+
+  const groups = [];
+  state.db.products.slice().sort(byName).forEach(p => {
+    const mine = sorted.filter(a => a.productId === p.id);
+    if (mine.length) groups.push({ product: p, accounts: mine });
+  });
+  // no product set, or pointing at a product that has since been deleted
+  const orphans = sorted.filter(a => !byId(state.db.products, a.productId));
+  if (orphans.length) groups.push({ product: null, accounts: orphans });
+
+  const grid = list => el('div', { class: 'grid' },
+    list.map(a => avatarCard(a, day.filter(e => e.accountId === a.id), u)));
+
+  const worthGrouping = groups.some(g => g.product);
+  if (!worthGrouping) return grid(sorted);
+
+  return el('div', { class: 'col', style: 'gap:22px' }, groups.map(g => {
+    const entries = day.filter(e => g.accounts.some(a => a.id === e.accountId));
+    const done = entries.filter(e => e.done).length;
+    const c = g.product ? productColor(g.product) : 'var(--dim)';
+    const n = g.accounts.length;
+
+    return el('div', null,
+      el('div', { class: 'group-head' },
+        el('span', { class: 'group-dot', style: 'background:' + c }),
+        el('b', { style: 'font-size:13.5px;color:' + c }, g.product ? g.product.name : 'No product'),
+        el('span', { class: 'hint' }, n + (n === 1 ? ' avatar' : ' avatars')),
+        el('span', { class: 'spacer' }),
+        entries.length
+          ? el('span', { class: 'chip ' + (done === entries.length ? 'green' : 'gray') }, done + ' / ' + entries.length + ' made')
+          : el('span', { class: 'hint' }, 'nothing planned')),
+      grid(g.accounts));
+  }));
+}
+
 function avatarCard(a, entries, u) {
   const done = entries.filter(e => e.done).length;
   const posted = entries.filter(e => e.posted).length;
@@ -386,7 +426,6 @@ function avatarCard(a, entries, u) {
         el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
-    productChip(a) ? el('div', { class: 'row wrap', style: 'gap:6px' }, productChip(a)) : null,
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
     el('div', { class: 'row' },
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
