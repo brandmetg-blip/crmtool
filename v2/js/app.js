@@ -121,7 +121,7 @@ function renderShell(mode) {
 
   const side = el('div', { class: 'sidebar' },
     brandMark(),
-    nav,
+    el('div', { class: 'nav' }, nav),
     onlineRow(),
     el('div', { class: 'side-foot' },
       avatar(state.user, 32),
@@ -177,7 +177,7 @@ function onlineRow() {
   const others = presence.peers().filter(p => p.userId !== state.user.id);
   if (!others.length) return null;
   const firstName = p => (p.name || '').trim().split(/\s+/)[0] || 'Someone';
-  return el('div', { style: 'margin-top:auto;padding:10px 10px 4px' },
+  return el('div', { class: 'peers-wrap', style: 'margin-top:auto;padding:10px 10px 4px' },
     el('div', { class: 'label', style: 'margin-bottom:6px' }, 'ONLINE NOW'),
     el('div', { class: 'col', style: 'gap:5px' },
       others.slice(0, 6).map(p => el('div', { class: 'peer', title: p.name },

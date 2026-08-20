@@ -30,20 +30,22 @@ a { color: var(--blue); }
 /* ---- shell ---- */
 #app { display: flex; min-height: 100vh; }
 .sidebar {
-  width: 210px; flex: 0 0 auto; padding: 18px 14px; border-right: 1px solid var(--line);
+  width: 232px; flex: 0 0 auto; padding: 16px 13px; border-right: 1px solid var(--line);
   display: flex; flex-direction: column; gap: 4px; background: var(--panel2);
 }
+.nav { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 /* company mark — logo tile + name inside one rounded panel */
 .brand {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 11px; margin-bottom: 12px;
+  padding: 9px 11px; margin-bottom: 12px; min-width: 0;
   border: 1px solid var(--line); border-radius: 13px;
   background: linear-gradient(150deg, rgba(52,224,138,0.09), rgba(255,255,255,0.015));
 }
 .brand-logo { border-radius: 9px; object-fit: cover; flex: 0 0 auto; display: block; }
-.brand-text { min-width: 0; }
-.brand-text b { display: block; font-weight: 800; font-size: 13.5px; letter-spacing: .2px; white-space: nowrap; }
-.brand-text small { display: block; color: var(--dim); font-size: 9.5px; letter-spacing: 1.2px; font-weight: 700; margin-top: 1px; }
+/* min-width:0 lets the name shrink instead of pushing past the panel's border */
+.brand-text { min-width: 0; flex: 1; }
+.brand-text b { display: block; font-weight: 800; font-size: 13px; letter-spacing: .1px; line-height: 1.2; }
+.brand-text small { display: block; color: var(--dim); font-size: 9.5px; letter-spacing: 1.1px; font-weight: 700; margin-top: 2px; }
 .nav-item {
   display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 9px; border: none;
   background: transparent; color: var(--mut); font-weight: 600; font-size: 13.5px; text-align: left; width: 100%;
@@ -132,6 +134,9 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
 
+/* a product quick-pick that is fully selected */
+.chip.picked { outline: 2px solid currentColor; outline-offset: 1px; }
+
 /* product colour swatches */
 .swatch { width: 20px; height: 20px; padding: 0; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); cursor: pointer; flex: 0 0 auto; }
 .swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
@@ -212,12 +217,41 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .day.sel .dn { color: var(--text); }
 .day .ct { font-size: 10px; color: var(--dim); margin-top: 2px; font-weight: 700; }
 
-@media (max-width: 760px) {
+/* ---- narrow screens ----
+   The sidebar becomes a top bar in two rows: identity and the sign-out control
+   on the first, the tabs on the second. The old single scrolling strip pushed
+   most tabs AND the sign-out button off-screen, reachable only by sideways
+   scrolling a 60px-tall sliver. Only the tabs scroll now, and everything else
+   stays put. */
+@media (max-width: 900px) {
   #app { flex-direction: column; }
-  .sidebar { width: 100%; flex-direction: row; align-items: center; overflow-x: auto; padding: 10px; }
-  .brand { margin: 0 6px 0 0; padding: 5px 9px; flex: 0 0 auto; }
+  .sidebar {
+    width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center;
+    gap: 8px; padding: 9px 12px; overflow: visible;
+    border-right: none; border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .brand { order: 1; margin: 0; padding: 5px 9px; flex: 0 1 auto; min-width: 0; }
+  .brand-text b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand-text small { display: none; }
-  .nav-item { width: auto; white-space: nowrap; }
-  .side-foot { margin: 0 0 0 auto; border: none; padding: 0 4px; }
+
+  .side-foot { order: 2; margin: 0 0 0 auto; border: none; padding: 0; flex: 0 0 auto; gap: 8px; }
+  .side-foot .who { display: none; }          /* the avatar identifies you; the name costs a whole row */
+
+  /* full-basis pushes the tabs onto their own line, so they are the only
+     thing that scrolls sideways */
+  .nav { order: 3; flex: 1 0 100%; flex-direction: row; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+  .nav::-webkit-scrollbar { height: 0; }
+  .nav-item { width: auto; white-space: nowrap; flex: 0 0 auto; padding: 8px 12px; }
+
+  .peers-wrap { order: 4; flex: 1 0 100%; margin: 0 !important; padding: 0 !important; }
+
   .main { padding: 16px 14px 60px; }
+  .with-aside { flex-direction: column; }
+}
+
+/* very narrow: give the tabs the full width and drop the wordmark */
+@media (max-width: 420px) {
+  .brand-text { display: none; }
+  .brand { padding: 5px; }
 }

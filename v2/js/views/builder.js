@@ -21,7 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip } from './accounts.js';
+import { productChip, productColor } from './accounts.js';
 import { presence } from '../presence.js';
 import { overlay } from './accounts.js';
 
@@ -585,6 +585,15 @@ function openMassAdd(u) {
     }
 
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected';
+
+    // a product reads as "on" only when every one of its avatars is picked
+    productRow.querySelectorAll('.prod-pick').forEach(btn => {
+      const pid = btn.dataset.prod;
+      const mine = pid === '__none'
+        ? accounts.filter(a => !a.productId)
+        : accounts.filter(a => a.productId === pid);
+      btn.classList.toggle('picked', mine.length > 0 && mine.every(a => picked.has(a.id)));
+    });
     addBtn.textContent = picked.size
       ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars')
       : 'Pick at least one avatar';
@@ -619,6 +628,44 @@ function openMassAdd(u) {
     el('span', { class: 'spacer' }),
     el('button', { class: 'btn small', onclick: () => { accounts.forEach(a => picked.add(a.id)); refresh(); } }, 'Select all'),
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
+
+  // Pick a whole product at once: click it to add every avatar promoting it,
+  // click again to drop them. Products stack, so two clicks selects both.
+  const productRow = el('div', { class: 'row wrap', style: 'gap:7px' });
+  const usedProducts = state.db.products
+    .filter(p => accounts.some(a => a.productId === p.id))
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  if (usedProducts.length) {
+    productRow.appendChild(el('span', { class: 'hint', style: 'align-self:center' }, 'By product:'));
+    usedProducts.forEach(p => {
+      const mine = accounts.filter(a => a.productId === p.id);
+      const c = productColor(p);
+      productRow.appendChild(el('button', {
+        class: 'chip click prod-pick', 'data-prod': p.id,
+        style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
+        title: mine.length + ' avatar' + (mine.length === 1 ? '' : 's') + ' promoting ' + p.name,
+        onclick: () => {
+          const allOn = mine.every(a => picked.has(a.id));
+          mine.forEach(a => allOn ? picked.delete(a.id) : picked.add(a.id));
+          refresh();
+        }
+      }, p.name + ' (' + mine.length + ')'));
+    });
+    const noneCount = accounts.filter(a => !a.productId).length;
+    if (noneCount) {
+      productRow.appendChild(el('button', {
+        class: 'chip click gray prod-pick', 'data-prod': '__none',
+        onclick: () => {
+          const mine = accounts.filter(a => !a.productId);
+          const allOn = mine.every(a => picked.has(a.id));
+          mine.forEach(a => allOn ? picked.delete(a.id) : picked.add(a.id));
+          refresh();
+        }
+      }, 'No product (' + noneCount + ')'));
+    }
+    pickWrap.appendChild(productRow);
+  }
 
   accounts.forEach(a => {
     const paused = (a.status || 'Active') === 'Paused';
