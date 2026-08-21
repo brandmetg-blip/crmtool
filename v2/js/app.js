@@ -169,6 +169,7 @@ function signOutState() {
   state.authEmail = null;
   state.acctStatus = 'all';
   state.acctProfile = 'all';
+  state.acctProduct = 'all';
 }
 
 // Who else is in the workspace right now. Hidden when you're alone (and always

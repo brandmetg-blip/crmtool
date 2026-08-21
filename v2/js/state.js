@@ -17,6 +17,7 @@ export const state = {
   openScript: null,           // script id open in detail view
   acctStatus: 'all',
   acctProfile: 'all',
+  acctProduct: 'all',
   modal: null,                // { type, ... } | null
   loginError: null,
   authEmail: null,            // cloud mode: the signed-in Supabase Auth email

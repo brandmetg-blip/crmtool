@@ -22,6 +22,7 @@ export function renderAccounts(root) {
   const shown = all
     .filter(a => state.acctStatus === 'all' || (a.status || 'Active') === state.acctStatus)
     .filter(a => state.acctProfile === 'all' || a.facebookProfileId === state.acctProfile)
+    .filter(a => matchesProduct(a, state.acctProduct))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   if (!shown.length) {
@@ -49,14 +50,39 @@ function head(canEdit, n) {
   return wrap;
 }
 
+// 'all' | 'none' (no product, or one since deleted) | a product id
+function matchesProduct(a, pid) {
+  if (!pid || pid === 'all') return true;
+  if (pid === 'none') return !byId(state.db.products, a.productId);
+  return a.productId === pid;
+}
+
 function filters(all) {
   const fbProfiles = state.db.profiles.filter(p => p.platform === 'facebook');
+  const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
   const row = el('div', { class: 'row wrap', style: 'margin-bottom:16px' },
     el('div', { class: 'seg' }, [['all', 'All']].concat(STATUSES.map(s => [s[0], s[0]])).map(([k, label]) =>
       el('button', {
         class: state.acctStatus === k ? 'on' : '',
         onclick: () => { state.acctStatus = k; forceEmit(); }
       }, label))));
+
+  if (products.length) {
+    const noneCount = all.filter(a => !byId(state.db.products, a.productId)).length;
+    const sel = el('select', {
+      class: 'input', style: 'width:auto;min-width:170px',
+      onchange: e => { state.acctProduct = e.target.value; forceEmit(); }
+    },
+      [el('option', { value: 'all' }, 'Any product')]
+        .concat(products.map(p => {
+          const n = all.filter(a => a.productId === p.id).length;
+          return el('option', { value: p.id }, p.name + ' (' + n + ')');
+        }))
+        .concat(noneCount ? [el('option', { value: 'none' }, 'No product (' + noneCount + ')')] : []));
+    sel.value = state.acctProduct || 'all';
+    row.appendChild(sel);
+  }
 
   if (fbProfiles.length) {
     const sel = el('select', {
@@ -69,6 +95,19 @@ function filters(all) {
       })));
     sel.value = state.acctProfile;
     row.appendChild(sel);
+  }
+
+  const filtered = state.acctStatus !== 'all'
+    || (state.acctProduct && state.acctProduct !== 'all')
+    || state.acctProfile !== 'all';
+  if (filtered) {
+    row.appendChild(el('button', {
+      class: 'btn small',
+      onclick: () => {
+        state.acctStatus = 'all'; state.acctProduct = 'all'; state.acctProfile = 'all';
+        forceEmit();
+      }
+    }, 'Clear filters'));
   }
   return row;
 }
