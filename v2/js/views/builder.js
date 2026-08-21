@@ -22,6 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor } from './accounts.js';
+import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { presence } from '../presence.js';
 import { overlay } from './accounts.js';
 
@@ -29,44 +30,6 @@ const TOOLS = [['grok', 'Grok'], ['veo', 'Veo'], ['omniflash', 'Omni Flash']];
 const TYPES = ['Growth', 'Product'];
 const PROD = ['Assembly', 'Scratch', 'Repost'];
 const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
-
-// ---- pre-made bodies -------------------------------------------------------
-// Assembly means the body already exists: each avatar keeps its own Drive
-// folder per concept (set under Avatars, shown under Assets). An entry stores
-// the CONCEPT NAME, not the URL, and the link is resolved from the avatar every
-// time it is shown — so fixing a moved folder once fixes every video using it.
-//
-// Concept labels are free text, so match them the way a person would: trimmed
-// and case-insensitive.
-const normConcept = s => (s || '').trim().toLowerCase();
-
-function bodyLinkFor(account, conceptLabel) {
-  const want = normConcept(conceptLabel);
-  if (!want || !account) return '';
-  const hit = (account.bodyLinks || []).find(b => normConcept(b.concept) === want);
-  return hit ? (hit.url || '').trim() : '';
-}
-
-// Every concept label across the given avatars, de-duped case-insensitively.
-// Where spellings differ ("Transformation" vs "transformation") show the most
-// common one, preferring a capitalised spelling on a tie — matching stays
-// case-insensitive either way, this is only what the human reads.
-function conceptsAcross(accounts) {
-  const tally = new Map();   // normalised -> Map(spelling -> count)
-  accounts.forEach(a => (a.bodyLinks || []).forEach(b => {
-    const k = normConcept(b.concept);
-    if (!k) return;
-    const spellings = tally.get(k) || new Map();
-    const s = (b.concept || '').trim();
-    spellings.set(s, (spellings.get(s) || 0) + 1);
-    tally.set(k, spellings);
-  }));
-
-  const best = spellings => [...spellings.entries()].sort((x, y) =>
-    (y[1] - x[1]) || (/^[A-Z]/.test(y[0]) - /^[A-Z]/.test(x[0])) || x[0].localeCompare(y[0]))[0][0];
-
-  return [...tally.values()].map(best).sort((x, y) => x.localeCompare(y));
-}
 
 // A script/brief field two people could type into at once. Focusing it claims
 // it; everyone else sees it read-only with who has it, until they move away.
@@ -494,7 +457,8 @@ function openMassAdd(u) {
   const draft = {
     date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
     concept: '', hook: '', hookKind: 'text', hookLink: '',
-    body: '', bodyKind: 'text', bodyLink: '', bodyConcept: '',
+    body: '', bodyKind: 'text', bodyLink: '',
+    conceptId: '', variationId: '', rotate: false,
     refVideo: '', notes: '',
   };
 
@@ -570,14 +534,15 @@ function openMassAdd(u) {
 
   const coverage = el('div');
   const bodyField = draftSource(draft, 'body', 'BODY', 'The body / script…', {
-    concepts: () => conceptsAcross(accounts),
+    concepts: true,
     coverage: () => coverage,
     onKind: () => refresh(),
     onConcept: () => {
       // picking a concept also names the video, so the builder shows it
-      draft.concept = draft.bodyConcept;
+      const c = conceptById(draft.conceptId);
+      draft.concept = c ? c.name : '';
       const inp = conceptField.querySelector('input');
-      if (inp) inp.value = draft.bodyConcept;
+      if (inp) inp.value = draft.concept;
       refresh();
     },
   });
@@ -602,11 +567,12 @@ function openMassAdd(u) {
 
   function refresh() {
     // ---- how many of the avatars actually have this concept set up
-    const useConcept = draft.bodyKind === 'concept' && !!draft.bodyConcept;
+    const useConcept = draft.bodyKind === 'concept' && !!draft.conceptId;
+    const has = a => hasBodies(a, draft.conceptId, draft.rotate ? '' : draft.variationId);
     coverage.innerHTML = '';
     if (useConcept) {
-      const covered = accounts.filter(a => bodyLinkFor(a, draft.bodyConcept));
-      const missing = accounts.filter(a => !bodyLinkFor(a, draft.bodyConcept));
+      const covered = accounts.filter(has);
+      const missing = accounts.filter(a => !has(a));
       coverage.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
         el('span', { class: 'chip ' + (missing.length ? 'amber' : 'green') },
           covered.length + ' of ' + accounts.length + ' avatars have bodies for this'),
@@ -655,9 +621,9 @@ function openMassAdd(u) {
       cover.textContent = '';
       cover.className = 'chip cover';
       if (useConcept && acct) {
-        const has = !!bodyLinkFor(acct, draft.bodyConcept);
-        cover.textContent = has ? '✓ bodies' : 'no bodies';
-        cover.className = 'chip cover ' + (has ? 'green' : 'gray');
+        const ok = has(acct);
+        cover.textContent = ok ? '✓ bodies' : 'no bodies';
+        cover.className = 'chip cover ' + (ok ? 'green' : 'gray');
       }
     });
   }
@@ -728,7 +694,13 @@ function openMassAdd(u) {
   addBtn.onclick = async () => {
     const { save } = await import('../app.js');
     const chosen = accounts.filter(a => picked.has(a.id));
-    chosen.forEach(a => {
+    // rotation deals the angles out in order across the chosen avatars
+    const c = conceptById(draft.conceptId);
+    const vars = (c && c.variations) || [];
+    chosen.forEach((a, i) => {
+      const variationId = draft.rotate && vars.length
+        ? vars[i % vars.length].id
+        : draft.variationId;
       save('dailyEntries', {
         id: uid('de'), date: draft.date, accountId: a.id,
         type: draft.type, prod: draft.prod,
@@ -736,7 +708,7 @@ function openMassAdd(u) {
         concept: draft.concept,
         hook: draft.hook, hookKind: draft.hookKind, hookLink: draft.hookLink,
         body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
-        bodyConcept: draft.bodyConcept,   // resolved against the avatar when shown
+        conceptId: draft.conceptId, variationId,   // link resolved from the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
@@ -782,21 +754,51 @@ function draftSource(draft, key, label, ph, opts) {
 
     slot.innerHTML = '';
     if (draft[kindKey] === 'concept') {
-      const list = opts.concepts();
+      const list = sortedConcepts();
       if (!list.length) {
         slot.appendChild(el('div', { class: 'hint' },
-          'No avatar has any pre-made bodies set up yet. Add them under Avatars → Bodies by concept.'));
+          'No concepts defined yet. Add them under Avatars → Concepts.'));
         return;
       }
+
       const sel = el('select', {
         class: 'input',
-        onchange: e => { draft.bodyConcept = e.target.value; if (opts.onConcept) opts.onConcept(); }
+        onchange: e => {
+          draft.conceptId = e.target.value;
+          draft.variationId = '';
+          draft.rotate = false;
+          paint();
+          if (opts.onConcept) opts.onConcept();
+        }
       }, [el('option', { value: '' }, 'Pick a concept…')]
-        .concat(list.map(c => el('option', { value: c }, c))));
-      sel.value = draft.bodyConcept || '';
+        .concat(list.map(c => el('option', { value: c.id }, c.name))));
+      sel.value = draft.conceptId || '';
       slot.appendChild(sel);
+
+      // variations of the chosen concept — the angles being targeted
+      const c = conceptById(draft.conceptId);
+      const vars = (c && c.variations) || [];
+      if (vars.length) {
+        const vsel = el('select', {
+          class: 'input',
+          onchange: e => {
+            draft.rotate = e.target.value === '__rotate';
+            draft.variationId = draft.rotate ? '' : e.target.value;
+            paint();                      // the explanation below depends on this choice
+            if (opts.onConcept) opts.onConcept();
+          }
+        }, [el('option', { value: '' }, 'No particular angle')]
+          .concat(vars.map(v => el('option', { value: v.id }, v.label || 'Untitled angle')))
+          .concat(vars.length > 1 ? [el('option', { value: '__rotate' }, '↻ Rotate the angles across avatars')] : []));
+        vsel.value = draft.rotate ? '__rotate' : (draft.variationId || '');
+        slot.appendChild(vsel);
+        slot.appendChild(el('div', { class: 'hint' }, draft.rotate
+          ? 'Avatar 1 gets ' + (vars[0].label || 'angle 1') + ', avatar 2 the next, and so on — wrapping around once the angles run out.'
+          : 'Every selected avatar gets this same angle.'));
+      }
+
       slot.appendChild(el('div', { class: 'hint' },
-        'Each avatar gets its own bodies folder for this concept. The video stores the concept, not the link, so fixing a folder later fixes every video using it.'));
+        'Each avatar gets its own bodies folder. The video stores the concept, not the link, so fixing a folder later fixes every video using it.'));
       if (opts.coverage) slot.appendChild(opts.coverage());
       return;
     }
@@ -993,8 +995,9 @@ function sourceBlock(en, key, label, ph, canEdit, acct) {
 // Body = "this avatar's pre-made bodies for concept X". The link is looked up
 // on the avatar every render, never copied into the entry.
 function conceptBody(en, acct, canEdit) {
-  const label = (en.bodyConcept || '').trim();
-  const url = bodyLinkFor(acct, label);
+  const c = conceptById(en.conceptId);
+  const label = conceptLabel(en.conceptId, en.variationId, en.bodyConcept);
+  const url = bodyLinkFor(acct, en.conceptId, en.variationId);
   const head = el('div', { class: 'row' }, el('span', { class: 'label' }, 'BODY'));
 
   if (canEdit) {
@@ -1007,16 +1010,25 @@ function conceptBody(en, acct, canEdit) {
   const row = el('div', { class: 'row wrap', style: 'gap:8px' });
 
   if (canEdit) {
-    // only this avatar's own concepts can be picked
-    const mine = (acct.bodyLinks || []).map(b => (b.concept || '').trim()).filter(Boolean);
-    const opts = mine.slice();
-    if (label && !mine.some(c => normConcept(c) === normConcept(label))) opts.unshift(label);
+    const list = sortedConcepts();
     const sel = el('select', {
-      class: 'input', style: 'width:auto;min-width:170px;height:32px',
-      onchange: e => eLoud(en.id, x => x.bodyConcept = e.target.value)
-    }, [el('option', { value: '' }, 'Pick a concept…')].concat(opts.map(c => el('option', { value: c }, c))));
-    sel.value = label;
+      class: 'input', style: 'width:auto;min-width:160px;height:32px',
+      onchange: e => eLoud(en.id, x => { x.conceptId = e.target.value; x.variationId = ''; })
+    }, [el('option', { value: '' }, 'Pick a concept…')]
+      .concat(list.map(x => el('option', { value: x.id }, x.name))));
+    sel.value = en.conceptId || '';
     row.appendChild(sel);
+
+    const vars = (c && c.variations) || [];
+    if (vars.length) {
+      const vsel = el('select', {
+        class: 'input', style: 'width:auto;min-width:150px;height:32px',
+        onchange: e => eLoud(en.id, x => x.variationId = e.target.value)
+      }, [el('option', { value: '' }, 'No particular angle')]
+        .concat(vars.map(v => el('option', { value: v.id }, v.label || 'Untitled angle'))));
+      vsel.value = en.variationId || '';
+      row.appendChild(vsel);
+    }
   } else {
     row.appendChild(el('span', { class: 'chip violet' }, label || 'No concept'));
   }
@@ -1025,7 +1037,7 @@ function conceptBody(en, acct, canEdit) {
     row.appendChild(el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open bodies ↗'));
   } else {
     row.appendChild(el('span', { class: 'hint' }, label
-      ? 'No bodies link set for “' + label + '” on this avatar — add it under Avatars.'
+      ? 'No bodies folder set for “' + label + '” on this avatar — add it under Avatars.'
       : 'Pick which concept’s bodies to use.'));
   }
 

@@ -43,6 +43,7 @@ export const TABLES = {
   accounts: 'accounts',
   profiles: 'profiles',
   products: 'products',
+  concepts: 'concepts',
   scripts: 'scripts',
   entries: 'script_entries',
   dailyEntries: 'daily_entries',

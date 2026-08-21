@@ -7,6 +7,9 @@
 
 import { state, emit, forceEmit, uid, byId, can, myAccounts } from '../state.js';
 import { el, avatar, nameColor } from '../ui.js';
+import {
+  sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
+} from '../concepts.js';
 
 const STATUSES = [['Active', 'green'], ['Warming', 'amber'], ['Paused', 'gray'], ['Banned', 'red']];
 const PHASES = ['P1', 'P2', 'P3', 'P4'];
@@ -76,6 +79,7 @@ function head(canEdit, n) {
   // spacer so the pill sits to their left either way
   import('../app.js').then(({ statusPill }) => wrap.insertBefore(statusPill(), spacer.nextSibling));
   if (canEdit) {
+    wrap.appendChild(el('button', { class: 'btn', onclick: openConcepts }, 'Concepts'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProducts }, 'Products'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProfiles }, 'Profiles'));
     wrap.appendChild(el('button', { class: 'btn primary', onclick: () => openAccount(null) }, '+ New avatar'));
@@ -310,37 +314,67 @@ function openAccount(existing) {
     }),
     el('span', { class: 'hint' }, 'Shown to the video editors assigned to this avatar, under Assets.')));
 
-  // ---- pre-made bodies, one Drive folder per concept --------------------------
-  // Concepts are whatever you type in the Daily Builder, so these are free text
-  // rather than a fixed list — the label just has to match how the team says it.
-  const bodies = el('div', { class: 'col', style: 'gap:7px' });
+  // ---- pre-made bodies, one folder per concept --------------------------------
+  // The concept list is shared, so nothing is typed here — you just say where
+  // this character's bodies live. Variations normally share the concept's
+  // folder; expand one only when a single angle has its own.
+  const bodies = el('div', { class: 'col', style: 'gap:8px' });
+  const openConcept = {};   // which concepts are expanded in this modal
+
   function paintBodies() {
     bodies.innerHTML = '';
     bodies.appendChild(el('span', { class: 'label' }, 'BODIES BY CONCEPT'));
+
+    const concepts = sortedConcepts();
+    if (!concepts.length) {
+      bodies.appendChild(el('div', { class: 'hint' },
+        'No concepts defined yet. Add them under Avatars → Concepts, then set this character’s folder for each.'));
+      return;
+    }
     bodies.appendChild(el('span', { class: 'hint' },
-      'A link to this character’s pre-made bodies for each concept. Editors see them as buttons under Assets.'));
+      'Where this character’s pre-made bodies live. Leave a concept blank if this avatar doesn’t use it. Editors see these as buttons under Assets.'));
 
-    a.bodyLinks.forEach(b => {
-      bodies.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
+    concepts.forEach(c => {
+      const row = bodyRow(a, c.id);
+      const url = (row && row.url) || '';
+      const vars = c.variations || [];
+      const overrides = vars.filter(v => ((row && row.varUrls && row.varUrls[v.id]) || '').trim()).length;
+      const expanded = !!openConcept[c.id];
+
+      const head = el('div', { class: 'row wrap', style: 'gap:7px' },
+        vars.length
+          ? el('button', {
+            class: 'iconbtn', title: expanded ? 'Hide angles' : 'Set a folder for one angle',
+            onclick: () => { openConcept[c.id] = !expanded; paintBodies(); }
+          }, expanded ? '▾' : '▸')
+          : el('span', { style: 'width:28px;flex:0 0 auto' }),
+        el('span', { style: 'flex:0 0 120px;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, c.name),
         el('input', {
-          class: 'input', style: 'flex:0 0 150px;height:32px;font-size:12px', value: b.concept || '',
-          placeholder: 'Concept…', oninput: e => b.concept = e.target.value
-        }),
-        el('input', {
-          class: 'input', style: 'flex:1;min-width:170px;height:32px;font-size:12px', value: b.url || '',
-          placeholder: 'Drive folder link…', oninput: e => b.url = e.target.value
-        }),
-        el('button', {
-          class: 'iconbtn danger', title: 'Remove this concept',
-          onclick: () => { a.bodyLinks = a.bodyLinks.filter(x => x.id !== b.id); paintBodies(); }
-        }, '✕')));
+          class: 'input', style: 'flex:1;min-width:170px;height:32px;font-size:12px', value: url,
+          placeholder: 'Drive folder link…',
+          oninput: e => setConceptLink(a, c.id, e.target.value)
+        }));
+      if (vars.length && !expanded) {
+        head.appendChild(el('span', { class: 'hint', style: 'white-space:nowrap' },
+          overrides ? overrides + ' angle override' + (overrides === 1 ? '' : 's') : vars.length + ' angles'));
+      }
+      bodies.appendChild(head);
+
+      if (expanded) {
+        const vwrap = el('div', { class: 'col', style: 'gap:6px;margin:0 0 4px 39px;padding-left:10px;border-left:2px solid var(--line2)' });
+        vars.forEach(v => {
+          const over = (row && row.varUrls && row.varUrls[v.id]) || '';
+          vwrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
+            el('span', { style: 'flex:0 0 110px;font-size:11.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, v.label || 'Untitled angle'),
+            el('input', {
+              class: 'input', style: 'flex:1;min-width:150px;height:28px;font-size:11.5px', value: over,
+              placeholder: url ? 'Uses the folder above' : 'No folder set',
+              oninput: e => setVariationLink(a, c.id, v.id, e.target.value)
+            })));
+        });
+        bodies.appendChild(vwrap);
+      }
     });
-
-    if (!a.bodyLinks.length) bodies.appendChild(el('span', { class: 'hint' }, 'None yet.'));
-    bodies.appendChild(el('button', {
-      class: 'btn small', style: 'align-self:flex-start',
-      onclick: () => { a.bodyLinks.push({ id: uid('bl'), concept: '', url: '' }); paintBodies(); }
-    }, '+ Add concept'));
   }
   paintBodies();
   body.appendChild(bodies);
@@ -370,10 +404,7 @@ function openAccount(existing) {
       class: 'btn primary', onclick: async () => {
         if (!a.name.trim()) { err.textContent = 'Give the avatar a name.'; err.style.display = ''; return; }
         a.name = a.name.trim();
-        // drop rows the user added but never filled in
-        a.bodyLinks = a.bodyLinks
-          .filter(b => (b.concept || '').trim() || (b.url || '').trim())
-          .map(b => ({ ...b, concept: (b.concept || '').trim(), url: (b.url || '').trim() }));
+        pruneBodyLinks(a);   // drop concepts left blank for this avatar
         const { save } = await import('../app.js');
         save('accounts', a);
         closeModal();
@@ -468,6 +499,144 @@ function productSelect(current, onset) {
       .concat([el('option', { value: '__new' }, '+ New product…')]));
   sel.value = current || '';
   return sel;
+}
+
+// ---------------------------------------------------------------------------
+// concepts + their variations
+// ---------------------------------------------------------------------------
+function openConcepts() {
+  const body = el('div', { class: 'modal-body' });
+  body.appendChild(el('div', { class: 'hint' },
+    'Concepts are defined once here and picked everywhere else. Variations are the different angles you target — they live inside a concept, so a new angle never means a new concept.'));
+
+  const legacy = discoverLegacyConcepts();
+  if (legacy.length) {
+    body.appendChild(el('div', { class: 'card col', style: 'gap:9px;border-color:rgba(240,179,65,0.35)' },
+      el('b', { style: 'font-size:12.5px;color:#f0c97a' }, 'Import existing concepts'),
+      el('div', { class: 'hint' },
+        legacy.length + ' concept name' + (legacy.length === 1 ? '' : 's') + ' still stored as plain text: '
+        + legacy.map(l => '“' + l.name + '”').join(', ')
+        + '. Importing creates them here and repoints the avatars and videos already using them.'),
+      el('button', {
+        class: 'btn small', style: 'align-self:flex-start', onclick: () => runImport(legacy)
+      }, 'Import ' + legacy.length + ' concept' + (legacy.length === 1 ? '' : 's'))));
+  }
+
+  const list = sortedConcepts();
+  const col = el('div', { class: 'col', style: 'gap:9px' });
+
+  list.forEach(c => {
+    const used = state.db.accounts.filter(a => (a.bodyLinks || []).some(r => r.conceptId === c.id)).length;
+    const vars = c.variations || [];
+
+    const card = el('div', { class: 'card col', style: 'padding:11px 12px;gap:9px' },
+      el('div', { class: 'row', style: 'gap:9px' },
+        el('input', {
+          class: 'input', style: 'height:31px;font-size:13px;font-weight:700;flex:1', value: c.name,
+          oninput: async e => {
+            const { mutateQuiet } = await import('../app.js');
+            mutateQuiet('concepts', c.id, x => x.name = e.target.value);
+          }
+        }),
+        el('span', { class: 'hint', style: 'white-space:nowrap' }, used + (used === 1 ? ' avatar' : ' avatars')),
+        el('button', {
+          class: 'iconbtn danger', title: 'Delete concept', onclick: async () => {
+            const vids = state.db.dailyEntries.filter(e => e.conceptId === c.id).length;
+            if (!confirm('Delete “' + c.name + '”' + (vars.length ? ' and its ' + vars.length + ' variation(s)' : '') + '?'
+              + (used || vids ? '\n\n' + used + ' avatar link(s) and ' + vids + ' video(s) reference it and will lose the connection.' : ''))) return;
+            const { removeItem } = await import('../app.js');
+            removeItem('concepts', c.id);
+            openConcepts();
+          }
+        }, '✕')));
+
+    // variations
+    const vwrap = el('div', { class: 'col', style: 'gap:6px;padding-left:11px;border-left:2px solid var(--line2)' });
+    vars.forEach(v => {
+      vwrap.appendChild(el('div', { class: 'row', style: 'gap:7px' },
+        el('input', {
+          class: 'input', style: 'height:28px;font-size:12px;flex:1', value: v.label, placeholder: 'Angle…',
+          oninput: async e => {
+            const { mutateQuiet } = await import('../app.js');
+            mutateQuiet('concepts', c.id, x => {
+              const t = (x.variations || []).find(y => y.id === v.id); if (t) t.label = e.target.value;
+            });
+          }
+        }),
+        el('button', {
+          class: 'iconbtn danger', title: 'Remove variation', onclick: async () => {
+            const { mutate } = await import('../app.js');
+            mutate('concepts', c.id, x => { x.variations = (x.variations || []).filter(y => y.id !== v.id); });
+            openConcepts();
+          }
+        }, '✕')));
+    });
+    if (!vars.length) vwrap.appendChild(el('span', { class: 'hint' }, 'No variations — this concept is used on its own.'));
+    vwrap.appendChild(el('button', {
+      class: 'btn small', style: 'align-self:flex-start', onclick: async () => {
+        const { mutate } = await import('../app.js');
+        mutate('concepts', c.id, x => {
+          if (!Array.isArray(x.variations)) x.variations = [];
+          x.variations.push({ id: uid('cv'), label: '', note: '' });
+        });
+        openConcepts();
+      }
+    }, '+ Add variation'));
+
+    card.appendChild(vwrap);
+    col.appendChild(card);
+  });
+
+  if (!list.length) col.appendChild(el('div', { class: 'hint' }, 'No concepts yet.'));
+  col.appendChild(el('button', {
+    class: 'btn small', style: 'align-self:flex-start', onclick: async () => {
+      const name = prompt('Name of the new concept:');
+      if (!name || !name.trim()) return;
+      const { save } = await import('../app.js');
+      save('concepts', { id: uid('c'), name: name.trim(), variations: [], createdAt: Date.now() });
+      openConcepts();
+    }
+  }, '+ Add concept'));
+
+  body.appendChild(col);
+  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
+    el('span', { class: 'spacer' }),
+    el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
+
+  state.modal = overlay('Concepts', body);
+  forceEmit();
+}
+
+// Turn the free-text names into real concepts and repoint everything at them.
+async function runImport(legacy) {
+  if (!confirm('Create ' + legacy.length + ' concept(s) and repoint the avatars and videos using them?')) return;
+  const { save } = await import('../app.js');
+  const made = {};
+
+  legacy.forEach(l => {
+    const c = { id: uid('c'), name: l.name, variations: [], createdAt: Date.now() };
+    made[l.name.trim().toLowerCase()] = c;
+    save('concepts', c);
+  });
+  const find = txt => made[(txt || '').trim().toLowerCase()];
+
+  state.db.accounts.forEach(a => {
+    let touched = false;
+    (a.bodyLinks || []).forEach(r => {
+      if (r.conceptId) return;
+      const c = find(r.concept);
+      if (c) { r.conceptId = c.id; if (!r.varUrls) r.varUrls = {}; touched = true; }
+    });
+    if (touched) save('accounts', a);
+  });
+
+  state.db.dailyEntries.forEach(e => {
+    if (e.conceptId) return;
+    const c = find(e.bodyConcept) || find(e.concept);
+    if (c) { e.conceptId = c.id; save('dailyEntries', e); }
+  });
+
+  openConcepts();
 }
 
 function openProducts() {

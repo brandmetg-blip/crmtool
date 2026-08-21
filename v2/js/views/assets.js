@@ -7,6 +7,7 @@
 
 import { state, builderAccounts, can } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
+import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 
 export function renderAssets(root) {
   const u = state.user;
@@ -68,31 +69,46 @@ function card(a) {
   return box;
 }
 
-// The pre-made bodies for this character, one folder per concept.
+// The pre-made bodies for this character: a folder per concept, with an angle
+// listed separately only when it has its own folder rather than sharing.
 function bodiesBlock(a) {
-  const rows = (a.bodyLinks || []).filter(b => (b.concept || '').trim() || (b.url || '').trim());
+  const concepts = sortedConcepts().filter(c => bodyLinkFor(a, c.id));
 
-  const col = el('div', { class: 'col', style: 'gap:8px;border-top:1px solid var(--line);padding-top:12px' },
+  const col = el('div', { class: 'col', style: 'gap:9px;border-top:1px solid var(--line);padding-top:12px' },
     el('div', { class: 'row' },
       el('span', { class: 'label' }, 'BODIES BY CONCEPT'),
       el('span', { class: 'spacer' }),
-      rows.length ? el('span', { class: 'hint' }, rows.length + (rows.length === 1 ? ' concept' : ' concepts')) : null));
+      concepts.length ? el('span', { class: 'hint' }, concepts.length + (concepts.length === 1 ? ' concept' : ' concepts')) : null));
 
-  if (!rows.length) {
-    col.appendChild(el('span', { class: 'hint' }, 'No concepts set up for this character yet.'));
+  if (!concepts.length) {
+    col.appendChild(el('span', { class: 'hint' },
+      (a.bodyLinks || []).length
+        ? 'Older links on this avatar are waiting to be imported — an admin can do it under Avatars → Concepts.'
+        : 'No concepts set up for this character yet.'));
     return col;
   }
 
-  rows.forEach(b => {
-    const label = (b.concept || '').trim() || 'Untitled concept';
-    const url = (b.url || '').trim();
-    const isUrl = /^https?:\/\//.test(url);
-    col.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
-      el('span', { style: 'flex:1;min-width:90px;font-size:12.5px;font-weight:700' }, label),
-      isUrl
-        ? el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open bodies ↗')
-        : el('span', { class: 'hint' }, url || 'No link'),
-      isUrl ? el('button', { class: 'btn small', onclick: e => copyText(url, e.currentTarget) }, 'Copy') : null));
+  concepts.forEach(c => {
+    col.appendChild(linkLine(c.name, bodyLinkFor(a, c.id), true));
+    const row = bodyRow(a, c.id);
+    (c.variations || []).forEach(v => {
+      const own = (row && row.varUrls && row.varUrls[v.id]) || '';
+      if (!own.trim()) return;                 // shares the concept folder — nothing to add
+      col.appendChild(el('div', { style: 'padding-left:14px' },
+        linkLine(v.label || 'Untitled angle', own.trim(), false)));
+    });
   });
   return col;
+}
+
+function linkLine(label, url, strong) {
+  const isUrl = /^https?:\/\//.test(url);
+  return el('div', { class: 'row wrap', style: 'gap:8px' },
+    el('span', {
+      style: 'flex:1;min-width:90px;font-size:' + (strong ? '12.5px;font-weight:700' : '11.5px;color:var(--mut)')
+    }, label),
+    isUrl
+      ? el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open bodies ↗')
+      : el('span', { class: 'hint' }, url || 'No link'),
+    isUrl ? el('button', { class: 'btn small', onclick: e => copyText(url, e.currentTarget) }, 'Copy') : null);
 }
