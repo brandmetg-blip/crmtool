@@ -31,7 +31,40 @@ export function renderAccounts(root) {
         : canEdit ? 'No avatars yet — add the first one.' : 'No avatars assigned to you yet — ask an admin.'));
     return;
   }
-  root.appendChild(el('div', { class: 'grid' }, shown.map(a => card(a, canEdit))));
+  root.appendChild(groupedCards(shown, canEdit));
+}
+
+// Laid out under a heading per product by default, so which pages belong to
+// which product is obvious without touching a filter. Falls back to one plain
+// grid when no products exist, rather than a lone "No product" heading.
+function groupedCards(shown, canEdit) {
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '');
+  const grid = list => el('div', { class: 'grid' }, list.map(a => card(a, canEdit)));
+
+  const groups = [];
+  state.db.products.slice().sort(byName).forEach(p => {
+    const mine = shown.filter(a => a.productId === p.id);
+    if (mine.length) groups.push({ product: p, accounts: mine });
+  });
+  // no product set, or pointing at one that has since been deleted
+  const orphans = shown.filter(a => !byId(state.db.products, a.productId));
+  if (orphans.length) groups.push({ product: null, accounts: orphans });
+
+  if (!groups.some(g => g.product)) return grid(shown);
+
+  return el('div', { class: 'col', style: 'gap:22px' }, groups.map(g => {
+    const c = g.product ? productColor(g.product) : 'var(--dim)';
+    const n = g.accounts.length;
+    const active = g.accounts.filter(a => (a.status || 'Active') === 'Active').length;
+    return el('div', null,
+      el('div', { class: 'group-head' },
+        el('span', { class: 'group-dot', style: 'background:' + c }),
+        el('b', { style: 'font-size:13.5px;color:' + c }, g.product ? g.product.name : 'No product'),
+        el('span', { class: 'hint' }, n + (n === 1 ? ' avatar' : ' avatars')),
+        el('span', { class: 'spacer' }),
+        active < n ? el('span', { class: 'chip gray' }, active + ' active') : null),
+      grid(g.accounts));
+  }));
 }
 
 function head(canEdit, n) {
@@ -128,9 +161,9 @@ function card(a, canEdit) {
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { class: 'chip ' + st[1] }, st[0])),
 
+    // no product chip here — the group heading above already says it
     el('div', { class: 'row wrap', style: 'gap:6px' },
       a.phase && el('span', { class: 'chip gray' }, a.phase),
-      productChip(a),
       handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
