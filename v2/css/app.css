@@ -141,8 +141,28 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
 
-/* a product quick-pick that is fully selected */
-.chip.picked { outline: 2px solid currentColor; outline-offset: 1px; }
+/* ---- mass-add avatar picker ----
+   Grouped product by product. Rows are quiet by default so the selected ones
+   and the exceptions are the only things that stand out. */
+.pick-group {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 7px 10px; margin-top: 10px; border-radius: 0 8px 8px 0;
+  background: rgba(255,255,255,0.03);
+}
+.pick-group:first-of-type { margin-top: 2px; }
+.pick-group:hover { background: rgba(255,255,255,0.06); }
+
+.pick-row {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  padding: 6px 10px 6px 13px; border-radius: 8px;
+  border: 1px solid transparent; min-width: 0;
+}
+.pick-row:hover { background: rgba(255,255,255,0.035); }
+.pick-row.on { background: rgba(52,224,138,0.07); border-color: rgba(52,224,138,0.28); }
+
+/* smaller ticks in a dense list */
+.pick-row .check, .pick-group .check { width: 19px; height: 19px; border-radius: 6px; font-size: 11px; }
+.check.some { background: rgba(52,224,138,0.35); border: none; color: #06140c; }
 
 /* product colour swatches */
 .swatch { width: 20px; height: 20px; padding: 0; border-radius: 6px; border: 1px solid rgba(255,255,255,0.18); cursor: pointer; flex: 0 0 auto; }

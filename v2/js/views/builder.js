@@ -591,13 +591,18 @@ function openMassAdd(u) {
 
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected';
 
-    // a product reads as "on" only when every one of its avatars is picked
-    productRow.querySelectorAll('.prod-pick').forEach(btn => {
-      const pid = btn.dataset.prod;
+    // each product heading shows all / some / none of its avatars selected
+    pickWrap.querySelectorAll('[data-group]').forEach(head => {
+      const pid = head.dataset.group;
       const mine = pid === '__none'
-        ? accounts.filter(a => !a.productId)
+        ? accounts.filter(a => !byId(state.db.products, a.productId))
         : accounts.filter(a => a.productId === pid);
-      btn.classList.toggle('picked', mine.length > 0 && mine.every(a => picked.has(a.id)));
+      const on = mine.filter(a => picked.has(a.id)).length;
+      const chk = head.querySelector('.check');
+      chk.classList.toggle('on', on === mine.length && mine.length > 0);
+      chk.classList.toggle('some', on > 0 && on < mine.length);
+      chk.textContent = on === mine.length && mine.length ? '✓' : (on ? '–' : '');
+      head.querySelector('.group-count').textContent = on + ' of ' + mine.length;
     });
     addBtn.textContent = picked.size
       ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars')
@@ -607,7 +612,7 @@ function openMassAdd(u) {
     pickWrap.querySelectorAll('[data-acct]').forEach(row => {
       const id = row.dataset.acct;
       const on = picked.has(id);
-      row.style.borderColor = on ? 'rgba(52,224,138,0.35)' : '';
+      row.classList.toggle('on', on);
       const c = row.querySelector('.check');
       c.classList.toggle('on', on);
       c.textContent = on ? '✓' : '';
@@ -615,16 +620,10 @@ function openMassAdd(u) {
       const n = state.db.dailyEntries.filter(e => e.date === draft.date && e.accountId === id).length;
       row.querySelector('.already').textContent = n ? n + ' already' : '';
 
-      // whether this avatar has the picked concept's bodies
+      // flag only the avatars MISSING bodies — a tick on all the rest is noise
       const cover = row.querySelector('.cover');
       const acct = accounts.find(a => a.id === id);
-      cover.textContent = '';
-      cover.className = 'chip cover';
-      if (useConcept && acct) {
-        const ok = has(acct);
-        cover.textContent = ok ? '✓ bodies' : 'no bodies';
-        cover.className = 'chip cover ' + (ok ? 'green' : 'gray');
-      }
+      cover.textContent = (useConcept && acct && !has(acct)) ? 'no bodies' : '';
     });
   }
 
@@ -634,59 +633,55 @@ function openMassAdd(u) {
     el('button', { class: 'btn small', onclick: () => { accounts.forEach(a => picked.add(a.id)); refresh(); } }, 'Select all'),
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
 
-  // Pick a whole product at once: click it to add every avatar promoting it,
-  // click again to drop them. Products stack, so two clicks selects both.
-  const productRow = el('div', { class: 'row wrap', style: 'gap:7px' });
-  const usedProducts = state.db.products
-    .filter(p => accounts.some(a => a.productId === p.id))
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-  if (usedProducts.length) {
-    productRow.appendChild(el('span', { class: 'hint', style: 'align-self:center' }, 'By product:'));
-    usedProducts.forEach(p => {
+  // One block per product, so the list reads product by product instead of one
+  // long alphabetical mix. The heading IS the select-all for that product —
+  // that replaces the old row of "by product" chips rather than adding to it,
+  // and the per-row product chip goes too, since the heading above says it.
+  const groups = [];
+  state.db.products.slice()
+    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    .forEach(p => {
       const mine = accounts.filter(a => a.productId === p.id);
-      const c = productColor(p);
-      productRow.appendChild(el('button', {
-        class: 'chip click prod-pick', 'data-prod': p.id,
-        style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
-        title: mine.length + ' avatar' + (mine.length === 1 ? '' : 's') + ' promoting ' + p.name,
-        onclick: () => {
-          const allOn = mine.every(a => picked.has(a.id));
-          mine.forEach(a => allOn ? picked.delete(a.id) : picked.add(a.id));
-          refresh();
-        }
-      }, p.name + ' (' + mine.length + ')'));
+      if (mine.length) groups.push({ product: p, accounts: mine });
     });
-    const noneCount = accounts.filter(a => !a.productId).length;
-    if (noneCount) {
-      productRow.appendChild(el('button', {
-        class: 'chip click gray prod-pick', 'data-prod': '__none',
-        onclick: () => {
-          const mine = accounts.filter(a => !a.productId);
-          const allOn = mine.every(a => picked.has(a.id));
-          mine.forEach(a => allOn ? picked.delete(a.id) : picked.add(a.id));
-          refresh();
-        }
-      }, 'No product (' + noneCount + ')'));
-    }
-    pickWrap.appendChild(productRow);
-  }
+  const orphans = accounts.filter(a => !byId(state.db.products, a.productId));
+  if (orphans.length) groups.push({ product: null, accounts: orphans });
 
-  accounts.forEach(a => {
-    const paused = (a.status || 'Active') === 'Paused';
-    pickWrap.appendChild(el('div', {
-      class: 'card row', style: 'padding:8px 11px;gap:10px;cursor:pointer', 'data-acct': a.id,
-      onclick: () => { picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
+  groups.forEach(g => {
+    const c = g.product ? productColor(g.product) : 'var(--dim)';
+    const ids = g.accounts.map(a => a.id);
+
+    const head = el('div', {
+      class: 'pick-group', 'data-group': (g.product ? g.product.id : '__none'),
+      style: 'border-left:3px solid ' + c,
+      onclick: () => {
+        const allOn = ids.every(id => picked.has(id));
+        ids.forEach(id => allOn ? picked.delete(id) : picked.add(id));
+        refresh();
+      }
     },
-      el('span', { class: 'check' }),
-      avatar(a, 28),
-      el('div', { style: 'min-width:0;flex:1' },
-        el('b', { style: 'font-size:12.5px;display:block' }, a.name || 'Untitled'),
-        el('span', { class: 'hint' }, a.character || 'No character')),
-      productChip(a) || el('span', { class: 'hint' }, 'No product'),
-      paused && el('span', { class: 'chip gray' }, 'Paused'),
-      el('span', { class: 'chip cover' }),
-      el('span', { class: 'hint already' })));
+      el('span', { class: 'check group-check' }),
+      el('b', { style: 'font-size:12.5px;color:' + c }, g.product ? g.product.name : 'No product'),
+      el('span', { class: 'spacer' }),
+      el('span', { class: 'hint group-count' }));
+    pickWrap.appendChild(head);
+
+    g.accounts.forEach(a => {
+      const paused = (a.status || 'Active') === 'Paused';
+      pickWrap.appendChild(el('div', {
+        class: 'pick-row', 'data-acct': a.id,
+        onclick: () => { picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
+      },
+        el('span', { class: 'check' }),
+        avatar(a, 26),
+        el('div', { style: 'min-width:0;flex:1' },
+          el('b', { style: 'font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+          el('span', { class: 'hint' }, a.character || 'No character')),
+        paused && el('span', { class: 'chip gray' }, 'Paused'),
+        // only ever flags the exception — a tick on every healthy row is noise
+        el('span', { class: 'chip amber cover' }),
+        el('span', { class: 'hint already' })));
+    });
   });
   body.appendChild(pickWrap);
 
