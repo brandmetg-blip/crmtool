@@ -23,6 +23,7 @@ import {
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor } from './accounts.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
+import { renderPosting, outstandingCount } from './posting.js';
 import { presence } from '../presence.js';
 import { overlay } from './accounts.js';
 
@@ -56,9 +57,13 @@ function guarded(fieldKey, buildEditor, readOnly) {
 // ---------------------------------------------------------------------------
 export function renderBuilder(root) {
   const u = state.user;
+  // posting is admin-only; if the role changed under it, fall back
+  if (state.builderMode === 'posting' && !can.markPosted(u)) state.builderMode = 'videos';
+
   root.appendChild(head(u));
-  root.appendChild(dayStrip(u));
+  if (state.builderMode !== 'posting') root.appendChild(dayStrip(u));
   if (state.builderMode === 'scripts') scriptsMode(root, u);
+  else if (state.builderMode === 'posting') renderPosting(root, u);
   else videosMode(root, u);
 }
 
@@ -74,15 +79,7 @@ function head(u) {
       class: 'input', type: 'date', style: 'width:150px', value: state.date,
       onchange: e => { if (e.target.value) go(e.target.value); }
     }),
-    el('div', { class: 'seg blue' },
-      el('button', {
-        class: scriptsOn ? '' : 'on',
-        onclick: () => { state.builderMode = 'videos'; state.openScript = null; forceEmit(); }
-      }, 'Videos'),
-      el('button', {
-        class: scriptsOn ? 'on' : '',
-        onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
-      }, 'Main Scripts')),
+    modeSeg(u),
     el('span', { class: 'spacer' }));
 
   import('../app.js').then(({ statusPill }) => wrap.appendChild(statusPill()));
@@ -95,6 +92,32 @@ function head(u) {
     wrap.appendChild(el('button', { class: 'btn violet', onclick: () => openMassAdd(u) }, '+ Mass add script'));
   }
   return wrap;
+}
+
+// Videos / Posting / Main Scripts. Posting carries a count of what is made but
+// not yet posted, so a growing backlog is visible without opening anything —
+// that is the whole reason it is easy to forget.
+function modeSeg(u) {
+  const mode = state.builderMode;
+  const seg = el('div', { class: 'seg blue' },
+    el('button', {
+      class: mode === 'videos' ? 'on' : '',
+      onclick: () => { state.builderMode = 'videos'; state.openScript = null; forceEmit(); }
+    }, 'Videos'));
+
+  if (can.markPosted(u)) {
+    const n = outstandingCount(u);
+    seg.appendChild(el('button', {
+      class: mode === 'posting' ? 'on' : '',
+      onclick: () => { state.builderMode = 'posting'; state.builderAvatar = null; state.openScript = null; forceEmit(); }
+    }, 'Posting', n ? el('span', { class: 'pill' }, String(n)) : null));
+  }
+
+  seg.appendChild(el('button', {
+    class: mode === 'scripts' ? 'on' : '',
+    onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
+  }, 'Main Scripts'));
+  return seg;
 }
 
 function go(date) {

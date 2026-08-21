@@ -10,7 +10,9 @@ export const state = {
   db: { team: [], accounts: [], profiles: [], products: [], concepts: [], scripts: [], entries: [], dailyEntries: [] },
   route: 'builder',           // builder | accounts | team | login | setup
   date: todayStr(),           // selected day in the builder
-  builderMode: 'videos',      // videos (per-avatar cards) | scripts (main scripts)
+  builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts
+  postScope: 'day',           // posting queue range: day | week | all
+  postShowPosted: false,      // include already-posted rows
   builderAvatar: null,        // account id whose video sheet is open
   builderEditor: 'all',       // filter the avatar cards to one editor's avatars
   builderProduct: 'all',      // ...and/or to one product ('none' = no product set)
