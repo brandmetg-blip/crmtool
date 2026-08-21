@@ -141,6 +141,20 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
 
+/* ---- an avatar's folders, concept by concept ---- */
+.concept-block { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.concept-block.open { border-color: var(--line2); }
+.concept-head {
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 8px 11px; background: rgba(255,255,255,0.025);
+}
+.concept-head:hover { background: rgba(255,255,255,0.055); }
+.twisty { color: var(--dim); font-size: 10px; width: 10px; flex: 0 0 auto; }
+.concept-fields {
+  display: flex; flex-direction: column; gap: 7px;
+  padding: 10px 11px; border-top: 1px solid var(--line);
+}
+
 /* ---- mass-add avatar picker ----
    Grouped product by product. Rows are quiet by default so the selected ones
    and the exceptions are the only things that stand out. */

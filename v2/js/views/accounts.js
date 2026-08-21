@@ -328,52 +328,73 @@ function openAccount(existing) {
     const concepts = sortedConcepts();
     if (!concepts.length) {
       bodies.appendChild(el('div', { class: 'hint' },
-        'No concepts defined yet. Add them under Avatars → Concepts, then set this character’s folder for each.'));
+        'No concepts defined yet. Add them under Avatars → Concepts, then set this avatar’s folders for each.'));
       return;
     }
+    // Name the avatar explicitly: these folders belong to this one avatar and
+    // nothing here is shared with any other.
     bodies.appendChild(el('span', { class: 'hint' },
-      'Where this character’s pre-made bodies live. Leave a concept blank if this avatar doesn’t use it. Editors see these as buttons under Assets.'));
+      'Folders belonging to ' + ((a.name || '').trim() || 'this avatar') + ' alone — every avatar has its own. '
+      + 'Each angle can have its own folder; leave one blank and it falls back to the concept’s main folder.'));
+
+    const countFor = c => {
+      const row = bodyRow(a, c.id);
+      return ((row && row.url) || '').trim() ? 1 : 0
+        + ((c.variations || []).filter(v => ((row && row.varUrls && row.varUrls[v.id]) || '').trim()).length);
+    };
+    // On an avatar with nothing set yet everything opens, so a new avatar never
+    // looks like an empty section with nowhere to type. Once it has some
+    // folders, the concepts it doesn't use tuck themselves away.
+    const blankAvatar = !concepts.some(c => countFor(c) > 0);
 
     concepts.forEach(c => {
       const row = bodyRow(a, c.id);
       const url = (row && row.url) || '';
       const vars = c.variations || [];
-      const overrides = vars.filter(v => ((row && row.varUrls && row.varUrls[v.id]) || '').trim()).length;
-      const expanded = !!openConcept[c.id];
+      const setCount = (url.trim() ? 1 : 0)
+        + vars.filter(v => ((row && row.varUrls && row.varUrls[v.id]) || '').trim()).length;
+      const expanded = openConcept[c.id] === undefined
+        ? (blankAvatar || setCount > 0)
+        : !!openConcept[c.id];
 
-      const head = el('div', { class: 'row wrap', style: 'gap:7px' },
-        vars.length
-          ? el('button', {
-            class: 'iconbtn', title: expanded ? 'Hide angles' : 'Set a folder for one angle',
-            onclick: () => { openConcept[c.id] = !expanded; paintBodies(); }
-          }, expanded ? '▾' : '▸')
-          : el('span', { style: 'width:28px;flex:0 0 auto' }),
-        el('span', { style: 'flex:0 0 120px;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, c.name),
-        el('input', {
-          class: 'input', style: 'flex:1;min-width:170px;height:32px;font-size:12px', value: url,
-          placeholder: 'Drive folder link…',
-          oninput: e => setConceptLink(a, c.id, e.target.value)
-        }));
-      if (vars.length && !expanded) {
-        head.appendChild(el('span', { class: 'hint', style: 'white-space:nowrap' },
-          overrides ? overrides + ' angle override' + (overrides === 1 ? '' : 's') : vars.length + ' angles'));
-      }
-      bodies.appendChild(head);
+      const block = el('div', { class: 'concept-block' + (expanded ? ' open' : '') });
+
+      block.appendChild(el('div', {
+        class: 'concept-head',
+        onclick: () => { openConcept[c.id] = !expanded; paintBodies(); }
+      },
+        el('span', { class: 'twisty' }, expanded ? '▾' : '▸'),
+        el('b', { style: 'font-size:12.5px;flex:1;min-width:0' }, c.name),
+        el('span', { class: 'hint' }, setCount
+          ? setCount + ' folder' + (setCount === 1 ? '' : 's') + ' set'
+          : 'not used by this avatar')));
 
       if (expanded) {
-        const vwrap = el('div', { class: 'col', style: 'gap:6px;margin:0 0 4px 39px;padding-left:10px;border-left:2px solid var(--line2)' });
-        vars.forEach(v => {
-          const over = (row && row.varUrls && row.varUrls[v.id]) || '';
-          vwrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
-            el('span', { style: 'flex:0 0 110px;font-size:11.5px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, v.label || 'Untitled angle'),
-            el('input', {
-              class: 'input', style: 'flex:1;min-width:150px;height:28px;font-size:11.5px', value: over,
-              placeholder: url ? 'Uses the folder above' : 'No folder set',
-              oninput: e => setVariationLink(a, c.id, v.id, e.target.value)
-            })));
-        });
-        bodies.appendChild(vwrap);
+        const fields = el('div', { class: 'concept-fields' });
+
+        const line = (label, value, onInput, muted) => el('div', { class: 'row wrap', style: 'gap:8px' },
+          el('span', {
+            style: 'flex:0 0 104px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+              + (muted ? 'color:var(--mut)' : 'font-weight:700')
+          }, label),
+          el('input', {
+            class: 'input', style: 'flex:1;min-width:160px;height:30px;font-size:11.5px',
+            value, placeholder: muted ? (url ? 'Falls back to the main folder' : 'Drive folder link…') : 'Drive folder link…',
+            oninput: e => onInput(e.target.value)
+          }));
+
+        fields.appendChild(line(vars.length ? 'Main folder' : 'Folder', url,
+          v => setConceptLink(a, c.id, v), false));
+
+        vars.forEach(v => fields.appendChild(line(
+          v.label || 'Untitled angle',
+          (row && row.varUrls && row.varUrls[v.id]) || '',
+          val => setVariationLink(a, c.id, v.id, val),
+          true)));
+
+        block.appendChild(fields);
       }
+      bodies.appendChild(block);
     });
   }
   paintBodies();
