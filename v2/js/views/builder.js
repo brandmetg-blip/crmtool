@@ -1086,7 +1086,8 @@ function postedRow(en, canPost) {
         x.posted = !x.posted;
         x.postedAt = x.posted ? Date.now() : null;
         if (x.posted) {
-          if (!x.postedDate) x.postedDate = todayStr();
+          // dated by the day the video belongs to, not the day it was ticked
+          if (!x.postedDate) x.postedDate = x.date || todayStr();
           if (!(x.platforms || []).length) x.platforms = ['facebook'];
         }
       })
@@ -1110,7 +1111,7 @@ function postedRow(en, canPost) {
   if (posted && canPost) {
     row.appendChild(el('input', {
       class: 'input', type: 'date', style: 'width:145px;height:30px;font-size:11.5px',
-      value: en.postedDate || todayStr(),
+      value: en.postedDate || en.date || todayStr(),
       onchange: e => e.target.value && eLoud(en.id, x => x.postedDate = e.target.value)
     }));
   } else if (posted && en.postedDate) {

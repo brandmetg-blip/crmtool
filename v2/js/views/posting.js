@@ -44,6 +44,8 @@ export function renderPosting(root, u) {
     .sort((a, b) => (b.date || '').localeCompare(a.date || '')
       || (nameOf(a) || '').localeCompare(nameOf(b) || ''));
 
+  const repair = misdated(all);
+  if (repair.length) root.appendChild(repairBanner(repair));
   root.appendChild(controls(scope, showPosted, scoped));
 
   if (!rows.length) {
@@ -76,6 +78,42 @@ export function renderPosting(root, u) {
         : el('span', { class: 'chip green' }, 'all posted')));
     d.rows.forEach(e => root.appendChild(row(e)));
   });
+}
+
+// Videos dated as posted on the day they were TICKED rather than the day they
+// were planned for — the signature of clearing a backlog before this was fixed.
+// Deliberately narrow: a video genuinely posted late keeps a posted date that
+// does not match the moment it was clicked, so it is left alone.
+function misdated(entries) {
+  return entries.filter(e => {
+    if (!e.posted || !e.postedDate || !e.date || !e.postedAt) return false;
+    if (e.postedDate === e.date) return false;
+    return isoOf(e.postedAt) === e.postedDate;
+  });
+}
+
+function isoOf(ts) {
+  const d = new Date(ts);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function repairBanner(rows) {
+  const days = [...new Set(rows.map(e => e.date))].sort();
+  return el('div', { class: 'card col', style: 'gap:9px;margin-bottom:14px;border-color:rgba(240,179,65,0.4)' },
+    el('b', { style: 'font-size:12.5px;color:#f0c97a' },
+      rows.length + ' post' + (rows.length === 1 ? '' : 's') + ' dated on the day they were ticked'),
+    el('div', { class: 'hint' },
+      'These were marked posted in bulk, so they were stamped with the day you ticked them instead of the day they were planned for — which is why Analytics counts them all on one day. Affected days: '
+      + days.map(fmtDate).join(', ') + '.'),
+    el('button', {
+      class: 'btn small', style: 'align-self:flex-start',
+      onclick: async () => {
+        if (!confirm('Re-date ' + rows.length + ' post(s) to the day their video was planned for?')) return;
+        const { save } = await import('../app.js');
+        rows.forEach(e => { e.postedDate = e.date; save('dailyEntries', e); });
+        emit();
+      }
+    }, 'Re-date them to their own day'));
 }
 
 function nameOf(e) {
@@ -154,8 +192,11 @@ async function markMany(entries, platforms) {
   const { save } = await import('../app.js');
   entries.forEach(e => {
     e.posted = true;
-    e.postedAt = Date.now();
-    if (!e.postedDate) e.postedDate = todayStr();
+    e.postedAt = Date.now();          // when it was ticked — not when it went out
+    // The video counts on the day it was planned for, not the day you got
+    // round to ticking it. Clearing a week's backlog on a Friday must not
+    // report a week's worth of posts as Friday's.
+    if (!e.postedDate) e.postedDate = e.date || todayStr();
     // keep whatever platforms were already ticked; otherwise use the choice made
     if (!(e.platforms || []).length) e.platforms = (platforms || ['facebook', 'instagram']).slice();
     save('dailyEntries', e);
