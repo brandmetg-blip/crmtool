@@ -52,13 +52,14 @@ create table if not exists concepts       ( id text primary key, data jsonb not 
 create table if not exists scripts        ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists script_entries ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 create table if not exists daily_entries  ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
+create table if not exists daily_hooks    ( id text primary key, data jsonb not null, updated_at timestamptz default now() );
 
 -- ---------- row level security ----------
 -- Signed-in users only. Anonymous visitors get nothing, which is the whole
 -- point: the anon key ships inside the app, so it must not be a password.
 do $$ declare t text;
 begin
-  foreach t in array array['team','accounts','profiles','products','concepts','scripts','script_entries','daily_entries'] loop
+  foreach t in array array['team','accounts','profiles','products','concepts','scripts','script_entries','daily_entries','daily_hooks'] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists "signed in read"  on %I', t);
     execute format('drop policy if exists "signed in write" on %I', t);
@@ -68,7 +69,7 @@ begin
 end $$;
 
 -- ---------- live sync ----------
-alter publication supabase_realtime add table team, accounts, profiles, products, concepts, scripts, script_entries, daily_entries;
+alter publication supabase_realtime add table team, accounts, profiles, products, concepts, scripts, script_entries, daily_entries, daily_hooks;
 
 -- ---------- image storage ----------
 -- Frame stills and avatar photos go here as files. The database only ever
@@ -137,6 +138,7 @@ to them, and the one thing they may change is marking their own video made.
 | Mark posted + platforms | ✅ | ❌ view only | sees it once posted |
 | Filter by video editor | ✅ | ✅ | ❌ |
 | "Still to finish" panel | ✅ | ❌ | ❌ |
+| Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see |
 | Main Scripts (frames, prompts) | ✅ | ❌ view + copy | ❌ view + copy |
 | Avatars | ✅ | ❌ view only | ❌ |
 | Assets | ✅ | ✅ all | ✅ theirs only |

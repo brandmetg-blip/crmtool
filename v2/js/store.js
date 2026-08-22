@@ -47,6 +47,7 @@ export const TABLES = {
   scripts: 'scripts',
   entries: 'script_entries',
   dailyEntries: 'daily_entries',
+  dailyHooks: 'daily_hooks',
 };
 const KEYS = Object.keys(TABLES); // app-side collection names
 

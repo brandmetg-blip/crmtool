@@ -7,7 +7,7 @@
 export const state = {
   ready: false,
   user: null,                 // logged-in team member
-  db: { team: [], accounts: [], profiles: [], products: [], concepts: [], scripts: [], entries: [], dailyEntries: [] },
+  db: { team: [], accounts: [], profiles: [], products: [], concepts: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
   route: 'builder',           // builder | accounts | team | login | setup
   date: todayStr(),           // selected day in the builder
   builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts
@@ -86,6 +86,11 @@ export const can = {
   editVideos: isAdmin,                                // write the brief, assign editors
   logCompletion: u => isAdmin(u) || isEditor(u),      // main-script completion
   markPosted: isAdmin,                                // tick "posted" + platforms
+  // The day's shared hooks. The one thing a marketing manager writes rather
+  // than reads — producing these is their job — and the only section an editor
+  // cannot see at all.
+  seeHooks: u => isAdmin(u) || isManager(u),
+  editHooks: u => isAdmin(u) || isManager(u),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.

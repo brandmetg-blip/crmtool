@@ -24,7 +24,8 @@ import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor } from './accounts.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
-import { presence } from '../presence.js';
+import { renderHooks, hooksForDate } from './hooks.js';
+import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
 
 const TOOLS = [['grok', 'Grok'], ['veo', 'Veo'], ['omniflash', 'Omni Flash']];
@@ -32,38 +33,18 @@ const TYPES = ['Growth', 'Product'];
 const PROD = ['Assembly', 'Scratch', 'Repost'];
 const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
 
-// A script/brief field two people could type into at once. Focusing it claims
-// it; everyone else sees it read-only with who has it, until they move away.
-// Claims expire on their own, so nothing can get permanently stuck.
-function guarded(fieldKey, buildEditor, readOnly) {
-  const held = presence.heldBy(fieldKey);
-  if (!held) {
-    const node = buildEditor();
-    node.addEventListener('focus', () => presence.claim(fieldKey));
-    node.addEventListener('blur', () => presence.release(fieldKey));
-    return node;
-  }
-  return el('div', { class: 'col', style: 'gap:6px' },
-    el('div', { class: 'lock' },
-      held.name + ' is editing this',
-      el('span', { class: 'spacer' }),
-      el('button', {
-        class: 'btn small', title: 'Edit it anyway — their text stays in their own copy until they save',
-        onclick: () => { presence.takeOver(fieldKey); forceEmit(); }
-      }, 'Take over')),
-    readOnly());
-}
-
 // ---------------------------------------------------------------------------
 export function renderBuilder(root) {
   const u = state.user;
-  // posting is admin-only; if the role changed under it, fall back
+  // some modes are gated; if the role changed under one, fall back
   if (state.builderMode === 'posting' && !can.markPosted(u)) state.builderMode = 'videos';
+  if (state.builderMode === 'hooks' && !can.seeHooks(u)) state.builderMode = 'videos';
 
   root.appendChild(head(u));
   if (state.builderMode !== 'posting') root.appendChild(dayStrip(u));
   if (state.builderMode === 'scripts') scriptsMode(root, u);
   else if (state.builderMode === 'posting') renderPosting(root, u);
+  else if (state.builderMode === 'hooks') renderHooks(root, u);
   else videosMode(root, u);
 }
 
@@ -113,6 +94,13 @@ function modeSeg(u) {
     }, 'Posting', n ? el('span', { class: 'pill' }, String(n)) : null));
   }
 
+  if (can.seeHooks(u)) {
+    seg.appendChild(el('button', {
+      class: mode === 'hooks' ? 'on' : '',
+      onclick: () => { state.builderMode = 'hooks'; state.builderAvatar = null; state.openScript = null; forceEmit(); }
+    }, 'Hooks'));
+  }
+
   seg.appendChild(el('button', {
     class: mode === 'scripts' ? 'on' : '',
     onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
@@ -135,7 +123,10 @@ function dayStrip(u) {
   return el('div', { class: 'days' }, DOW.map((dw, i) => {
     const ds = shiftDate(start, i);
     let caption = '';
-    if (scriptsOn) {
+    if (state.builderMode === 'hooks') {
+      const n = hooksForDate(ds).length;
+      caption = n ? n + (n === 1 ? ' hook' : ' hooks') : '';
+    } else if (scriptsOn) {
       const n = state.db.scripts.filter(s => s.date === ds).length;
       caption = n ? n + (n === 1 ? ' script' : ' scripts') : '';
     } else {
