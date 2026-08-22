@@ -12,6 +12,7 @@
 import { state, emit, forceEmit, uid, fmtDate, can } from '../state.js';
 import { el, copyText } from '../ui.js';
 import { guarded } from '../guard.js';
+import { sortedConcepts, conceptById, conceptLabel } from '../concepts.js';
 
 export function hooksForDate(date) {
   return state.db.dailyHooks
@@ -47,6 +48,7 @@ async function addHook() {
   const existing = hooksForDate(state.date);
   save('dailyHooks', {
     id: uid('h'), date: state.date, order: existing.length,
+    conceptId: '', variationId: '',
     hook: '', refVideo: '', notes: '',
     createdBy: state.user.name, createdAt: Date.now(),
   });
@@ -61,7 +63,7 @@ function card(h, num, canEdit, total) {
 
   const top = el('div', { class: 'row wrap' },
     el('span', { class: 'num' }, String(num)),
-    el('span', { class: 'label' }, 'HOOK'),
+    labelPicker(h, canEdit),
     el('span', { class: 'spacer' }),
     el('button', { class: 'btn small', onclick: e => copyText(h.hook, e.currentTarget) }, 'Copy'));
 
@@ -83,6 +85,7 @@ function card(h, num, canEdit, total) {
   box.appendChild(top);
 
   // the hook itself
+  box.appendChild(el('span', { class: 'label' }, 'HOOK'));
   const hookRo = () => el('div', { class: 'ro-text', style: 'font-size:13.5px' }, (h.hook || '').trim() || '—');
   box.appendChild(canEdit
     ? guarded('hook:' + h.id + ':hook',
@@ -125,6 +128,45 @@ function card(h, num, canEdit, total) {
 
   if (h.createdBy) box.appendChild(el('span', { class: 'hint' }, 'Added by ' + h.createdBy));
   return box;
+}
+
+// A hook is labelled by the concept it belongs to, picked from the shared list
+// rather than typed, so the names match the ones used everywhere else. Where a
+// concept has angles, one can be named too.
+function labelPicker(h, canEdit) {
+  const concepts = sortedConcepts();
+  const c = conceptById(h.conceptId);
+
+  if (!canEdit) {
+    const label = conceptLabel(h.conceptId, h.variationId);
+    return label
+      ? el('span', { class: 'chip violet' }, label)
+      : el('span', { class: 'hint' }, 'Unlabelled hook');
+  }
+  if (!concepts.length) {
+    return el('span', { class: 'hint' }, 'No concepts yet — add them under Avatars → Concepts to label hooks.');
+  }
+
+  const row = el('div', { class: 'row wrap', style: 'gap:7px' });
+  const sel = el('select', {
+    class: 'input', style: 'width:auto;min-width:160px;height:30px;font-size:12px',
+    onchange: e => loud(h.id, x => { x.conceptId = e.target.value; x.variationId = ''; })
+  }, [el('option', { value: '' }, 'Unlabelled…')]
+    .concat(concepts.map(x => el('option', { value: x.id }, x.name))));
+  sel.value = h.conceptId || '';
+  row.appendChild(sel);
+
+  const vars = (c && c.variations) || [];
+  if (vars.length) {
+    const vsel = el('select', {
+      class: 'input', style: 'width:auto;min-width:150px;height:30px;font-size:12px',
+      onchange: e => loud(h.id, x => x.variationId = e.target.value)
+    }, [el('option', { value: '' }, 'No particular angle')]
+      .concat(vars.map(v => el('option', { value: v.id }, v.label || 'Untitled angle'))));
+    vsel.value = h.variationId || '';
+    row.appendChild(vsel);
+  }
+  return row;
 }
 
 // Reordering rewrites the whole day's order so it stays contiguous.
