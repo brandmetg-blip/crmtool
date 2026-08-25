@@ -10,9 +10,12 @@ import { el, avatar, nameColor } from '../ui.js';
 import {
   sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
+import { sortedStages, stageOf, stageColor, isRetired } from '../stages.js';
 
-const STATUSES = [['Active', 'green'], ['Warming', 'amber'], ['Paused', 'gray'], ['Banned', 'red']];
-const PHASES = ['P1', 'P2', 'P3', 'P4'];
+const STATUSES = [
+  ['Active', 'green'], ['Warming', 'amber'], ['Paused', 'gray'],
+  ['Dropped', 'red'], ['Banned', 'red'],
+];
 
 export function renderAccounts(root) {
   const u = state.user;
@@ -22,7 +25,12 @@ export function renderAccounts(root) {
   root.appendChild(head(canEdit, all.length));
   root.appendChild(filters(all));
 
-  const shown = all
+  // Retired pages are kept out of the way unless you ask for them — they are
+  // history, not work, and they otherwise crowd out the live ones.
+  const retired = all.filter(isRetired);
+  const pool = state.acctStatus === 'all' ? all.filter(a => !isRetired(a)) : all;
+
+  const shown = pool
     .filter(a => state.acctStatus === 'all' || (a.status || 'Active') === state.acctStatus)
     .filter(a => state.acctProfile === 'all' || a.facebookProfileId === state.acctProfile)
     .filter(a => matchesProduct(a, state.acctProduct))
@@ -35,6 +43,13 @@ export function renderAccounts(root) {
     return;
   }
   root.appendChild(groupedCards(shown, canEdit));
+
+  if (state.acctStatus === 'all' && retired.length) {
+    root.appendChild(el('div', { class: 'hint', style: 'margin-top:20px' },
+      retired.length + ' retired page' + (retired.length === 1 ? '' : 's') + ' hidden ('
+      + retired.map(a => a.status).filter((v, i, s) => s.indexOf(v) === i).join(', ')
+      + ') — use the status filter above to see them.'));
+  }
 }
 
 // Laid out under a heading per product by default, so which pages belong to
@@ -79,6 +94,7 @@ function head(canEdit, n) {
   // spacer so the pill sits to their left either way
   import('../app.js').then(({ statusPill }) => wrap.insertBefore(statusPill(), spacer.nextSibling));
   if (canEdit) {
+    wrap.appendChild(el('button', { class: 'btn', onclick: openStages }, 'Stages'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openConcepts }, 'Concepts'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProducts }, 'Products'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProfiles }, 'Profiles'));
@@ -167,7 +183,7 @@ function card(a, canEdit) {
 
     // no product chip here — the group heading above already says it
     el('div', { class: 'row wrap', style: 'gap:6px' },
-      a.phase && el('span', { class: 'chip gray' }, a.phase),
+      stageChip(a),
       handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
@@ -189,6 +205,19 @@ export const PRODUCT_COLORS = [
 export function productColor(p) {
   if (!p) return '';
   return p.color || nameColor(p.name || '');   // deterministic default until one is picked
+}
+
+// The stage a page is at, in the stage's own colour. Retired pages say so
+// instead — where they are in the funnel stops mattering once they are out.
+export function stageChip(a) {
+  if (isRetired(a)) return el('span', { class: 'chip red' }, a.status);
+  const s = stageOf(a);
+  if (!s) return el('span', { class: 'chip gray' }, 'No stage');
+  const c = stageColor(s);
+  return el('span', {
+    class: 'chip', title: (s.goal || '').trim() || s.name,
+    style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
+  }, s.name);
 }
 
 export function productChip(a) {
@@ -226,6 +255,7 @@ function openAccount(existing) {
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
+      stageId: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
       notes: '', createdAt: Date.now(),
     };
@@ -278,10 +308,34 @@ function openAccount(existing) {
     productSelect(a.productId, v => a.productId = v),
     el('span', { class: 'hint' }, 'Shown beside the avatar when mass adding, so you can tell at a glance what each one is promoting.')));
 
-  // status + phase
+  // where the page is in its life, and whether it is still in play
+  const stageNote = el('div', { class: 'hint' });
+  const paintStageNote = () => {
+    const s = byId(state.db.stages, a.stageId);
+    stageNote.textContent = s && (s.goal || '').trim()
+      ? 'At this stage: ' + s.goal.trim()
+      : (s ? 'This stage has no instructions yet — add them under Stages.' : '');
+  };
+  const stageSel = sortedStages().length
+    ? select([['', 'No stage set']].concat(sortedStages().map(s => [s.id, s.name])), a.stageId || '',
+        v => { a.stageId = v; paintStageNote(); })
+    : el('span', { class: 'hint' }, 'No stages defined yet — add them under Avatars → Stages.');
+  paintStageNote();
+
+  const retiredNote = el('div', { class: 'hint' });
+  const paintRetired = () => {
+    retiredNote.textContent = ['Dropped', 'Banned'].includes(a.status)
+      ? 'Retired: no new videos, hidden from the day\'s work, and flagged to editors as not in use.'
+      : '';
+  };
+  paintRetired();
+
   body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
-    field('STATUS', select(STATUSES.map(s => [s[0], s[0]]), a.status || 'Active', v => a.status = v)),
-    field('PHASE', select(PHASES.map(p => [p, p]), a.phase || 'P1', v => a.phase = v))));
+    field('STATUS', select(STATUSES.map(s => [s[0], s[0]]), a.status || 'Active',
+      v => { a.status = v; paintRetired(); })),
+    field('STAGE', stageSel)));
+  body.appendChild(retiredNote);
+  body.appendChild(stageNote);
 
   // platforms
   body.appendChild(el('span', { class: 'label' }, 'FACEBOOK'));
@@ -520,6 +574,107 @@ function productSelect(current, onset) {
       .concat([el('option', { value: '__new' }, '+ New product…')]));
   sel.value = current || '';
   return sel;
+}
+
+// ---------------------------------------------------------------------------
+// stages — where a page is in its life, and what to do while it is there
+// ---------------------------------------------------------------------------
+function openStages() {
+  const body = el('div', { class: 'modal-body' });
+  body.appendChild(el('div', { class: 'hint' },
+    'The stages a page moves through. The instructions you write here are what editors read on the Assets tab, so say what should actually be posted at that stage.'));
+
+  const list = sortedStages();
+  const col = el('div', { class: 'col', style: 'gap:9px' });
+
+  list.forEach((s, i) => {
+    const used = state.db.accounts.filter(a => a.stageId === s.id).length;
+    const c = stageColor(s);
+
+    const card = el('div', { class: 'card col', style: 'padding:11px 12px;gap:9px;border-left:3px solid ' + c },
+      el('div', { class: 'row', style: 'gap:8px' },
+        el('input', {
+          class: 'input', style: 'height:31px;font-size:13px;font-weight:700;flex:1', value: s.name,
+          placeholder: 'Stage name…',
+          oninput: async e => {
+            const { mutateQuiet } = await import('../app.js');
+            mutateQuiet('stages', s.id, x => x.name = e.target.value);
+          }
+        }),
+        el('span', { class: 'hint', style: 'white-space:nowrap' }, used + (used === 1 ? ' page' : ' pages')),
+        el('button', { class: 'iconbtn', title: 'Move earlier', onclick: () => moveStage(s, -1) }, '↑'),
+        el('button', { class: 'iconbtn', title: 'Move later', onclick: () => moveStage(s, 1) }, '↓'),
+        el('button', {
+          class: 'iconbtn danger', title: 'Delete stage', onclick: async () => {
+            if (!confirm('Delete the “' + s.name + '” stage?'
+              + (used ? '\n\n' + used + ' page(s) are at this stage and will be left with no stage.' : ''))) return;
+            const { removeItem, save } = await import('../app.js');
+            state.db.accounts.filter(a => a.stageId === s.id).forEach(a => { a.stageId = ''; save('accounts', a); });
+            removeItem('stages', s.id);
+            openStages();
+          }
+        }, '✕')),
+
+      el('div', { class: 'col', style: 'gap:5px' },
+        el('span', { class: 'label' }, 'WHAT TO DO AT THIS STAGE'),
+        el('textarea', {
+          class: 'input', style: 'min-height:54px;font-size:12px',
+          placeholder: 'e.g. Growth videos only, 3 a day, no product mentions until 1k followers.',
+          oninput: async e => {
+            const { mutateQuiet } = await import('../app.js');
+            mutateQuiet('stages', s.id, x => x.goal = e.target.value);
+          }
+        }, s.goal || '')),
+
+      el('div', { class: 'row wrap', style: 'gap:6px' }, PRODUCT_COLORS.map(col2 =>
+        el('button', {
+          class: 'swatch' + (col2.toLowerCase() === c.toLowerCase() ? ' on' : ''),
+          style: 'background:' + col2, title: col2,
+          onclick: async e => {
+            const btn = e.currentTarget;
+            const { mutate } = await import('../app.js');
+            mutate('stages', s.id, x => x.color = col2);
+            openStages();
+          }
+        }))));
+    col.appendChild(card);
+  });
+
+  if (!list.length) {
+    col.appendChild(el('div', { class: 'hint' }, 'No stages yet. Most teams start with something like Warming → Growth → Product.'));
+  }
+  col.appendChild(el('button', {
+    class: 'btn small', style: 'align-self:flex-start', onclick: async () => {
+      const name = prompt('Name of the new stage:');
+      if (!name || !name.trim()) return;
+      const { save } = await import('../app.js');
+      save('stages', {
+        id: uid('st'), name: name.trim(), goal: '',
+        color: PRODUCT_COLORS[sortedStages().length % PRODUCT_COLORS.length],
+        order: sortedStages().length, createdAt: Date.now(),
+      });
+      openStages();
+    }
+  }, '+ Add stage'));
+
+  body.appendChild(col);
+  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
+    el('span', { class: 'spacer' }),
+    el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
+
+  state.modal = overlay('Stages', body);
+  forceEmit();
+}
+
+async function moveStage(s, dir) {
+  const rows = sortedStages();
+  const i = rows.findIndex(x => x.id === s.id);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= rows.length) return;
+  [rows[i], rows[j]] = [rows[j], rows[i]];
+  const { mutate } = await import('../app.js');
+  for (let k = 0; k < rows.length; k++) await mutate('stages', rows[k].id, x => x.order = k);
+  openStages();
 }
 
 // ---------------------------------------------------------------------------

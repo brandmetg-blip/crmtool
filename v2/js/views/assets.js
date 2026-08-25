@@ -8,6 +8,8 @@
 import { state, builderAccounts, can } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
+import { pageStanding } from '../stages.js';
+import { stageChip } from './accounts.js';
 
 export function renderAssets(root) {
   const u = state.user;
@@ -40,13 +42,26 @@ function card(a) {
   const link = (a.baseImageLink || '').trim();
   const isUrl = /^https?:\/\//.test(link);
 
-  const box = el('div', { class: 'card col', style: 'gap:14px' },
+  const st = pageStanding(a);
+
+  const box = el('div', { class: 'card col' + (st && st.retired ? ' retired' : ''), style: 'gap:14px' },
     el('div', { class: 'row', style: 'gap:13px' },
       avatar(a, 64),
       el('div', { style: 'min-width:0;flex:1' },
         el('b', { style: 'display:block;font-size:14.5px' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, 'CHARACTER'),
-        el('div', { style: 'font-size:13px;font-weight:600;color:#cfd0d4' }, (a.character || '').trim() || '—'))));
+        el('div', { style: 'font-size:13px;font-weight:600;color:#cfd0d4' }, (a.character || '').trim() || '—')),
+      stageChip(a)));
+
+  // What this page needs right now — the reason stages exist rather than being
+  // a colour on a card. A retired page says so loudly instead.
+  if (st && st.retired) {
+    box.appendChild(el('div', { class: 'error', style: 'font-size:12px' }, st.note));
+  } else if (st && st.note) {
+    box.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+      el('span', { class: 'label' }, 'AT THIS STAGE'),
+      el('div', { class: 'ro-text' }, st.note)));
+  }
 
   const linkCol = el('div', { class: 'col', style: 'gap:6px;border-top:1px solid var(--line);padding-top:12px' },
     el('span', { class: 'label' }, 'BASE IMAGES'));

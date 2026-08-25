@@ -141,6 +141,10 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
 
+/* a page that is out of play reads as dead, not merely dim */
+.card.retired { opacity: .72; border-color: rgba(240,88,78,0.3); }
+.card.retired .avatar { filter: grayscale(1); }
+
 /* ---- an avatar's folders, concept by concept ---- */
 .concept-block { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .concept-block.open { border-color: var(--line2); }

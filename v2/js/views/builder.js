@@ -21,7 +21,8 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip, productColor } from './accounts.js';
+import { productChip, productColor, stageChip } from './accounts.js';
+import { liveAccounts, stageGoal } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -147,7 +148,9 @@ function dayStrip(u) {
 // VIDEOS MODE
 // ===========================================================================
 function videosMode(root, u) {
-  const all = builderAccounts(u, state.db);
+  // A dropped or banned page is out of the day's work entirely — its history
+  // stays, but nobody should be handed new videos for it.
+  const all = liveAccounts(builderAccounts(u, state.db));
   const dayAll = state.db.dailyEntries.filter(e => e.date === state.date);
   const day = visibleEntries(u, dayAll, all);
 
@@ -404,6 +407,7 @@ function avatarCard(a, entries, u) {
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
+    el('div', { class: 'row wrap', style: 'gap:6px' }, stageChip(a)),
     el('div', { class: 'row' },
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
@@ -425,11 +429,20 @@ function sheet(a, entries, u) {
     el('div', null,
       el('b', { style: 'font-size:15px' }, a.name || 'Untitled'),
       el('div', { class: 'hint' }, a.character || 'No character')),
+    stageChip(a),
     productChip(a),
     el('span', { class: 'spacer' }),
     el('span', { class: 'chip ' + (entries.length && done === entries.length ? 'green' : 'gray') },
       done + ' / ' + entries.length + ' made'),
     canEdit && el('button', { class: 'btn primary', onclick: () => addEntry(a) }, '+ Add video')));
+
+  // what this page is meant to be doing right now, in front of whoever opened it
+  const goal = stageGoal(a);
+  if (goal) {
+    wrap.appendChild(el('div', { class: 'card row', style: 'gap:9px;padding:10px 13px;align-items:flex-start' },
+      el('span', { class: 'label', style: 'flex:0 0 auto;padding-top:2px' }, 'AT THIS STAGE'),
+      el('span', { class: 'ro-text', style: 'flex:1' }, goal)));
+  }
 
   if (!entries.length) {
     wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:30px' },
@@ -461,7 +474,7 @@ async function addEntry(a) {
 // Mass add — write the brief once, create one video per selected avatar.
 // ---------------------------------------------------------------------------
 function openMassAdd(u) {
-  const accounts = builderAccounts(u, state.db)
+  const accounts = liveAccounts(builderAccounts(u, state.db))
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const editors = assignableMembers(state.db);
 
