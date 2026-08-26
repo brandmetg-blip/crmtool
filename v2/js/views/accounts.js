@@ -181,14 +181,11 @@ function card(a, canEdit) {
       el('div', { style: 'min-width:0;flex:1' },
         el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
-      // No lifecycle chip here: stageChip below already shows the stage for a
-      // working page and the lifecycle for one that isn't, so exactly one chip
-      // speaks for the page either way.
-      null),
+      lifecycleChip(a)),
 
     // no product chip here — the group heading above already says it
     el('div', { class: 'row wrap', style: 'gap:6px' },
-      stageChip(a),
+      stageOnlyChip(a),
       handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
@@ -212,8 +209,28 @@ export function productColor(p) {
   return p.color || nameColor(p.name || '');   // deterministic default until one is picked
 }
 
-// The stage a page is at, in the stage's own colour. Retired pages say so
-// instead — where they are in the funnel stops mattering once they are out.
+// Whether the page is in play: Live, Building, Paused, Reposting, Stopped,
+// Banned. Always shown on the Avatars tab, because "is this page running" is a
+// different question from "how far along is it" and both need answering.
+export function lifecycleChip(a) {
+  const def = lifecycleDef(a);
+  return el('span', { class: 'chip ' + def.tone, title: def.note }, lifecycleOf(a));
+}
+
+// The stage alone, never standing in for the lifecycle — used where a
+// lifecycle chip sits beside it.
+export function stageOnlyChip(a) {
+  const s = stageOf(a);
+  if (!s) return el('span', { class: 'chip gray' }, 'No stage');
+  const c = stageColor(s);
+  return el('span', {
+    class: 'chip', title: (s.goal || '').trim() || s.name,
+    style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
+  }, s.name);
+}
+
+// The stage a page is at, in the stage's own colour. Where a page is not
+// working, this says so instead — used where only one chip is shown.
 export function stageChip(a) {
   // Anything not taking new videos says so instead — where a page sits in the
   // funnel stops mattering once it is out of the roster.
