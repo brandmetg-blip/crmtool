@@ -479,8 +479,13 @@ function openMassAdd(u) {
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const editors = assignableMembers(state.db);
 
-  // Start with every avatar that isn't paused — the usual case is "all of them".
-  const picked = new Set(accounts.filter(a => (a.status || 'Active') !== 'Paused').map(a => a.id));
+  // Start with every avatar that isn't paused and whose stage takes this kind
+  // of video — the usual case is "all of them", but a ticked box must always
+  // mean "this one will get it".
+  const picked = new Set(accounts
+    .filter(a => (a.status || 'Active') !== 'Paused' && stageAllows(a, 'Product'))
+    .map(a => a.id));
+  let autoRemoved = 0;   // untickd by a type change, reported once
 
   const draft = {
     date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
@@ -527,7 +532,18 @@ function openMassAdd(u) {
       el('div', { class: 'seg mini' }, TYPES.map(t => {
         const b = el('button', {
           class: draft.type === t ? 'on' : '',
-          onclick: () => { draft.type = t; repaintSegs(); refresh(); }   // re-flags off-stage avatars
+          onclick: () => {
+            draft.type = t;
+            // Choosing the type re-picks the pages that take it. Predictable in
+            // both directions: switching to Growth selects the growth-stage
+            // pages and drops the established ones, rather than leaving a
+            // selection that half-matches the rule.
+            const eligible = accounts.filter(a => (a.status || 'Active') !== 'Paused' && stageAllows(a, t));
+            autoRemoved = accounts.filter(a => picked.has(a.id) && !stageAllows(a, t)).length;
+            picked.clear();
+            eligible.forEach(a => picked.add(a.id));
+            repaintSegs(); refresh();
+          }
         }, t);
         b.dataset.seg = 'type'; b.dataset.val = t; return b;
       }))),
@@ -620,7 +636,8 @@ function openMassAdd(u) {
       }
     }
 
-    countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected';
+    countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
+      + (autoRemoved ? ' · ' + autoRemoved + ' dropped, not for their stage' : '');
 
     // each product heading shows all / some / none of its avatars selected
     pickWrap.querySelectorAll('[data-group]').forEach(head => {
