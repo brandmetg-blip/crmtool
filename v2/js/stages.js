@@ -17,19 +17,17 @@
 // ============================================================================
 
 import { state, byId } from './state.js';
+import { takesDailyVideos, isDropped, lifecycleOf, lifecycleDef } from './lifecycle.js';
 
 // The kinds of video a page can be given.
 export const VIDEO_TYPES = ['Growth', 'Product'];
 
-// Statuses that mean "stop working on this page".
-const RETIRED = ['Dropped', 'Banned'];
-
-export function isRetired(a) {
-  return !!a && RETIRED.includes(a.status || 'Active');
-}
+// Which pages are still taking new videos. The lifecycle owns this decision;
+// stages only ask the question.
+export { takesDailyVideos as isWorking, isDropped as isRetired } from './lifecycle.js';
 
 export function liveAccounts(list) {
-  return (list || []).filter(a => !isRetired(a));
+  return (list || []).filter(takesDailyVideos);
 }
 
 export function sortedStages() {
@@ -99,15 +97,9 @@ export function defaultTypeFor(account) {
 // Everything an editor needs to know before touching a page, in one place.
 export function pageStanding(a) {
   if (!a) return null;
-  if (isRetired(a)) {
-    return {
-      retired: true,
-      label: a.status,
-      tone: 'red',
-      note: a.status === 'Dropped'
-        ? 'This page has been dropped — do not make new videos for it.'
-        : 'This page is banned — do not make new videos for it.',
-    };
+  const def = lifecycleDef(a);
+  if (!def.work) {
+    return { retired: isDropped(a), label: lifecycleOf(a), tone: def.tone, note: def.note };
   }
   const s = stageOf(a);
   if (!s) return { retired: false, label: 'No stage set', tone: 'gray', note: '' };

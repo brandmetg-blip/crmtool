@@ -9,6 +9,7 @@ import { state, builderAccounts, can } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
+import { lifecycleOf } from '../lifecycle.js';
 import { stageChip } from './accounts.js';
 
 export function renderAssets(root) {
@@ -56,7 +57,13 @@ function card(a) {
   // What this page needs right now — the reason stages exist rather than being
   // a colour on a card. A retired page says so loudly instead.
   if (st && st.retired) {
-    box.appendChild(el('div', { class: 'error', style: 'font-size:12px' }, st.note));
+    box.appendChild(el('div', {
+      class: lifecycleOf(a) === 'Reposting' ? 'lock' : 'error', style: 'font-size:12px'
+    }, st.note));
+    // Reposting is a job, not a tombstone: these are the videos to put back out.
+    if (lifecycleOf(a) === 'Reposting') box.appendChild(winnersBlock(a));
+  } else if (st && !st.note && lifecycleOf(a) !== 'Live') {
+    box.appendChild(el('div', { class: 'hint' }, (st.label || '') + ' — not posting right now.'));
   } else if (st && st.note) {
     box.appendChild(el('div', { class: 'col', style: 'gap:5px' },
       el('span', { class: 'label' }, 'AT THIS STAGE'),
@@ -112,6 +119,32 @@ function bodiesBlock(a) {
       col.appendChild(el('div', { style: 'padding-left:14px' },
         linkLine(v.label || 'Untitled angle', own.trim(), false)));
     });
+  });
+  return col;
+}
+
+// The videos starred as winners in the builder — what a reposting page lives on.
+function winnersBlock(a) {
+  const wins = (state.db.dailyEntries || [])
+    .filter(e => e.accountId === a.id && e.win)
+    .sort((x, y) => (y.date || '').localeCompare(x.date || ''));
+
+  const col = el('div', { class: 'col', style: 'gap:7px' },
+    el('span', { class: 'label' }, 'WINNERS TO REPOST'));
+
+  if (!wins.length) {
+    col.appendChild(el('span', { class: 'hint' },
+      'No videos were starred as winners on this page — ask an admin which ones to repost.'));
+    return col;
+  }
+  wins.forEach(e => {
+    const url = (e.videoLink || '').trim();
+    col.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+      el('span', { style: 'flex:1;min-width:90px;font-size:11.5px;color:var(--mut)' },
+        (e.date || '') + (e.concept ? ' · ' + e.concept : '')),
+      /^https?:\/\//.test(url)
+        ? el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open ↗')
+        : el('span', { class: 'hint' }, 'no link')));
   });
   return col;
 }

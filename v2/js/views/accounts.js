@@ -10,12 +10,11 @@ import { el, avatar, nameColor } from '../ui.js';
 import {
   sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
-import { sortedStages, stageOf, stageColor, isRetired } from '../stages.js';
+import { sortedStages, stageOf, stageColor } from '../stages.js';
+import { LIFECYCLE, lifecycleOf, lifecycleDef, isLive, isDropped, pageStats } from '../lifecycle.js';
+import { renderRoster, lineageNote } from './roster.js';
 
-const STATUSES = [
-  ['Active', 'green'], ['Warming', 'amber'], ['Paused', 'gray'],
-  ['Dropped', 'red'], ['Banned', 'red'],
-];
+const STATUSES = LIFECYCLE.map(l => [l.id, l.tone]);
 
 export function renderAccounts(root) {
   const u = state.user;
@@ -23,15 +22,16 @@ export function renderAccounts(root) {
   const all = myAccounts(u, state.db);
 
   root.appendChild(head(canEdit, all.length));
+  renderRoster(root, all, canEdit, startReplacement);
   root.appendChild(filters(all));
 
-  // Retired pages are kept out of the way unless you ask for them — they are
+  // Dropped pages are kept out of the way unless you ask for them — they are
   // history, not work, and they otherwise crowd out the live ones.
-  const retired = all.filter(isRetired);
-  const pool = state.acctStatus === 'all' ? all.filter(a => !isRetired(a)) : all;
+  const retired = all.filter(isDropped);
+  const pool = state.acctStatus === 'all' ? all.filter(a => !isDropped(a)) : all;
 
   const shown = pool
-    .filter(a => state.acctStatus === 'all' || (a.status || 'Active') === state.acctStatus)
+    .filter(a => state.acctStatus === 'all' || lifecycleOf(a) === state.acctStatus)
     .filter(a => state.acctProfile === 'all' || a.facebookProfileId === state.acctProfile)
     .filter(a => matchesProduct(a, state.acctProduct))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -46,9 +46,9 @@ export function renderAccounts(root) {
 
   if (state.acctStatus === 'all' && retired.length) {
     root.appendChild(el('div', { class: 'hint', style: 'margin-top:20px' },
-      retired.length + ' retired page' + (retired.length === 1 ? '' : 's') + ' hidden ('
-      + retired.map(a => a.status).filter((v, i, s) => s.indexOf(v) === i).join(', ')
-      + ') — use the status filter above to see them.'));
+      retired.length + ' dropped page' + (retired.length === 1 ? '' : 's') + ' hidden ('
+      + retired.map(lifecycleOf).filter((v, i, s) => s.indexOf(v) === i).join(', ')
+      + ') — use the filter above to see them.'));
   }
 }
 
@@ -209,7 +209,10 @@ export function productColor(p) {
 // The stage a page is at, in the stage's own colour. Retired pages say so
 // instead — where they are in the funnel stops mattering once they are out.
 export function stageChip(a) {
-  if (isRetired(a)) return el('span', { class: 'chip red' }, a.status);
+  // Anything not taking new videos says so instead — where a page sits in the
+  // funnel stops mattering once it is out of the roster.
+  const def = lifecycleDef(a);
+  if (!def.work) return el('span', { class: 'chip ' + def.tone }, lifecycleOf(a));
   const s = stageOf(a);
   if (!s) return el('span', { class: 'chip gray' }, 'No stage');
   const c = stageColor(s);
@@ -243,7 +246,20 @@ function handleChip(platform, handle, profile) {
 // ---------------------------------------------------------------------------
 function closeModal() { state.modal = null; forceEmit(); }
 
-function openAccount(existing) {
+// Starting a replacement carries over what the new page inherits from the old —
+// the product it promotes and the stage it starts at — and records the link, so
+// the roster reads as a chain rather than a pile of unrelated pages.
+function startReplacement(old) {
+  openAccount(null, {
+    replacesId: old.id,
+    productId: old.productId || '',
+    stageId: (sortedStages()[0] || {}).id || '',
+    status: 'Building',
+    character: old.character || '',
+  });
+}
+
+function openAccount(existing, seed) {
   // Edit a COPY. Nothing is written until Save, so an abandoned modal can't
   // half-write a record, and a live update from someone else can't be
   // scribbled over by a form the user never submitted.
@@ -254,10 +270,11 @@ function openAccount(existing) {
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
-      stageId: '',
+      stageId: '', replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
       notes: '', createdAt: Date.now(),
     };
+  if (seed) Object.assign(a, seed);
   if (!a.platforms) a.platforms = { facebook: '', instagram: '' };
   if (!Array.isArray(a.bodyLinks)) a.bodyLinks = [];   // added after the first avatars existed
 
@@ -321,20 +338,45 @@ function openAccount(existing) {
     : el('span', { class: 'hint' }, 'No stages defined yet — add them under Settings.');
   paintStageNote();
 
-  const retiredNote = el('div', { class: 'hint' });
-  const paintRetired = () => {
-    retiredNote.textContent = ['Dropped', 'Banned'].includes(a.status)
-      ? 'Retired: no new videos, hidden from the day\'s work, and flagged to editors as not in use.'
-      : '';
+  const lifeNote = el('div', { class: 'hint' });
+  const reasonWrap = el('div', { class: 'col', style: 'gap:5px' });
+  const paintLife = () => {
+    const def = lifecycleDef(a);
+    lifeNote.textContent = def.note;
+    reasonWrap.innerHTML = '';
+    if (isDropped(a)) {
+      reasonWrap.appendChild(el('span', { class: 'label' }, 'WHY IT WAS DROPPED'));
+      reasonWrap.appendChild(el('input', {
+        class: 'input', value: a.dropReason || '',
+        placeholder: 'e.g. 6 weeks, nothing over 2k views',
+        oninput: e => a.dropReason = e.target.value,
+      }));
+      const s = pageStats(a);
+      reasonWrap.appendChild(el('span', { class: 'hint' },
+        'Kept on record: ' + (s.days != null ? s.days + ' days live · ' : '')
+        + s.posted + ' posted · ' + s.wins + ' winner' + (s.wins === 1 ? '' : 's') + '.'));
+    }
   };
-  paintRetired();
 
   body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
-    field('STATUS', select(STATUSES.map(s => [s[0], s[0]]), a.status || 'Active',
-      v => { a.status = v; paintRetired(); })),
+    field('LIFECYCLE', select(STATUSES.map(s => [s[0], s[0]]), lifecycleOf(a),
+      v => {
+        // starting to post is when the clock for reviews should begin
+        if (v === 'Live' && !isLive(a) && !a.wentLiveAt) a.wentLiveAt = Date.now();
+        if (['Reposting', 'Stopped', 'Banned'].includes(v) && !isDropped(a)) {
+          a.droppedAt = Date.now(); a.dropKind = v;
+        }
+        a.status = v; paintLife();
+      })),
     field('STAGE', stageSel)));
-  body.appendChild(retiredNote);
+  body.appendChild(lifeNote);
+  paintLife();
+  body.appendChild(reasonWrap);
   body.appendChild(stageNote);
+
+  // what this page replaced, or what replaced it
+  const lineage = lineageNote(a);
+  if (lineage) body.appendChild(el('span', { class: 'chip violet', style: 'align-self:flex-start' }, lineage));
 
   // platforms
   body.appendChild(el('span', { class: 'label' }, 'FACEBOOK'));

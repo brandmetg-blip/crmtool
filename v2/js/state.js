@@ -7,7 +7,7 @@
 export const state = {
   ready: false,
   user: null,                 // logged-in team member
-  db: { team: [], accounts: [], profiles: [], products: [], concepts: [], stages: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
+  db: { team: [], accounts: [], profiles: [], products: [], concepts: [], stages: [], settings: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
   route: 'builder',           // builder | accounts | team | login | setup
   date: todayStr(),           // selected day in the builder
   builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts

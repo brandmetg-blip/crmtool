@@ -179,6 +179,12 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .pick-row.on { background: rgba(52,224,138,0.07); border-color: rgba(52,224,138,0.28); }
 
 /* smaller ticks in a dense list */
+/* one square per roster slot — "two short" seen rather than read */
+.slots { display: flex; flex-wrap: wrap; gap: 5px; }
+.slot { width: 20px; height: 20px; border-radius: 6px; border: 1px dashed rgba(255,255,255,0.18); flex: 0 0 auto; }
+.slot.on { background: var(--green); border: none; }
+.slot.building { background: rgba(240,179,65,0.35); border: 1px solid rgba(240,179,65,0.6); }
+
 .quota-tag { font-size: 11px; white-space: nowrap; flex: 0 0 auto; }
 .quota-tag.hint { color: var(--dim); font-weight: 600; }
 .pick-row .check, .pick-group .check { width: 19px; height: 19px; border-radius: 6px; font-size: 11px; }

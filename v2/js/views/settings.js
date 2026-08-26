@@ -7,6 +7,7 @@
 import { state, forceEmit, uid, can } from '../state.js';
 import { el } from '../ui.js';
 import { sortedStages, stageColor, quotaFor, VIDEO_TYPES } from '../stages.js';
+import { getPref, setPref } from '../prefs.js';
 import { PRODUCT_COLORS } from './accounts.js';
 
 export function renderSettings(root, u) {
@@ -22,7 +23,35 @@ export function renderSettings(root, u) {
   import('../app.js').then(({ statusPill }) => head.appendChild(statusPill()));
   root.appendChild(head);
 
+  root.appendChild(rosterSection());
   root.appendChild(stagesSection());
+}
+
+// How many pages should be live at once, and how much runway a page gets
+// before it is worth a decision.
+function rosterSection() {
+  const num = (key, label, hint, min, max) => el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
+    el('span', { class: 'label' }, label),
+    el('input', {
+      class: 'input', type: 'number', min: String(min), max: String(max), value: String(getPref(key)),
+      style: 'width:110px;height:34px;font-size:15px;font-weight:800;text-align:center',
+      onchange: async e => {
+        const v = Math.max(min, Math.min(max, Math.round(+e.target.value || min)));
+        e.target.value = String(v);
+        await setPref(key, v);
+        forceEmit();
+      }
+    }),
+    el('span', { class: 'hint' }, hint));
+
+  return el('div', { class: 'card col', style: 'gap:12px;margin-bottom:22px' },
+    el('div', null,
+      el('b', { style: 'font-size:14px' }, 'The roster'),
+      el('div', { class: 'hint' },
+        'How many pages you run at once. Drop one and a slot opens; the Avatars tab shows the gap and what is owed a replacement.')),
+    el('div', { class: 'row wrap', style: 'gap:20px' },
+      num('rosterTarget', 'PAGES LIVE AT ONCE', 'The target the roster is measured against.', 1, 100),
+      num('reviewAfterDays', 'REVIEW AFTER (DAYS)', 'A live page with no winning video by then comes up for review.', 3, 365)));
 }
 
 // ---------------------------------------------------------------------------

@@ -45,6 +45,7 @@ export const TABLES = {
   products: 'products',
   concepts: 'concepts',
   stages: 'stages',
+  settings: 'settings',
   scripts: 'scripts',
   entries: 'script_entries',
   dailyEntries: 'daily_entries',
