@@ -52,22 +52,42 @@ export function stageGoal(a) {
 }
 
 // ---------------------------------------------------------------------------
-// which kinds of video belong at a stage
+// how many videos of each kind a stage wants per day
 // ---------------------------------------------------------------------------
-// A stage with nothing configured allows everything — a rule you have not
-// written yet must never silently block work. Once you do say (for instance)
-// that an established page takes Product only, asking for a Growth video there
-// is flagged as off-stage. It is a guard rail, not a lock: it can be overridden
-// deliberately, never by accident.
+// A stage carries a daily target per type — 1 growth and 2 product, say. Zero
+// means that type does not belong at this stage at all, so the quota subsumes
+// the old allowed/not-allowed rule: nothing wanted is nothing allowed.
+//
+// This is what stops the guesswork. Nobody has to remember whether a page has
+// had its product video today; the target and the count are both on screen.
+export function quotaFor(stage, type) {
+  if (!stage) return 0;
+  const q = stage.quota;
+  if (q && typeof q[type] === 'number') return Math.max(0, Math.round(q[type]));
+  // stages written before quotas: an allows list meant one a day of each
+  if (Array.isArray(stage.allows) && stage.allows.length) return stage.allows.includes(type) ? 1 : 0;
+  return 1;
+}
+
 export function allowedTypes(stage) {
-  if (!stage || !Array.isArray(stage.allows) || !stage.allows.length) return VIDEO_TYPES.slice();
-  return VIDEO_TYPES.filter(t => stage.allows.includes(t));
+  const on = VIDEO_TYPES.filter(t => quotaFor(stage, t) > 0);
+  return on.length ? on : VIDEO_TYPES.slice();
 }
 
 export function stageAllows(account, type) {
   const s = stageOf(account);
   if (!s) return true;                       // no stage set: nothing to enforce
-  return allowedTypes(s).includes(type);
+  return quotaFor(s, type) > 0;
+}
+
+// What this page still needs of `type` on `date`. need === null means the page
+// has no stage, so there is no target to measure against.
+export function quotaProgress(account, type, date, entries) {
+  const s = stageOf(account);
+  const need = s ? quotaFor(s, type) : null;
+  const have = (entries || state.db.dailyEntries || [])
+    .filter(e => e.date === date && e.accountId === account.id && (e.type || 'Product') === type).length;
+  return { need, have, remaining: need == null ? null : Math.max(0, need - have) };
 }
 
 // The type a new video should default to for this page.

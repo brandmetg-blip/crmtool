@@ -179,6 +179,8 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .pick-row.on { background: rgba(52,224,138,0.07); border-color: rgba(52,224,138,0.28); }
 
 /* smaller ticks in a dense list */
+.quota-tag { font-size: 11px; white-space: nowrap; flex: 0 0 auto; }
+.quota-tag.hint { color: var(--dim); font-weight: 600; }
 .pick-row .check, .pick-group .check { width: 19px; height: 19px; border-radius: 6px; font-size: 11px; }
 .check.some { background: rgba(52,224,138,0.35); border: none; color: #06140c; }
 

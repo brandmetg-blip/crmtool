@@ -6,7 +6,7 @@
 
 import { state, forceEmit, uid, can } from '../state.js';
 import { el } from '../ui.js';
-import { sortedStages, stageColor, allowedTypes, VIDEO_TYPES } from '../stages.js';
+import { sortedStages, stageColor, quotaFor, VIDEO_TYPES } from '../stages.js';
 import { PRODUCT_COLORS } from './accounts.js';
 
 export function renderSettings(root, u) {
@@ -33,7 +33,7 @@ function stagesSection() {
     el('div', null,
       el('b', { style: 'font-size:14px' }, 'Stages'),
       el('div', { class: 'hint' },
-        'The life of a page, in order. What you write here is what editors read on Assets and on the avatar’s day — and which video types are allowed decides what the builder lets you add.')),
+        'The life of a page, in order. What you write here is what editors read on Assets and on the avatar’s day, and the daily targets decide who still needs a video when you mass add — so nobody has to remember.')),
     el('span', { class: 'spacer' }),
     el('button', {
       class: 'btn primary', onclick: async () => {
@@ -41,7 +41,7 @@ function stagesSection() {
         if (!name || !name.trim()) return;
         const { save } = await import('../app.js');
         save('stages', {
-          id: uid('st'), name: name.trim(), goal: '', allows: VIDEO_TYPES.slice(),
+          id: uid('st'), name: name.trim(), goal: '', quota: { Growth: 1, Product: 1 },
           color: PRODUCT_COLORS[sortedStages().length % PRODUCT_COLORS.length],
           order: sortedStages().length, createdAt: Date.now(),
         });
@@ -62,7 +62,6 @@ function stagesSection() {
 
 function stageCard(s, i, total) {
   const c = stageColor(s);
-  const allows = allowedTypes(s);
 
   return el('div', { class: 'card col', style: 'gap:12px;border-left:3px solid ' + c },
     el('div', { class: 'row wrap', style: 'gap:9px' },
@@ -102,28 +101,29 @@ function stageCard(s, i, total) {
         }
       }, s.goal || '')),
 
-    // which video types belong here — the rule the builder enforces
-    el('div', { class: 'col', style: 'gap:5px' },
-      el('span', { class: 'label' }, 'VIDEO TYPES ALLOWED AT THIS STAGE'),
-      el('div', { class: 'row wrap', style: 'gap:7px' }, VIDEO_TYPES.map(t => {
-        const on = allows.includes(t);
-        return el('button', {
-          class: 'chip click ' + (on ? (t === 'Growth' ? 'blue' : 'green') : 'gray'),
-          onclick: async () => {
-            const { mutate } = await import('../app.js');
-            mutate('stages', s.id, x => {
-              const cur = allowedTypes(x);
-              const next = cur.includes(t) ? cur.filter(y => y !== t) : cur.concat([t]);
-              // never leave a stage allowing nothing — that would block all work
-              x.allows = next.length ? next : VIDEO_TYPES.slice();
-            });
-          }
-        }, (on ? '✓ ' : '') + t);
+    // the daily target per type — zero means this type does not belong here
+    el('div', { class: 'col', style: 'gap:6px' },
+      el('span', { class: 'label' }, 'VIDEOS PER DAY AT THIS STAGE'),
+      el('div', { class: 'row wrap', style: 'gap:14px' }, VIDEO_TYPES.map(t => {
+        const n = quotaFor(s, t);
+        return el('div', { class: 'row', style: 'gap:7px' },
+          el('span', {
+            style: 'font-size:12.5px;font-weight:700;min-width:62px;color:'
+              + (n ? (t === 'Growth' ? 'var(--blue)' : 'var(--green)') : 'var(--dim)')
+          }, t),
+          el('button', { class: 'iconbtn', title: 'One fewer', onclick: () => bump(s, t, -1) }, '−'),
+          el('input', {
+            class: 'input', type: 'number', min: '0', max: '20', value: String(n),
+            style: 'width:62px;height:30px;text-align:center;font-weight:800',
+            onchange: async e => {
+              const v = Math.max(0, Math.min(20, Math.round(+e.target.value || 0)));
+              const { mutate } = await import('../app.js');
+              mutate('stages', s.id, x => { x.quota = Object.assign({}, x.quota, { [t]: v }); });
+            }
+          }),
+          el('button', { class: 'iconbtn', title: 'One more', onclick: () => bump(s, t, 1) }, '+'));
       })),
-      el('span', { class: 'hint' }, allows.length === VIDEO_TYPES.length
-        ? 'Both types allowed. Turn one off once a page at this stage should stop getting it.'
-        : 'Adding a ' + VIDEO_TYPES.filter(t => !allows.includes(t)).join(' or ')
-          + ' video to a page here is flagged as off-stage, and takes a deliberate confirmation.')),
+      el('span', { class: 'hint' }, quotaSummary(s))),
 
     el('div', { class: 'col', style: 'gap:5px' },
       el('span', { class: 'label' }, 'COLOUR'),
@@ -135,6 +135,24 @@ function stageCard(s, i, total) {
           mutate('stages', s.id, x => x.color = col);
         }
       })))));
+}
+
+async function bump(s, type, by) {
+  const { mutate } = await import('../app.js');
+  mutate('stages', s.id, x => {
+    const v = Math.max(0, Math.min(20, quotaFor(x, type) + by));
+    x.quota = Object.assign({}, x.quota, { [type]: v });
+  });
+}
+
+function quotaSummary(s) {
+  const parts = VIDEO_TYPES.map(t => [t, quotaFor(s, t)]).filter(p => p[1] > 0);
+  if (!parts.length) return 'Nothing set — pages at this stage get no videos.';
+  const total = parts.reduce((n, p) => n + p[1], 0);
+  const zero = VIDEO_TYPES.filter(t => !quotaFor(s, t));
+  return parts.map(p => p[1] + '× ' + p[0]).join(' + ')
+    + ' a day (' + total + ' total)'
+    + (zero.length ? '. A ' + zero.join(' or ') + ' video here is off-stage and takes a confirmation.' : '.');
 }
 
 async function move(s, dir, total) {

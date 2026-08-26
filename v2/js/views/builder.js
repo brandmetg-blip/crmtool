@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip } from './accounts.js';
-import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor } from '../stages.js';
+import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -384,6 +384,24 @@ function avatarGroups(accounts, day, u) {
   }));
 }
 
+// How this page is doing against its stage's daily target, per type. Only the
+// types the stage actually wants are shown, so a growth-only page says nothing
+// about product.
+function quotaChips(a, entries) {
+  const s = stageOf(a);
+  if (!s) return null;
+  return TYPES.map(t => {
+    const need = quotaFor(s, t);
+    if (!need) return null;
+    const have = entries.filter(e => (e.type || 'Product') === t).length;
+    const done = have >= need;
+    return el('span', {
+      class: 'chip ' + (done ? 'green' : 'gray'),
+      title: have + ' of ' + need + ' ' + t.toLowerCase() + ' videos for this day',
+    }, t.slice(0, 1) + ' ' + have + '/' + need);
+  }).filter(Boolean);
+}
+
 function avatarCard(a, entries, u) {
   const done = entries.filter(e => e.done).length;
   const posted = entries.filter(e => e.posted).length;
@@ -407,7 +425,7 @@ function avatarCard(a, entries, u) {
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
-    el('div', { class: 'row wrap', style: 'gap:6px' }, stageChip(a)),
+    el('div', { class: 'row wrap', style: 'gap:6px' }, stageChip(a), quotaChips(a, entries)),
     el('div', { class: 'row' },
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
@@ -479,13 +497,22 @@ function openMassAdd(u) {
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const editors = assignableMembers(state.db);
 
-  // Start with every avatar that isn't paused and whose stage takes this kind
-  // of video — the usual case is "all of them", but a ticked box must always
-  // mean "this one will get it".
-  const picked = new Set(accounts
-    .filter(a => (a.status || 'Active') !== 'Paused' && stageAllows(a, 'Product'))
-    .map(a => a.id));
-  let autoRemoved = 0;   // untickd by a type change, reported once
+  // Who still needs one of this type today, per their stage's daily target.
+  // This is the whole point: you never have to remember whether a page has had
+  // its product video — the target and the count answer it.
+  const stillNeeds = (a, type, date) => {
+    if ((a.status || 'Active') === 'Paused') return false;
+    const p = quotaProgress(a, type, date);
+    if (p.need == null) return true;          // no stage: no target to be done with
+    return p.remaining > 0;
+  };
+  const reselect = () => {
+    picked.clear();
+    accounts.filter(a => stillNeeds(a, draft.type, draft.date)).forEach(a => picked.add(a.id));
+  };
+
+  const picked = new Set();
+  let autoRemoved = 0;   // dropped by a type change, reported once
 
   const draft = {
     date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
@@ -523,6 +550,9 @@ function openMassAdd(u) {
       + fmtDate(draft.date) + ', which they can then complete independently.';
     const n = state.db.dailyEntries.filter(e => e.date === draft.date).length;
     dayCount.textContent = n ? n + (n === 1 ? ' video already on this day' : ' videos already on this day') : 'Nothing on this day yet';
+    // a different day has a different set of pages still short of their target
+    reselect();
+    autoRemoved = 0;
     if (typeof refresh === 'function') refresh();
   }
 
@@ -533,15 +563,11 @@ function openMassAdd(u) {
         const b = el('button', {
           class: draft.type === t ? 'on' : '',
           onclick: () => {
+            const before = new Set(picked);
             draft.type = t;
-            // Choosing the type re-picks the pages that take it. Predictable in
-            // both directions: switching to Growth selects the growth-stage
-            // pages and drops the established ones, rather than leaving a
-            // selection that half-matches the rule.
-            const eligible = accounts.filter(a => (a.status || 'Active') !== 'Paused' && stageAllows(a, t));
-            autoRemoved = accounts.filter(a => picked.has(a.id) && !stageAllows(a, t)).length;
-            picked.clear();
-            eligible.forEach(a => picked.add(a.id));
+            // Choosing the type re-picks whoever still needs one of it today.
+            reselect();
+            autoRemoved = [...before].filter(id => !picked.has(id)).length;
             repaintSegs(); refresh();
           }
         }, t);
@@ -652,12 +678,20 @@ function openMassAdd(u) {
       chk.textContent = on === mine.length && mine.length ? '✓' : (on ? '–' : '');
       head.querySelector('.group-count').textContent = on + ' of ' + mine.length;
     });
+    // already at target counts as an override too — it is not off-stage, but it
+    // is more than the stage asked for, so it should be a decision
+    const overCount = accounts.filter(a => {
+      if (!picked.has(a.id)) return false;
+      const p = quotaProgress(a, draft.type, draft.date);
+      return p.need != null && p.remaining === 0 && stageAllows(a, draft.type);
+    }).length;
     const offCount = accounts.filter(a => picked.has(a.id) && !stageAllows(a, draft.type)).length;
+    const extra = [offCount ? offCount + ' off-stage' : '', overCount ? overCount + ' over target' : '']
+      .filter(Boolean).join(', ');
     addBtn.textContent = picked.size
-      ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars')
-        + (offCount ? ' · ' + offCount + ' off-stage' : '')
+      ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars') + (extra ? ' · ' + extra : '')
       : 'Pick at least one avatar';
-    addBtn.classList.toggle('danger', !!offCount);
+    addBtn.classList.toggle('danger', !!(offCount || overCount));
     addBtn.disabled = !picked.size;
     addBtn.style.opacity = picked.size ? '' : '.5';
     pickWrap.querySelectorAll('[data-acct]').forEach(row => {
@@ -667,9 +701,18 @@ function openMassAdd(u) {
       const c = row.querySelector('.check');
       c.classList.toggle('on', on);
       c.textContent = on ? '✓' : '';
-      // how many that avatar already has on the CHOSEN day, not today
-      const n = state.db.dailyEntries.filter(e => e.date === draft.date && e.accountId === id).length;
-      row.querySelector('.already').textContent = n ? n + ' already' : '';
+      // how far this page is toward its daily target for THIS type
+      const acctFor = accounts.find(a => a.id === id);
+      const tag = row.querySelector('.quota-tag');
+      const p = acctFor ? quotaProgress(acctFor, draft.type, draft.date) : { need: null };
+      if (p.need == null) {
+        const n = state.db.dailyEntries.filter(e => e.date === draft.date && e.accountId === id).length;
+        tag.textContent = n ? n + ' already' : '';
+        tag.className = 'quota-tag hint';
+      } else {
+        tag.textContent = p.have + '/' + p.need + ' ' + draft.type.toLowerCase();
+        tag.className = 'quota-tag ' + (p.remaining ? 'hint' : 'chip green');
+      }
 
       // flag only the avatars MISSING bodies — a tick on all the rest is noise
       const cover = row.querySelector('.cover');
@@ -691,8 +734,8 @@ function openMassAdd(u) {
     // those have to be chosen one at a time, on purpose
     el('button', {
       class: 'btn small',
-      onclick: () => { accounts.filter(a => stageAllows(a, draft.type)).forEach(a => picked.add(a.id)); refresh(); }
-    }, 'Select all'),
+      onclick: () => { accounts.filter(a => stillNeeds(a, draft.type, draft.date)).forEach(a => picked.add(a.id)); refresh(); }
+    }, 'Still needed'),
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
 
   // One block per product, so the list reads product by product instead of one
@@ -717,7 +760,7 @@ function openMassAdd(u) {
       class: 'pick-group', 'data-group': (g.product ? g.product.id : '__none'),
       style: 'border-left:3px solid ' + c,
       onclick: () => {
-        const eligible = g.accounts.filter(a => stageAllows(a, draft.type)).map(a => a.id);
+        const eligible = g.accounts.filter(a => stillNeeds(a, draft.type, draft.date)).map(a => a.id);
         const pool = eligible.length ? eligible : ids;
         const allOn = pool.every(id => picked.has(id));
         pool.forEach(id => allOn ? picked.delete(id) : picked.add(id));
@@ -745,6 +788,7 @@ function openMassAdd(u) {
         // both only flag exceptions — a badge on every healthy row is noise
         el('span', { class: 'chip red offstage' }),
         el('span', { class: 'chip amber cover' }),
+        el('span', { class: 'quota-tag' }),
         el('span', { class: 'hint already' })));
     });
   });
@@ -757,13 +801,24 @@ function openMassAdd(u) {
     // The deliberate confirmation: an off-stage video can be added, but only
     // after being told exactly which pages it breaks the rule for.
     const off = chosen.filter(a => !stageAllows(a, draft.type));
-    if (off.length) {
-      const lines = off.map(a => '  • ' + (a.name || 'Untitled')
-        + ' (' + ((stageOf(a) || {}).name || 'no stage') + ')').join('\n');
-      const ok = confirm(
-        off.length + ' of these pages should not get a ' + draft.type + ' video at their stage:\n\n'
-        + lines + '\n\nAdd it to them anyway?');
-      if (!ok) return;
+    const over = chosen.filter(a => {
+      const p = quotaProgress(a, draft.type, draft.date);
+      return p.need != null && p.remaining === 0 && stageAllows(a, draft.type);
+    });
+    if (off.length || over.length) {
+      const bits = [];
+      if (off.length) {
+        bits.push(off.length + ' should not get a ' + draft.type + ' video at their stage:\n'
+          + off.map(a => '  • ' + (a.name || 'Untitled') + ' (' + ((stageOf(a) || {}).name || 'no stage') + ')').join('\n'));
+      }
+      if (over.length) {
+        bits.push(over.length + ' already have their ' + draft.type.toLowerCase() + ' videos for this day:\n'
+          + over.map(a => {
+            const p = quotaProgress(a, draft.type, draft.date);
+            return '  • ' + (a.name || 'Untitled') + ' (' + p.have + '/' + p.need + ')';
+          }).join('\n'));
+      }
+      if (!confirm(bits.join('\n\n') + '\n\nAdd to them anyway?')) return;
     }
 
     const { save } = await import('../app.js');
