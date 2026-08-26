@@ -29,10 +29,19 @@ a { color: var(--blue); }
 
 /* ---- shell ---- */
 #app { display: flex; min-height: 100vh; }
+/* The sidebar is its own column, pinned to the viewport rather than stretched
+   down the whole document. Stretched, it grew to the page height and the nav
+   scrolled off the top with the content — leaving a tall empty strip on the
+   left and no way to switch tabs without scrolling back up. Sticky + 100vh
+   keeps the nav and the sign-out block in view, and scrolls internally on its
+   own if they ever outgrow the screen. */
 .sidebar {
   width: 232px; flex: 0 0 auto; padding: 16px 13px; border-right: 1px solid var(--line);
   display: flex; flex-direction: column; gap: 4px; background: var(--panel2);
+  position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; height: 100dvh; overflow-y: auto; overscroll-behavior: contain;
 }
+.sidebar::-webkit-scrollbar { width: 0; }
 .nav { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 /* company mark — logo tile + name inside one rounded panel */
 .brand {
@@ -296,6 +305,7 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
     gap: 8px; padding: 9px 12px; overflow: visible;
     border-right: none; border-bottom: 1px solid var(--line);
     position: sticky; top: 0; z-index: 20;
+    height: auto; align-self: auto;   /* undo the desktop column */
   }
   .brand { order: 1; margin: 0; padding: 5px 9px; flex: 0 1 auto; min-width: 0; }
   .brand-text b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
