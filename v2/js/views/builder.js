@@ -384,22 +384,32 @@ function avatarGroups(accounts, day, u) {
   }));
 }
 
-// How this page is doing against its stage's daily target, per type. Only the
-// types the stage actually wants are shown, so a growth-only page says nothing
-// about product.
-function quotaChips(a, entries) {
+// How this page is doing against its stage's daily target. Quiet text rather
+// than more outlined chips — the card already carries a stage chip, a progress
+// bar and a status line, and a fourth boxed thing just becomes noise.
+// Admin only: it is a planning figure, not something an editor acts on.
+function quotaLine(a, entries, u) {
+  if (!u || u.role !== 'admin') return null;
   const s = stageOf(a);
   if (!s) return null;
-  return TYPES.map(t => {
+
+  const parts = TYPES.map(t => {
     const need = quotaFor(s, t);
     if (!need) return null;
     const have = entries.filter(e => (e.type || 'Product') === t).length;
-    const done = have >= need;
-    return el('span', {
-      class: 'chip ' + (done ? 'green' : 'gray'),
-      title: have + ' of ' + need + ' ' + t.toLowerCase() + ' videos for this day',
-    }, t.slice(0, 1) + ' ' + have + '/' + need);
+    return { t, need, have, done: have >= need };
   }).filter(Boolean);
+  if (!parts.length) return null;
+
+  const row = el('span', {
+    class: 'quota-line',
+    title: parts.map(p => p.have + ' of ' + p.need + ' ' + p.t.toLowerCase()).join(', ') + ' for this day',
+  });
+  parts.forEach((p, i) => {
+    if (i) row.appendChild(el('span', { class: 'sep' }, '·'));
+    row.appendChild(el('span', { class: p.done ? 'met' : '' }, p.t.slice(0, 1) + p.have + '/' + p.need));
+  });
+  return row;
 }
 
 function avatarCard(a, entries, u) {
@@ -425,11 +435,13 @@ function avatarCard(a, entries, u) {
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
-    el('div', { class: 'row wrap', style: 'gap:6px' }, stageChip(a), quotaChips(a, entries)),
-    el('div', { class: 'row' },
+    // one line: where the page is, how it's doing, and the day's target
+    el('div', { class: 'row wrap', style: 'gap:8px' },
+      stageChip(a),
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
-      can.seesAllAccounts(u) && entries.length ? el('span', { class: 'hint' }, posted + ' posted') : null));
+      can.seesAllAccounts(u) && posted ? el('span', { class: 'hint' }, posted + ' posted') : null,
+      quotaLine(a, entries, u)));
 
   if (paused) card.appendChild(el('span', { class: 'chip gray', style: 'align-self:flex-start' }, 'Paused'));
   return card;

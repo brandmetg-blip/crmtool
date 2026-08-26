@@ -185,6 +185,11 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .slot.on { background: var(--green); border: none; }
 .slot.building { background: rgba(240,179,65,0.35); border: 1px solid rgba(240,179,65,0.6); }
 
+/* the day's target on an avatar card — text, not another box */
+.quota-line { font-size: 11px; font-weight: 700; color: var(--dim); white-space: nowrap; flex: 0 0 auto; }
+.quota-line .sep { margin: 0 4px; opacity: .5; }
+.quota-line .met { color: var(--green); }
+
 .quota-tag { font-size: 11px; white-space: nowrap; flex: 0 0 auto; }
 .quota-tag.hint { color: var(--dim); font-weight: 600; }
 .pick-row .check, .pick-group .check { width: 19px; height: 19px; border-radius: 6px; font-size: 11px; }

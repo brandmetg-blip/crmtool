@@ -165,7 +165,10 @@ function filters(all) {
 }
 
 function card(a, canEdit) {
-  const st = STATUSES.find(s => s[0] === (a.status || 'Active')) || STATUSES[0];
+  // Read through lifecycleOf, never a raw lookup: a page still carrying a
+  // legacy status ("Active") is not in this list and would fall through to the
+  // first entry, labelling every live page as Building.
+  const st = [lifecycleOf(a), lifecycleDef(a).tone];
   const fb = byId(state.db.profiles, a.facebookProfileId);
   const ig = byId(state.db.profiles, a.instagramProfileId);
 
@@ -178,7 +181,10 @@ function card(a, canEdit) {
       el('div', { style: 'min-width:0;flex:1' },
         el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, a.character || 'No character')),
-      el('span', { class: 'chip ' + st[1] }, st[0])),
+      // No lifecycle chip here: stageChip below already shows the stage for a
+      // working page and the lifecycle for one that isn't, so exactly one chip
+      // speaks for the page either way.
+      null),
 
     // no product chip here — the group heading above already says it
     el('div', { class: 'row wrap', style: 'gap:6px' },
