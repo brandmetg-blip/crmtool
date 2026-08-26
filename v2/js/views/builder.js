@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip } from './accounts.js';
-import { liveAccounts, stageGoal } from '../stages.js';
+import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -459,7 +459,8 @@ async function addEntry(a) {
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
-    type: 'Product', prod: 'Assembly', assignedEditorId: '',
+    type: defaultTypeFor(a),         // start with a type this page's stage allows
+    prod: 'Assembly', assignedEditorId: '',
     concept: '', hook: '', hookKind: 'text', hookLink: '',
     body: '', bodyKind: 'text', bodyLink: '',
     refVideo: '', notes: '',
@@ -524,7 +525,10 @@ function openMassAdd(u) {
   body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
     el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'TYPE'),
       el('div', { class: 'seg mini' }, TYPES.map(t => {
-        const b = el('button', { class: draft.type === t ? 'on' : '', onclick: () => { draft.type = t; repaintSegs(); } }, t);
+        const b = el('button', {
+          class: draft.type === t ? 'on' : '',
+          onclick: () => { draft.type = t; repaintSegs(); refresh(); }   // re-flags off-stage avatars
+        }, t);
         b.dataset.seg = 'type'; b.dataset.val = t; return b;
       }))),
     el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'PRODUCTION'),
@@ -631,9 +635,12 @@ function openMassAdd(u) {
       chk.textContent = on === mine.length && mine.length ? '✓' : (on ? '–' : '');
       head.querySelector('.group-count').textContent = on + ' of ' + mine.length;
     });
+    const offCount = accounts.filter(a => picked.has(a.id) && !stageAllows(a, draft.type)).length;
     addBtn.textContent = picked.size
       ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars')
+        + (offCount ? ' · ' + offCount + ' off-stage' : '')
       : 'Pick at least one avatar';
+    addBtn.classList.toggle('danger', !!offCount);
     addBtn.disabled = !picked.size;
     addBtn.style.opacity = picked.size ? '' : '.5';
     pickWrap.querySelectorAll('[data-acct]').forEach(row => {
@@ -651,13 +658,24 @@ function openMassAdd(u) {
       const cover = row.querySelector('.cover');
       const acct = accounts.find(a => a.id === id);
       cover.textContent = (useConcept && acct && !has(acct)) ? 'no bodies' : '';
+
+      // and the ones whose stage says this type of video does not belong
+      const off = row.querySelector('.offstage');
+      const wrong = acct && !stageAllows(acct, draft.type);
+      off.textContent = wrong ? 'not for this stage' : '';
+      off.title = wrong ? (stageOf(acct) || {}).name + ' does not take ' + draft.type + ' videos' : '';
     });
   }
 
   pickWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
     el('span', { class: 'label' }, 'AVATARS'), countLabel,
     el('span', { class: 'spacer' }),
-    el('button', { class: 'btn small', onclick: () => { accounts.forEach(a => picked.add(a.id)); refresh(); } }, 'Select all'),
+    // bulk selection never sweeps in a page whose stage rules out this type;
+    // those have to be chosen one at a time, on purpose
+    el('button', {
+      class: 'btn small',
+      onclick: () => { accounts.filter(a => stageAllows(a, draft.type)).forEach(a => picked.add(a.id)); refresh(); }
+    }, 'Select all'),
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
 
   // One block per product, so the list reads product by product instead of one
@@ -682,8 +700,10 @@ function openMassAdd(u) {
       class: 'pick-group', 'data-group': (g.product ? g.product.id : '__none'),
       style: 'border-left:3px solid ' + c,
       onclick: () => {
-        const allOn = ids.every(id => picked.has(id));
-        ids.forEach(id => allOn ? picked.delete(id) : picked.add(id));
+        const eligible = g.accounts.filter(a => stageAllows(a, draft.type)).map(a => a.id);
+        const pool = eligible.length ? eligible : ids;
+        const allOn = pool.every(id => picked.has(id));
+        pool.forEach(id => allOn ? picked.delete(id) : picked.add(id));
         refresh();
       }
     },
@@ -705,7 +725,8 @@ function openMassAdd(u) {
           el('b', { style: 'font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
           el('span', { class: 'hint' }, a.character || 'No character')),
         paused && el('span', { class: 'chip gray' }, 'Paused'),
-        // only ever flags the exception — a tick on every healthy row is noise
+        // both only flag exceptions — a badge on every healthy row is noise
+        el('span', { class: 'chip red offstage' }),
         el('span', { class: 'chip amber cover' }),
         el('span', { class: 'hint already' })));
     });
@@ -714,8 +735,21 @@ function openMassAdd(u) {
 
   // ---- footer
   addBtn.onclick = async () => {
-    const { save } = await import('../app.js');
     const chosen = accounts.filter(a => picked.has(a.id));
+
+    // The deliberate confirmation: an off-stage video can be added, but only
+    // after being told exactly which pages it breaks the rule for.
+    const off = chosen.filter(a => !stageAllows(a, draft.type));
+    if (off.length) {
+      const lines = off.map(a => '  • ' + (a.name || 'Untitled')
+        + ' (' + ((stageOf(a) || {}).name || 'no stage') + ')').join('\n');
+      const ok = confirm(
+        off.length + ' of these pages should not get a ' + draft.type + ' video at their stage:\n\n'
+        + lines + '\n\nAdd it to them anyway?');
+      if (!ok) return;
+    }
+
+    const { save } = await import('../app.js');
     // rotation deals the angles out in order across the chosen avatars
     const c = conceptById(draft.conceptId);
     const vars = (c && c.variations) || [];
@@ -847,6 +881,18 @@ function editorFor(account, mode, editors) {
   return owners.length === 1 ? owners[0].id : '';
 }
 
+// Switching a single video to a type its page's stage rules out asks first —
+// the same deliberate confirmation the bulk path uses.
+function setType(en, a, type) {
+  if (!stageAllows(a, type)) {
+    const s = stageOf(a);
+    const ok = confirm((a.name || 'This page') + ' is at ' + ((s && s.name) || 'no stage')
+      + ', which does not take ' + type + ' videos.\n\nSet it to ' + type + ' anyway?');
+    if (!ok) return;
+  }
+  eLoud(en.id, x => x.type = type);
+}
+
 async function eQuiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('dailyEntries', id, fn); }
 async function eLoud(id, fn) { const { mutate } = await import('../app.js'); mutate('dailyEntries', id, fn); }
 
@@ -863,7 +909,13 @@ function entryRow(en, a, num, u) {
   // ---- top row: number, type, production, win, delete
   const top = el('div', { class: 'row wrap' },
     el('span', { class: 'num' }, String(num)),
-    seg(TYPES, en.type || 'Product', canEdit, v => eLoud(en.id, x => x.type = v), en.type === 'Growth' ? 'blue' : 'green'),
+    seg(TYPES, en.type || 'Product', canEdit, v => setType(en, a, v), en.type === 'Growth' ? 'blue' : 'green'),
+    !stageAllows(a, en.type || 'Product')
+      ? el('span', {
+        class: 'chip red',
+        title: ((stageOf(a) || {}).name || 'This stage') + ' does not take ' + (en.type || 'Product') + ' videos',
+      }, 'off-stage')
+      : null,
     seg(PROD, en.prod || 'Assembly', canEdit, v => eLoud(en.id, x => x.prod = v), 'violet'),
     el('span', { class: 'spacer' }));
 

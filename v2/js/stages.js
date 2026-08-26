@@ -18,6 +18,9 @@
 
 import { state, byId } from './state.js';
 
+// The kinds of video a page can be given.
+export const VIDEO_TYPES = ['Growth', 'Product'];
+
 // Statuses that mean "stop working on this page".
 const RETIRED = ['Dropped', 'Banned'];
 
@@ -46,6 +49,31 @@ export function stageColor(s) {
 export function stageGoal(a) {
   const s = stageOf(a);
   return s ? (s.goal || '').trim() : '';
+}
+
+// ---------------------------------------------------------------------------
+// which kinds of video belong at a stage
+// ---------------------------------------------------------------------------
+// A stage with nothing configured allows everything — a rule you have not
+// written yet must never silently block work. Once you do say (for instance)
+// that an established page takes Product only, asking for a Growth video there
+// is flagged as off-stage. It is a guard rail, not a lock: it can be overridden
+// deliberately, never by accident.
+export function allowedTypes(stage) {
+  if (!stage || !Array.isArray(stage.allows) || !stage.allows.length) return VIDEO_TYPES.slice();
+  return VIDEO_TYPES.filter(t => stage.allows.includes(t));
+}
+
+export function stageAllows(account, type) {
+  const s = stageOf(account);
+  if (!s) return true;                       // no stage set: nothing to enforce
+  return allowedTypes(s).includes(type);
+}
+
+// The type a new video should default to for this page.
+export function defaultTypeFor(account) {
+  const allowed = allowedTypes(stageOf(account));
+  return allowed.includes('Product') && allowed.length === 1 ? 'Product' : allowed[0] || 'Product';
 }
 
 // Everything an editor needs to know before touching a page, in one place.

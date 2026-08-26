@@ -91,6 +91,7 @@ export const can = {
   // cannot see at all.
   seeHooks: u => isAdmin(u) || isManager(u),
   editHooks: u => isAdmin(u) || isManager(u),
+  manageSettings: isAdmin,
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -133,7 +134,7 @@ export function builderAccounts(u, db) {
 }
 export function tabsFor(u) {
   if (!u) return [];
-  if (u.role === 'admin') return ['builder', 'accounts', 'assets', 'analytics', 'team'];
+  if (u.role === 'admin') return ['builder', 'accounts', 'assets', 'analytics', 'team', 'settings'];
   if (u.role === 'manager') return ['builder', 'accounts', 'assets', 'analytics'];
   return ['builder', 'assets'];   // video editor
 }
