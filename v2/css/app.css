@@ -228,6 +228,10 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .entry.done .num { background: var(--green); color: #06140c; }
 
 /* count badge inside a segmented button */
+/* count inside a view switcher button */
+.seg-count { margin-left: 6px; opacity: .65; font-weight: 700; }
+.seg button.on .seg-count { opacity: .8; }
+
 .seg .pill {
   display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px;
   background: var(--amber); color: #241a02; font-size: 10px; font-weight: 800; line-height: 1.5;

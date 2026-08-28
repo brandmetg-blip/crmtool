@@ -170,7 +170,7 @@ function signOutState() {
   state.modal = null;
   state.loginError = null;
   state.authEmail = null;
-  state.acctStatus = 'all';
+  state.acctView = 'live';
   state.acctProfile = 'all';
   state.acctProduct = 'all';
 }

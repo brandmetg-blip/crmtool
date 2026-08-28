@@ -11,7 +11,7 @@ import {
   sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor } from '../stages.js';
-import { LIFECYCLE, lifecycleOf, lifecycleDef, isLive, isDropped, pageStats } from '../lifecycle.js';
+import { LIFECYCLE, lifecycleOf, lifecycleDef, isLive, isBuilding, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone]);
@@ -21,35 +21,91 @@ export function renderAccounts(root) {
   const canEdit = can.editAccounts(u);
   const all = myAccounts(u, state.db);
 
-  root.appendChild(head(canEdit, all.length));
-  renderRoster(root, all, canEdit, startReplacement);
-  root.appendChild(filters(all));
+  // Three buckets, not a six-way filter. The front page is the pages that are
+  // actually running; everything else is a click away and never deleted.
+  const buckets = {
+    live: all.filter(isLive),
+    building: all.filter(isBuilding),
+    archive: all.filter(a => !isLive(a) && !isBuilding(a)),
+  };
+  const view = buckets[state.acctView] ? state.acctView : 'live';
 
-  // Dropped pages are kept out of the way unless you ask for them — they are
-  // history, not work, and they otherwise crowd out the live ones.
-  const retired = all.filter(isDropped);
-  const pool = state.acctStatus === 'all' ? all.filter(a => !isDropped(a)) : all;
+  root.appendChild(head(canEdit, buckets.live.length));
+  if (view === 'live') renderRoster(root, all, canEdit, startReplacement);
+  root.appendChild(filters(all, buckets, view));
 
-  const shown = pool
-    .filter(a => state.acctStatus === 'all' || lifecycleOf(a) === state.acctStatus)
+  const shown = buckets[view]
     .filter(a => state.acctProfile === 'all' || a.facebookProfileId === state.acctProfile)
     .filter(a => matchesProduct(a, state.acctProduct))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   if (!shown.length) {
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
-      all.length ? 'No avatars match these filters.'
-        : canEdit ? 'No avatars yet — add the first one.' : 'No avatars assigned to you yet — ask an admin.'));
+      buckets[view].length ? 'No pages match these filters.' : emptyFor(view, canEdit)));
     return;
   }
-  root.appendChild(groupedCards(shown, canEdit));
+  root.appendChild(view === 'archive' ? archiveCards(shown, canEdit) : groupedCards(shown, canEdit));
+}
 
-  if (state.acctStatus === 'all' && retired.length) {
-    root.appendChild(el('div', { class: 'hint', style: 'margin-top:20px' },
-      retired.length + ' dropped page' + (retired.length === 1 ? '' : 's') + ' hidden ('
-      + retired.map(lifecycleOf).filter((v, i, s) => s.indexOf(v) === i).join(', ')
-      + ') — use the filter above to see them.'));
+function emptyFor(view, canEdit) {
+  if (view === 'building') return 'No pages being built right now.';
+  if (view === 'archive') return 'Nothing archived yet. Pages you pause or drop are kept here.';
+  return canEdit ? 'No live pages yet — add the first one.' : 'No pages assigned to you yet — ask an admin.';
+}
+
+// ---------------------------------------------------------------------------
+// the archive — every page that is no longer running, and why
+// ---------------------------------------------------------------------------
+// Dropping a page never deletes it. This is the record: what it was, how it
+// did, when it was dropped and why, and what took its place.
+function archiveCards(shown, canEdit) {
+  const order = ['Reposting', 'Paused', 'Stopped', 'Banned'];
+  const wrap = el('div', { class: 'col', style: 'gap:22px' });
+
+  order.forEach(key => {
+    const mine = shown.filter(a => lifecycleOf(a) === key);
+    if (!mine.length) return;
+    const def = LIFECYCLE.find(l => l.id === key);
+    wrap.appendChild(el('div', null,
+      el('div', { class: 'group-head' },
+        el('span', { class: 'group-dot', style: 'background:var(--' + (def.tone === 'gray' ? 'dim' : def.tone === 'red' ? 'red' : def.tone === 'violet' ? 'violet' : 'amber') + ')' }),
+        el('b', { style: 'font-size:13.5px' }, key),
+        el('span', { class: 'hint' }, mine.length + (mine.length === 1 ? ' page' : ' pages')),
+        el('span', { class: 'spacer' }),
+        el('span', { class: 'hint' }, def.note)),
+      el('div', { class: 'grid' }, mine.map(a => archiveCard(a, canEdit)))));
+  });
+  return wrap;
+}
+
+function archiveCard(a, canEdit) {
+  const s = pageStats(a);
+  const dropped = a.droppedAt ? new Date(a.droppedAt).toISOString().slice(0, 10) : null;
+  const line = [
+    s.days != null ? s.days + ' days' : null,
+    s.posted + ' posted',
+    s.wins ? s.wins + ' winner' + (s.wins === 1 ? '' : 's') : 'no winners',
+  ].filter(Boolean).join(' · ');
+
+  const box = el('div', {
+    class: 'card col retired', style: 'gap:10px' + (canEdit ? ';cursor:pointer' : ''),
+    onclick: canEdit ? () => openAccount(a) : null,
+  },
+    el('div', { class: 'row' },
+      avatar(a, 40),
+      el('div', { style: 'min-width:0;flex:1' },
+        el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+        el('span', { class: 'hint' }, a.character || 'No character')),
+      lifecycleChip(a)),
+    el('div', { class: 'hint' }, line + (dropped ? ' · dropped ' + dropped : '')));
+
+  if ((a.dropReason || '').trim()) {
+    box.appendChild(el('div', { class: 'ro-text', style: 'font-size:12px' }, a.dropReason.trim()));
   }
+  const lineage = lineageNote(a);
+  if (lineage) box.appendChild(el('span', { class: 'chip violet', style: 'align-self:flex-start' }, lineage));
+  box.appendChild(el('div', { class: 'row wrap', style: 'gap:6px' }, productChip(a), stageOnlyChip(a)));
+  return box;
 }
 
 // Laid out under a heading per product by default, so which pages belong to
@@ -85,10 +141,11 @@ function groupedCards(shown, canEdit) {
   }));
 }
 
-function head(canEdit, n) {
+function head(canEdit, liveCount) {
   const spacer = el('span', { class: 'spacer' });
   const wrap = el('div', { class: 'page-head' },
-    el('div', null, el('h1', null, 'Avatars'), el('div', { class: 'sub' }, n + (n === 1 ? ' account' : ' accounts'))),
+    el('div', null, el('h1', null, 'Avatars'),
+      el('div', { class: 'sub' }, liveCount + (liveCount === 1 ? ' page live' : ' pages live'))),
     spacer);
   // async so it lands after the buttons below are appended — anchor on the
   // spacer so the pill sits to their left either way
@@ -109,16 +166,16 @@ function matchesProduct(a, pid) {
   return a.productId === pid;
 }
 
-function filters(all) {
+function filters(all, buckets, view) {
   const fbProfiles = state.db.profiles.filter(p => p.platform === 'facebook');
   const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   const row = el('div', { class: 'row wrap', style: 'margin-bottom:16px' },
-    el('div', { class: 'seg' }, [['all', 'All']].concat(STATUSES.map(s => [s[0], s[0]])).map(([k, label]) =>
+    el('div', { class: 'seg' }, [['live', 'Live'], ['building', 'Building'], ['archive', 'Archive']].map(([k, label]) =>
       el('button', {
-        class: state.acctStatus === k ? 'on' : '',
-        onclick: () => { state.acctStatus = k; forceEmit(); }
-      }, label))));
+        class: view === k ? 'on' : '',
+        onclick: () => { state.acctView = k; forceEmit(); }
+      }, label, buckets[k].length ? el('span', { class: 'seg-count' }, String(buckets[k].length)) : null))));
 
   if (products.length) {
     const noneCount = all.filter(a => !byId(state.db.products, a.productId)).length;
@@ -149,16 +206,11 @@ function filters(all) {
     row.appendChild(sel);
   }
 
-  const filtered = state.acctStatus !== 'all'
-    || (state.acctProduct && state.acctProduct !== 'all')
-    || state.acctProfile !== 'all';
+  const filtered = (state.acctProduct && state.acctProduct !== 'all') || state.acctProfile !== 'all';
   if (filtered) {
     row.appendChild(el('button', {
       class: 'btn small',
-      onclick: () => {
-        state.acctStatus = 'all'; state.acctProduct = 'all'; state.acctProfile = 'all';
-        forceEmit();
-      }
+      onclick: () => { state.acctProduct = 'all'; state.acctProfile = 'all'; forceEmit(); }
     }, 'Clear filters'));
   }
   return row;

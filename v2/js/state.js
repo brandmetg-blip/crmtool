@@ -17,7 +17,7 @@ export const state = {
   builderEditor: 'all',       // filter the avatar cards to one editor's avatars
   builderProduct: 'all',      // ...and/or to one product ('none' = no product set)
   openScript: null,           // script id open in detail view
-  acctStatus: 'all',
+  acctView: 'live',           // avatars tab: live | building | archive
   acctProfile: 'all',
   acctProduct: 'all',
   modal: null,                // { type, ... } | null
