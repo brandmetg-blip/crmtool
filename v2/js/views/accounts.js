@@ -8,7 +8,8 @@
 import { state, emit, forceEmit, uid, byId, can, myAccounts } from '../state.js';
 import { el, avatar, nameColor } from '../ui.js';
 import {
-  sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
+  sortedConcepts, conceptsForAccount, discoverLegacyConcepts,
+  bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor } from '../stages.js';
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
@@ -360,7 +361,7 @@ export function productChip(a) {
   return el('span', {
     class: 'chip', title: 'Promotes ' + p.name,
     style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
-  }, p.name);
+  }, p.imageUrl ? el('img', { class: 'prod-ico', src: p.imageUrl, alt: '' }) : null, p.name);
 }
 
 function handleChip(platform, handle, profile) {
@@ -558,17 +559,23 @@ function openAccount(existing, seed) {
     bodies.innerHTML = '';
     bodies.appendChild(el('span', { class: 'label' }, 'BODIES BY CONCEPT'));
 
-    const concepts = sortedConcepts();
+    // only the concepts this avatar's product will take — offering the rest
+    // just invites folders nobody will use
+    const concepts = conceptsForAccount(a);
+    const excluded = sortedConcepts().length - concepts.length;
     if (!concepts.length) {
       bodies.appendChild(el('div', { class: 'hint' },
-        'No concepts defined yet. Add them under Avatars → Concepts, then set this avatar’s folders for each.'));
+        sortedConcepts().length
+          ? 'No concepts are accepted for this product — set them under Avatars → Products.'
+          : 'No concepts defined yet. Add them under Avatars → Concepts, then set this avatar’s folders for each.'));
       return;
     }
     // Name the avatar explicitly: these folders belong to this one avatar and
     // nothing here is shared with any other.
     bodies.appendChild(el('span', { class: 'hint' },
       'Folders belonging to ' + ((a.name || '').trim() || 'this avatar') + ' alone — every avatar has its own. '
-      + 'Each angle can have its own folder; leave one blank and it falls back to the concept’s main folder.'));
+      + 'Each angle can have its own folder; leave one blank and it falls back to the concept’s main folder.'
+      + (excluded ? ' ' + excluded + ' concept' + (excluded === 1 ? ' is' : 's are') + ' not used for this product.' : '')));
 
     const countFor = c => {
       const row = bodyRow(a, c.id);
@@ -901,6 +908,8 @@ function openProducts() {
   const list = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const col = el('div', { class: 'col', style: 'gap:7px' });
 
+  const concepts = sortedConcepts();
+
   list.forEach(p => {
     const used = state.db.accounts.filter(a => a.productId === p.id).length;
     const current = productColor(p);
@@ -908,6 +917,28 @@ function openProducts() {
     const preview = el('span', { class: 'chip' }, p.name || 'Untitled');
     const paintPreview = c => preview.style.cssText = 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55';
     paintPreview(current);
+
+    // a picture of the product, shown wherever the product is named
+    const shot = el('div', { class: 'prod-shot' });
+    const paintShot = () => {
+      shot.innerHTML = '';
+      shot.appendChild(p.imageUrl
+        ? el('img', { src: p.imageUrl, alt: '' })
+        : el('span', { class: 'hint', style: 'font-size:9px' }, 'no image'));
+    };
+    paintShot();
+    const fileIn = el('input', {
+      type: 'file', accept: 'image/*', style: 'display:none',
+      onchange: async e => {
+        const file = e.target.files && e.target.files[0]; if (!file) return;
+        try {
+          const { store, mutate } = await import('../app.js');
+          const url = await store.uploadImage(file);
+          mutate('products', p.id, x => x.imageUrl = url);
+          p.imageUrl = url; paintShot();
+        } catch (err) { alert('Image upload failed — try again.\n' + (err.message || '')); }
+      }
+    });
 
     const swatches = el('div', { class: 'row wrap', style: 'gap:6px' }, PRODUCT_COLORS.map(c =>
       el('button', {
@@ -925,8 +956,41 @@ function openProducts() {
         }
       })));
 
-    col.appendChild(el('div', { class: 'card col', style: 'padding:10px 11px;gap:9px' },
+    // which concepts this product will take — none ticked means all of them
+    const accepted = Array.isArray(p.conceptIds) ? p.conceptIds.slice() : [];
+    const conceptRow = el('div', { class: 'row wrap', style: 'gap:6px' });
+    const paintConcepts = () => {
+      conceptRow.innerHTML = '';
+      if (!concepts.length) {
+        conceptRow.appendChild(el('span', { class: 'hint' }, 'No concepts defined yet.'));
+        return;
+      }
+      concepts.forEach(c => {
+        const on = !accepted.length || accepted.includes(c.id);
+        const explicit = accepted.includes(c.id);
+        conceptRow.appendChild(el('button', {
+          class: 'chip click ' + (on ? 'green' : 'gray'),
+          title: on ? 'Accepted for this product' : 'Not used for this product',
+          onclick: async () => {
+            // first click turns "all of them" into an explicit list
+            let next = accepted.length ? accepted.slice() : concepts.map(x => x.id);
+            next = next.includes(c.id) ? next.filter(x => x !== c.id) : next.concat([c.id]);
+            accepted.length = 0; accepted.push(...next);
+            const { mutate } = await import('../app.js');
+            mutate('products', p.id, x => { x.conceptIds = next.length === concepts.length ? [] : next; });
+            paintConcepts();
+          }
+        }, (on ? '✓ ' : '') + c.name));
+      });
+      const off = concepts.filter(c => accepted.length && !accepted.includes(c.id)).length;
+      conceptRow.appendChild(el('span', { class: 'hint', style: 'align-self:center' },
+        off ? off + ' not used for this product' : 'all concepts accepted'));
+    };
+    paintConcepts();
+
+    col.appendChild(el('div', { class: 'card col', style: 'padding:10px 11px;gap:10px' },
       el('div', { class: 'row', style: 'gap:9px' },
+        el('label', { class: 'prod-shot-wrap', title: 'Upload a product image' }, shot, fileIn),
         el('input', {
           class: 'input', style: 'height:30px;font-size:12.5px;flex:1', value: p.name,
           oninput: async e => {
@@ -945,7 +1009,10 @@ function openProducts() {
             openProducts();
           }
         }, '✕')),
-      el('div', { class: 'row wrap', style: 'gap:9px' }, swatches, preview)));
+      el('div', { class: 'row wrap', style: 'gap:9px' }, swatches, preview),
+      el('div', { class: 'col', style: 'gap:5px' },
+        el('span', { class: 'label' }, 'CONCEPTS ACCEPTED'),
+        conceptRow)));
   });
   if (!list.length) col.appendChild(el('div', { class: 'hint' }, 'None yet.'));
 

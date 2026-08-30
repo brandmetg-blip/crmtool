@@ -51,6 +51,34 @@ export function conceptLabel(conceptId, variationId, legacyText) {
 }
 
 // ---------------------------------------------------------------------------
+// which concepts a product will take
+// ---------------------------------------------------------------------------
+// Not every concept suits every product. A product can name the concepts it
+// accepts; naming none means it takes all of them, so a product nobody has
+// configured never blocks work.
+export function productAcceptsConcept(product, conceptId) {
+  if (!product) return true;                       // no product on the page
+  const list = product.conceptIds;
+  if (!Array.isArray(list) || !list.length) return true;
+  return list.includes(conceptId);
+}
+
+export function productOf(account) {
+  return account ? byId(state.db.products, account.productId) : null;
+}
+
+export function accountAcceptsConcept(account, conceptId) {
+  return productAcceptsConcept(productOf(account), conceptId);
+}
+
+// The concepts worth showing for one page — the rest are not used for what it
+// promotes, so offering them only invites mistakes.
+export function conceptsForAccount(account) {
+  const p = productOf(account);
+  return sortedConcepts().filter(c => productAcceptsConcept(p, c.id));
+}
+
+// ---------------------------------------------------------------------------
 // an avatar's link rows
 // ---------------------------------------------------------------------------
 // One row per concept: { id, conceptId, url, varUrls: { [variationId]: url } }

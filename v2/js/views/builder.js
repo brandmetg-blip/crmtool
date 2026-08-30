@@ -23,7 +23,7 @@ import {
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
-import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
+import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
 import { guarded } from '../guard.js';
@@ -519,6 +519,8 @@ function openMassAdd(u) {
   // its product video — the target and the count answer it.
   const stillNeeds = (a, type, date) => {
     if ((a.status || 'Active') === 'Paused') return false;
+    // a page whose product does not take the chosen concept is not "needed"
+    if (draft.bodyKind === 'concept' && draft.conceptId && !accountAcceptsConcept(a, draft.conceptId)) return false;
     const p = quotaProgress(a, type, date);
     if (p.need == null) return true;          // no stage: no target to be done with
     return p.remaining > 0;
@@ -633,6 +635,11 @@ function openMassAdd(u) {
       draft.concept = c ? c.name : '';
       const inp = conceptField.querySelector('input');
       if (inp) inp.value = draft.concept;
+      // and re-picks, since a product that does not take this concept is no
+      // longer a page that needs the video
+      const before = new Set(picked);
+      reselect();
+      autoRemoved = [...before].filter(id => !picked.has(id)).length;
       refresh();
     },
   });
@@ -680,7 +687,8 @@ function openMassAdd(u) {
     }
 
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
-      + (autoRemoved ? ' · ' + autoRemoved + ' dropped, not for their stage' : '');
+      // could be the stage or the product, so do not claim which
+      + (autoRemoved ? ' · ' + autoRemoved + ' dropped — this does not belong on them' : '');
 
     // each product heading shows all / some / none of its avatars selected
     pickWrap.querySelectorAll('[data-group]').forEach(head => {
@@ -736,11 +744,14 @@ function openMassAdd(u) {
       const acct = accounts.find(a => a.id === id);
       cover.textContent = (useConcept && acct && !has(acct)) ? 'no bodies' : '';
 
-      // and the ones whose stage says this type of video does not belong
+      // and the ones this video does not belong on: wrong stage for the type,
+      // or a product that does not take the chosen concept
       const off = row.querySelector('.offstage');
-      const wrong = acct && !stageAllows(acct, draft.type);
-      off.textContent = wrong ? 'not for this stage' : '';
-      off.title = wrong ? (stageOf(acct) || {}).name + ' does not take ' + draft.type + ' videos' : '';
+      const wrongStage = acct && !stageAllows(acct, draft.type);
+      const wrongProduct = acct && useConcept && !accountAcceptsConcept(acct, draft.conceptId);
+      off.textContent = wrongStage ? 'not for this stage' : wrongProduct ? 'not for this product' : '';
+      off.title = wrongStage ? (stageOf(acct) || {}).name + ' does not take ' + draft.type + ' videos'
+        : wrongProduct ? 'This concept is not used for what this page promotes' : '';
     });
   }
 
@@ -817,13 +828,20 @@ function openMassAdd(u) {
 
     // The deliberate confirmation: an off-stage video can be added, but only
     // after being told exactly which pages it breaks the rule for.
+    const wrongProduct = draft.bodyKind === 'concept' && draft.conceptId
+      ? chosen.filter(a => !accountAcceptsConcept(a, draft.conceptId)) : [];
     const off = chosen.filter(a => !stageAllows(a, draft.type));
     const over = chosen.filter(a => {
       const p = quotaProgress(a, draft.type, draft.date);
       return p.need != null && p.remaining === 0 && stageAllows(a, draft.type);
     });
-    if (off.length || over.length) {
+    if (off.length || over.length || wrongProduct.length) {
       const bits = [];
+      if (wrongProduct.length) {
+        const c = conceptById(draft.conceptId);
+        bits.push(wrongProduct.length + ' promote a product that does not use “' + ((c && c.name) || 'this concept') + '”:\n'
+          + wrongProduct.map(a => '  • ' + (a.name || 'Untitled')).join('\n'));
+      }
       if (off.length) {
         bits.push(off.length + ' should not get a ' + draft.type + ' video at their stage:\n'
           + off.map(a => '  • ' + (a.name || 'Untitled') + ' (' + ((stageOf(a) || {}).name || 'no stage') + ')').join('\n'));

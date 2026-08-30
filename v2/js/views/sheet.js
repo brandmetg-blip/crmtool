@@ -15,7 +15,7 @@
 
 import { state, forceEmit } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { sortedConcepts, bodyLinkFor } from '../concepts.js';
+import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
 import { getPref } from '../prefs.js';
 import { lifecycleChip, stageOnlyChip, productChip, qualityBadge } from './accounts.js';
 
@@ -87,8 +87,14 @@ function row(a, n, concepts, custom, canEdit) {
   tr.appendChild(el('td', null, lifecycleChip(a)));
   tr.appendChild(el('td', null, stageOnlyChip(a)));
 
-  // one cell per concept: has a body script, and a way straight to it
+  // one cell per concept: has a body script, and a way straight to it. A
+  // concept the page's product does not take is struck through rather than
+  // shown as an empty box waiting to be filled.
   concepts.forEach(c => {
+    if (!accountAcceptsConcept(a, c.id)) {
+      tr.appendChild(el('td', { class: 'na', title: 'Not used for this product' }, '—'));
+      return;
+    }
     const url = bodyLinkFor(a, c.id);
     tr.appendChild(el('td', null, url
       ? el('div', { class: 'row', style: 'gap:6px' },

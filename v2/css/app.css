@@ -172,6 +172,17 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .sheet .s-name { left: 324px; box-shadow: 1px 0 0 var(--line2); }
 
 .rownum { font-weight: 800; color: var(--violet); font-size: 11.5px; }
+.sheet td.na { color: var(--dim); text-align: center; background: rgba(255,255,255,0.02); }
+
+/* a product's picture: a thumbnail while editing, a tiny icon in its chip */
+.prod-shot-wrap { cursor: pointer; flex: 0 0 auto; }
+.prod-shot {
+  width: 42px; height: 42px; border-radius: 9px; overflow: hidden;
+  border: 1px solid var(--line2); background: #0e0e11;
+  display: flex; align-items: center; justify-content: center;
+}
+.prod-shot img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.prod-ico { width: 13px; height: 13px; object-fit: contain; border-radius: 3px; margin-right: 1px; vertical-align: -2px; }
 
 /* a checkbox cell */
 .tick {
