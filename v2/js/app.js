@@ -102,6 +102,11 @@ const icon = d => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 
 function renderShell(mode) {
   const root = document.getElementById('app');
+  // Anything marked data-keepscroll gets put back where it was. The whole shell
+  // is rebuilt on every change, and a pane scrolled sideways — the avatar sheet
+  // — would otherwise snap to its first column each time, so ticking a box out
+  // at the far right meant scrolling all the way back for the next one.
+  const scrolls = keepScroll(root);
   root.innerHTML = '';
   root.dataset.booted = '1';   // index.html's early error screen stands down
 
@@ -153,6 +158,27 @@ function renderShell(mode) {
   root.appendChild(main);
 
   if (state.modal) root.appendChild(state.modal);
+
+  restoreScroll(root, scrolls);
+}
+
+// Read the scroll offsets of every marked pane before the shell is torn down,
+// and put them back on the panes that come back with the same key.
+function keepScroll(root) {
+  const out = {};
+  root.querySelectorAll('[data-keepscroll]').forEach(n => {
+    if (n.scrollLeft || n.scrollTop) out[n.dataset.keepscroll] = [n.scrollLeft, n.scrollTop];
+  });
+  return out;
+}
+
+function restoreScroll(root, scrolls) {
+  for (const key in scrolls) {
+    const n = root.querySelector('[data-keepscroll="' + key + '"]');
+    if (!n) continue;
+    n.scrollLeft = scrolls[key][0];
+    n.scrollTop = scrolls[key][1];
+  }
 }
 
 // The company mark: logo tile + name, in one rounded panel. Exported so the

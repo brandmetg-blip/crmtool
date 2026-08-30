@@ -13,11 +13,11 @@
 //
 // Extra columns can be defined in Settings for anything this does not cover.
 
-import { state, forceEmit } from '../state.js';
+import { state, forceEmit, uid } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
-import { getPref } from '../prefs.js';
-import { lifecycleChip, stageOnlyChip, productChip, qualityBadge } from './accounts.js';
+import { getPref, setPref } from '../prefs.js';
+import { lifecycleChip, stageOnlyChip, productChip, qualityBadge, overlay } from './accounts.js';
 
 // Fixed columns, in the order they read best: identity first, then state.
 const HEAD = [
@@ -60,11 +60,85 @@ export function renderSheet(root, accounts, canEdit) {
   accounts.forEach((a, i) => tbody.appendChild(row(a, i + 1, concepts, custom, canEdit)));
   table.appendChild(tbody);
 
-  root.appendChild(el('div', { class: 'sheet-wrap' }, table));
+  // data-keepscroll: the shell remembers how far this was dragged sideways and
+  // puts it back after a re-render. Without it a wide sheet snaps to the first
+  // column every time anything changes.
+  root.appendChild(el('div', { class: 'sheet-wrap', 'data-keepscroll': 'avatar-sheet' }, table));
+
   root.appendChild(el('div', { class: 'hint', style: 'margin-top:10px' },
     concepts.length
       ? 'One column per concept, showing this avatar’s body script for it. Filled in here or on the avatar — it is the same field.'
       : 'Add concepts under Avatars → Concepts and each one gets a column here.'));
+}
+
+// ---------------------------------------------------------------------------
+// the extra columns
+// ---------------------------------------------------------------------------
+// Opened from the sheet itself, which is the only place they are ever seen.
+// The built-in columns and the per-concept ones are not editable here: the
+// first are what every page has, and the second come from the concept library,
+// so adding a concept already adds its column.
+export function openColumns() {
+  const cols = (getPref('sheetColumns') || []).slice();
+  const body = el('div', { class: 'modal-body' });
+
+  body.appendChild(el('div', { class: 'hint' },
+    'The sheet already has the page tick, product, name, status, stage, caption and both link ticks, ' +
+    'plus a column per concept. Add anything else you track.'));
+
+  const save = async next => { await setPref('sheetColumns', next); forceEmit(); openColumns(); };
+
+  const list = el('div', { class: 'col', style: 'gap:9px' });
+  cols.forEach((c, i) => {
+    list.appendChild(el('div', { class: 'card row wrap', style: 'padding:10px 11px;gap:9px' },
+      el('input', {
+        class: 'input', style: 'flex:1;min-width:150px;height:31px;font-size:12.5px',
+        value: c.label || '', placeholder: 'Column name…',
+        // onchange, not oninput: renaming should not rebuild the list mid-word
+        onchange: e => save(cols.map((x, j) => j === i ? Object.assign({}, x, { label: e.target.value }) : x)),
+      }),
+      el('div', { class: 'seg mini' }, [['check', 'Tick'], ['text', 'Text'], ['link', 'Link']].map(([k, label]) =>
+        el('button', {
+          class: (c.type || 'check') === k ? 'on' : '',
+          onclick: () => save(cols.map((x, j) => j === i ? Object.assign({}, x, { type: k }) : x)),
+        }, label))),
+      el('button', {
+        class: 'iconbtn', title: 'Move left', disabled: i === 0,
+        onclick: () => { const n = cols.slice(); [n[i - 1], n[i]] = [n[i], n[i - 1]]; save(n); }
+      }, '←'),
+      el('button', {
+        class: 'iconbtn', title: 'Move right', disabled: i === cols.length - 1,
+        onclick: () => { const n = cols.slice(); [n[i + 1], n[i]] = [n[i], n[i + 1]]; save(n); }
+      }, '→'),
+      el('button', {
+        class: 'iconbtn danger', title: 'Delete column', onclick: () => {
+          if (!confirm('Delete the “' + (c.label || 'Untitled') + '” column?\n\nWhat was filled in stays on each page but stops being shown.')) return;
+          save(cols.filter((_, j) => j !== i));
+        }
+      }, '✕')));
+  });
+  if (!cols.length) {
+    list.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:22px;font-size:12px' },
+      'No extra columns yet.'));
+  }
+
+  list.appendChild(el('button', {
+    class: 'add-row', onclick: () => {
+      const label = prompt('Name of the new column:');
+      if (!label || !label.trim()) return;
+      save(cols.concat([{ id: uid('col'), label: label.trim(), type: 'check' }]));
+    }
+  }, '+  Add column'));
+
+  body.appendChild(list);
+  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
+    el('span', { class: 'spacer' }),
+    el('button', {
+      class: 'btn primary', onclick: () => { state.modal = null; forceEmit(); }
+    }, 'Done')));
+
+  state.modal = overlay('Sheet columns', body, { wide: true });
+  forceEmit();
 }
 
 function colClass(id) {
@@ -112,18 +186,29 @@ function row(a, n, concepts, custom, canEdit) {
 }
 
 // ---- cells -----------------------------------------------------------------
-function check(a, key, canEdit) {
-  const on = !!a[key];
-  return el('button', {
-    class: 'tick' + (on ? ' on' : ''), disabled: !canEdit,
+// A tick repaints itself instead of asking the app to re-render. Nothing else
+// on screen depends on these boxes, and rebuilding the table to change one of
+// them was what threw away the sideways scroll on every single click.
+function tickButton(isOn, canEdit, apply) {
+  const btn = el('button', {
+    class: 'tick' + (isOn() ? ' on' : ''), disabled: !canEdit,
     title: canEdit ? 'Toggle' : 'Read-only',
     onclick: canEdit ? async () => {
-      const { save } = await import('../app.js');
-      a[key] = !a[key];
-      save('accounts', a);
-      forceEmit();
+      const next = !isOn();
+      btn.classList.toggle('on', next);      // paint first: no wait, no jump
+      btn.textContent = next ? '✓' : '';
+      await apply(next);
     } : null,
-  }, on ? '✓' : '');
+  }, isOn() ? '✓' : '');
+  return btn;
+}
+
+function check(a, key, canEdit) {
+  return tickButton(() => !!a[key], canEdit, async next => {
+    const { save } = await import('../app.js');
+    a[key] = next;
+    save('accounts', a);
+  });
 }
 
 function text(a, key, canEdit, ph) {
@@ -148,11 +233,7 @@ function customCell(a, c, canEdit) {
   };
 
   if (c.type === 'check') {
-    const on = !!extra[c.id];
-    return el('button', {
-      class: 'tick' + (on ? ' on' : ''), disabled: !canEdit,
-      onclick: canEdit ? async () => { await set(!on); forceEmit(); } : null,
-    }, on ? '✓' : '');
+    return tickButton(() => !!(a.extra || {})[c.id], canEdit, set);
   }
   if (c.type === 'link') {
     const url = (extra[c.id] || '').trim();

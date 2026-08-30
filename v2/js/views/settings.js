@@ -9,6 +9,7 @@ import { el } from '../ui.js';
 import { sortedStages, stageColor, quotaFor, VIDEO_TYPES } from '../stages.js';
 import { getPref, setPref } from '../prefs.js';
 import { PRODUCT_COLORS } from './accounts.js';
+import { openColumns } from './sheet.js';
 
 export function renderSettings(root, u) {
   if (!can.manageSettings(u)) {
@@ -33,57 +34,20 @@ export function renderSettings(root, u) {
 // library, so adding a concept already adds its column.
 function sheetSection() {
   const cols = getPref('sheetColumns') || [];
-
-  const save = async next => { await setPref('sheetColumns', next); forceEmit(); };
-
-  const list = el('div', { class: 'col', style: 'gap:8px' });
-  cols.forEach((c, i) => {
-    list.appendChild(el('div', { class: 'card row wrap', style: 'padding:9px 11px;gap:8px' },
-      el('input', {
-        class: 'input', style: 'flex:1;min-width:150px;height:30px;font-size:12.5px',
-        value: c.label || '', placeholder: 'Column name…',
-        onchange: e => save(cols.map((x, j) => j === i ? Object.assign({}, x, { label: e.target.value }) : x)),
-      }),
-      el('div', { class: 'seg mini' }, [['check', 'Tick'], ['text', 'Text'], ['link', 'Link']].map(([k, label]) =>
-        el('button', {
-          class: (c.type || 'check') === k ? 'on' : '',
-          onclick: () => save(cols.map((x, j) => j === i ? Object.assign({}, x, { type: k }) : x)),
-        }, label))),
-      el('button', {
-        class: 'iconbtn', title: 'Move left', onclick: () => {
-          if (i === 0) return;
-          const n = cols.slice(); [n[i - 1], n[i]] = [n[i], n[i - 1]]; save(n);
-        }
-      }, '←'),
-      el('button', {
-        class: 'iconbtn', title: 'Move right', onclick: () => {
-          if (i === cols.length - 1) return;
-          const n = cols.slice(); [n[i + 1], n[i]] = [n[i], n[i + 1]]; save(n);
-        }
-      }, '→'),
-      el('button', {
-        class: 'iconbtn danger', title: 'Delete column', onclick: () => {
-          if (!confirm('Delete the “' + (c.label || 'Untitled') + '” column? What was filled in stays on each page but stops being shown.')) return;
-          save(cols.filter((_, j) => j !== i));
-        }
-      }, '✕')));
-  });
-  if (!cols.length) list.appendChild(el('div', { class: 'hint' }, 'No extra columns.'));
-
-  list.appendChild(el('button', {
-    class: 'btn small', style: 'align-self:flex-start', onclick: () => {
-      const label = prompt('Name of the new column:');
-      if (!label || !label.trim()) return;
-      save(cols.concat([{ id: uid('col'), label: label.trim(), type: 'check' }]));
-    }
-  }, '+ Add column'));
+  const n = cols.length;
 
   return el('div', { class: 'card col', style: 'gap:12px;margin-bottom:22px' },
     el('div', null,
       el('b', { style: 'font-size:14px' }, 'Avatar sheet columns'),
       el('div', { class: 'hint' },
-        'The sheet already shows the page, product, name, status, stage, caption and link ticks — plus a column per concept, generated from the concept library. Add anything else you track here.')),
-    list);
+        'The sheet shows the page tick, product, name, status, stage, caption and link ticks — plus a column per concept, generated from the concept library. Anything else you track goes in an extra column.')),
+    el('div', { class: 'row wrap', style: 'gap:10px' },
+      el('span', { class: 'chip ' + (n ? 'blue' : 'gray') },
+        n ? n + (n === 1 ? ' extra column' : ' extra columns') : 'No extra columns'),
+      n ? el('span', { class: 'hint' }, cols.map(c => c.label || 'Untitled').join(' · ')) : null,
+      el('span', { class: 'spacer' }),
+      // the editor lives with the sheet, where the columns are actually seen
+      el('button', { class: 'btn small', onclick: openColumns }, 'Edit columns')));
 }
 
 // How many pages should be live at once, and how much runway a page gets

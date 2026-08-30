@@ -14,7 +14,7 @@ import {
 import { sortedStages, stageOf, stageColor } from '../stages.js';
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
-import { renderSheet } from './sheet.js';
+import { renderSheet, openColumns } from './sheet.js';
 
 // [stored id, tone, what a person reads]
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone, l.label]);
@@ -77,7 +77,7 @@ export function renderAccounts(root) {
   const liveCount = buckets.roster.filter(isLive).length;
   root.appendChild(head(canEdit, liveCount, buckets.roster.length - liveCount));
   if (view === 'roster' && !asSheet) renderRoster(root, all, canEdit, startReplacement);
-  root.appendChild(filters(all, buckets, view, asSheet));
+  root.appendChild(filters(all, buckets, view, asSheet, canEdit));
 
   const shown = buckets[view]
     .filter(a => state.acctProfile === 'all' || a.facebookProfileId === state.acctProfile)
@@ -220,7 +220,7 @@ function matchesProduct(a, pid) {
 // The counts here describe the bucket you are looking at, not the whole
 // workspace: "Moringa (4)" beside a Pages view that then shows two of them is
 // a number nobody can act on.
-function filters(all, buckets, view, asSheet) {
+function filters(all, buckets, view, asSheet, canEdit) {
   const inView = buckets[view];
   const fbProfiles = state.db.profiles.filter(p => p.platform === 'facebook');
   const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -263,6 +263,10 @@ function filters(all, buckets, view, asSheet) {
 
   // cards to work from, sheet to see everything at once
   row.appendChild(el('span', { class: 'spacer' }));
+  // the columns belong next to the thing they are columns of
+  if (asSheet && canEdit) {
+    row.appendChild(el('button', { class: 'btn small', onclick: openColumns }, 'Columns'));
+  }
   row.appendChild(el('div', { class: 'seg blue' }, [['cards', 'Cards'], ['sheet', 'Sheet']].map(([k, label]) =>
     el('button', {
       class: (asSheet ? 'sheet' : 'cards') === k ? 'on' : '',
