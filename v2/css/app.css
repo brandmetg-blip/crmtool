@@ -136,6 +136,9 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .group-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
 
 /* ---- avatar progress cards (videos mode) ---- */
+/* the card's surface means one thing here: the day is finished for this page */
+.av-card.done { border-color: rgba(52,224,138,0.3); background: linear-gradient(160deg, rgba(52,224,138,0.09) 0%, rgba(52,224,138,0.02) 45%, #0d1110 100%); }
+.av-card.done.click:hover { border-color: rgba(52,224,138,0.5); }
 .av-card.paused { opacity: .55; cursor: not-allowed; }
 .bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
 .bar i { display: block; height: 100%; border-radius: 999px; transition: width .2s; }
@@ -149,6 +152,14 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 }
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
+
+/* Quality as a compact mark beside a name — H or L, in its colour. Used where
+   the card's surface already means something else. */
+.qbadge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; border-radius: 5px; flex: 0 0 auto;
+  font-size: 10px; font-weight: 800; line-height: 1;
+}
 
 /* What kind of video a page makes, as a wash across its card. Kept faint — it
    should be recognisable at a glance without competing with the content, and a

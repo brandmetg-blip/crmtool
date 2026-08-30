@@ -34,6 +34,17 @@ export function qualityClass(a) {
   return q ? ' q-' + q[0] : '';
 }
 
+// A compact mark for use beside a name, where a full chip would crowd the row
+// and a background wash would collide with what the card's surface means.
+export function qualityBadge(a) {
+  const q = qualityOf(a);
+  if (!q) return null;
+  return el('span', {
+    class: 'qbadge', title: q[1] + ' videos',
+    style: 'color:' + q[2] + ';background:' + q[2] + '22;box-shadow:inset 0 0 0 1px ' + q[2] + '66',
+  }, q[1].charAt(0));
+}
+
 export function qualityChip(a) {
   const q = qualityOf(a);
   if (!q) return null;

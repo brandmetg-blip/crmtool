@@ -21,7 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip, productColor, stageChip, qualityChip, qualityClass } from './accounts.js';
+import { productChip, productColor, stageChip, qualityBadge } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
@@ -425,22 +425,24 @@ function avatarCard(a, entries, u) {
       : (entries.length - done) + ((entries.length - done) === 1 ? ' video to make' : ' videos to make');
 
   const card = el('div', {
-    // the quality wash is safe here: done-ness on this card is carried by the
-    // bar and the text colour, not the background
-    class: 'card col av-card' + qualityClass(a) + (paused ? ' paused' : ' click'), style: 'gap:12px',
+    // The card's surface says whether this page is finished for the day.
+    // Quality rides as a badge by the name instead, so the two never share a
+    // surface and neither has to be guessed at.
+    class: 'card col av-card' + (allDone ? ' done' : '') + (paused ? ' paused' : ' click'), style: 'gap:12px',
     onclick: paused ? null : () => { state.builderAvatar = a.id; forceEmit(); },
   },
     el('div', { class: 'row' },
       avatar(a, 42),
       el('div', { style: 'min-width:0;flex:1' },
-        el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+        el('div', { class: 'row', style: 'gap:6px' },
+          el('b', { style: 'min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+          qualityBadge(a)),
         el('span', { class: 'hint' }, a.character || 'No character')),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
     // one line: where the page is, how it's doing, and the day's target
     el('div', { class: 'row wrap', style: 'gap:8px' },
       stageChip(a),
-      qualityChip(a),
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
       can.seesAllAccounts(u) && posted ? el('span', { class: 'hint' }, posted + ' posted') : null,
