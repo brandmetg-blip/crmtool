@@ -174,14 +174,17 @@ function groupedCards(shown, canEdit) {
   return el('div', { class: 'col', style: 'gap:22px' }, groups.map(g => {
     const c = g.product ? productColor(g.product) : 'var(--dim)';
     const n = g.accounts.length;
-    const active = g.accounts.filter(a => (a.status || 'Active') === 'Active').length;
+    // read through the lifecycle, never a raw status string — a page saved as
+    // "Live" is not the literal "Active" this used to compare against, so the
+    // chip read "0 active" for a group where every page was posting
+    const posting = g.accounts.filter(isLive).length;
     return el('div', null,
       el('div', { class: 'group-head' },
         el('span', { class: 'group-dot', style: 'background:' + c }),
         el('b', { style: 'font-size:13.5px;color:' + c }, g.product ? g.product.name : 'No product'),
         el('span', { class: 'hint' }, n + (n === 1 ? ' avatar' : ' avatars')),
         el('span', { class: 'spacer' }),
-        active < n ? el('span', { class: 'chip gray' }, active + ' active') : null),
+        posting < n ? el('span', { class: 'chip gray' }, posting + ' of ' + n + ' posting') : null),
       grid(g.accounts));
   }));
 }
@@ -214,7 +217,11 @@ function matchesProduct(a, pid) {
   return a.productId === pid;
 }
 
+// The counts here describe the bucket you are looking at, not the whole
+// workspace: "Moringa (4)" beside a Pages view that then shows two of them is
+// a number nobody can act on.
 function filters(all, buckets, view, asSheet) {
+  const inView = buckets[view];
   const fbProfiles = state.db.profiles.filter(p => p.platform === 'facebook');
   const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
@@ -226,14 +233,14 @@ function filters(all, buckets, view, asSheet) {
       }, label, buckets[k].length ? el('span', { class: 'seg-count' }, String(buckets[k].length)) : null))));
 
   if (products.length) {
-    const noneCount = all.filter(a => !byId(state.db.products, a.productId)).length;
+    const noneCount = inView.filter(a => !byId(state.db.products, a.productId)).length;
     const sel = el('select', {
       class: 'input', style: 'width:auto;min-width:170px',
       onchange: e => { state.acctProduct = e.target.value; forceEmit(); }
     },
-      [el('option', { value: 'all' }, 'Any product')]
+      [el('option', { value: 'all' }, 'Any product (' + inView.length + ')')]
         .concat(products.map(p => {
-          const n = all.filter(a => a.productId === p.id).length;
+          const n = inView.filter(a => a.productId === p.id).length;
           return el('option', { value: p.id }, p.name + ' (' + n + ')');
         }))
         .concat(noneCount ? [el('option', { value: 'none' }, 'No product (' + noneCount + ')')] : []));
@@ -247,7 +254,7 @@ function filters(all, buckets, view, asSheet) {
       onchange: e => { state.acctProfile = e.target.value; forceEmit(); }
     },
       [el('option', { value: 'all' }, 'All Facebook profiles')].concat(fbProfiles.map(p => {
-        const n = all.filter(a => a.facebookProfileId === p.id).length;
+        const n = inView.filter(a => a.facebookProfileId === p.id).length;
         return el('option', { value: p.id }, p.name + ' (' + n + ')');
       })));
     sel.value = state.acctProfile;
@@ -398,7 +405,9 @@ function openAccount(existing, seed) {
   const a = existing
     ? JSON.parse(JSON.stringify(existing))
     : {
-      id: uid('a'), name: '', character: '', status: 'Active', phase: 'P1',
+      // 'Live' is what this status is called now; writing the old 'Active'
+      // relied on the legacy map to translate it back on every read
+      id: uid('a'), name: '', character: '', status: 'Live', phase: 'P1',
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
@@ -605,9 +614,12 @@ function openAccount(existing, seed) {
       },
         el('span', { class: 'twisty' }, expanded ? '▾' : '▸'),
         el('b', { style: 'font-size:12.5px;flex:1;min-width:0' }, c.name),
+        // "no folders yet", not "not used" — this list already holds only the
+        // concepts the page's product takes, so "not used" would read as the
+        // opposite of what is true
         el('span', { class: 'hint' }, setCount
           ? setCount + ' folder' + (setCount === 1 ? '' : 's') + ' set'
-          : 'not used by this avatar')));
+          : 'no folders yet')));
 
       if (expanded) {
         const fields = el('div', { class: 'concept-fields' });
@@ -805,7 +817,15 @@ function openConcepts() {
             const vids = state.db.dailyEntries.filter(e => e.conceptId === c.id).length;
             if (!confirm('Delete “' + c.name + '”' + (vars.length ? ' and its ' + vars.length + ' variation(s)' : '') + '?'
               + (used || vids ? '\n\n' + used + ' avatar link(s) and ' + vids + ' video(s) reference it and will lose the connection.' : ''))) return;
-            const { removeItem } = await import('../app.js');
+            const { removeItem, save } = await import('../app.js');
+            // Take it out of every product's accepted list too. A stale id left
+            // behind counts toward "takes all N concepts" while ticking none of
+            // them, so the product would quietly start refusing work.
+            state.db.products.forEach(p => {
+              if (!Array.isArray(p.conceptIds) || !p.conceptIds.includes(c.id)) return;
+              p.conceptIds = p.conceptIds.filter(x => x !== c.id);
+              save('products', p);
+            });
             removeItem('concepts', c.id);
             openConcepts();
           }
@@ -903,136 +923,180 @@ async function runImport(legacy) {
 function openProducts() {
   const body = el('div', { class: 'modal-body' });
   body.appendChild(el('div', { class: 'hint' },
-    'The products your avatars promote. Renaming one here updates every avatar using it.'));
+    'What your avatars promote. A product carries its picture, its colour and the concepts it takes — ' +
+    'change it here and every avatar on it follows.'));
 
   const list = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const col = el('div', { class: 'col', style: 'gap:7px' });
-
+  const col = el('div', { class: 'col', style: 'gap:10px' });
   const concepts = sortedConcepts();
 
-  list.forEach(p => {
-    const used = state.db.accounts.filter(a => a.productId === p.id).length;
-    const current = productColor(p);
+  list.forEach(p => col.appendChild(productCard(p, concepts)));
 
-    const preview = el('span', { class: 'chip' }, p.name || 'Untitled');
-    const paintPreview = c => preview.style.cssText = 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55';
-    paintPreview(current);
-
-    // a picture of the product, shown wherever the product is named
-    const shot = el('div', { class: 'prod-shot' });
-    const paintShot = () => {
-      shot.innerHTML = '';
-      shot.appendChild(p.imageUrl
-        ? el('img', { src: p.imageUrl, alt: '' })
-        : el('span', { class: 'hint', style: 'font-size:9px' }, 'no image'));
-    };
-    paintShot();
-    const fileIn = el('input', {
-      type: 'file', accept: 'image/*', style: 'display:none',
-      onchange: async e => {
-        const file = e.target.files && e.target.files[0]; if (!file) return;
-        try {
-          const { store, mutate } = await import('../app.js');
-          const url = await store.uploadImage(file);
-          mutate('products', p.id, x => x.imageUrl = url);
-          p.imageUrl = url; paintShot();
-        } catch (err) { alert('Image upload failed — try again.\n' + (err.message || '')); }
-      }
-    });
-
-    const swatches = el('div', { class: 'row wrap', style: 'gap:6px' }, PRODUCT_COLORS.map(c =>
-      el('button', {
-        class: 'swatch' + (c.toLowerCase() === current.toLowerCase() ? ' on' : ''),
-        style: 'background:' + c, title: c,
-        // capture the button BEFORE awaiting — currentTarget is nulled once the
-        // handler yields, which silently killed the repaint below
-        onclick: async e => {
-          const btn = e.currentTarget;
-          const { mutate } = await import('../app.js');
-          mutate('products', p.id, x => x.color = c);
-          swatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('on'));
-          btn.classList.add('on');
-          paintPreview(c);
-        }
-      })));
-
-    // which concepts this product will take — none ticked means all of them
-    const accepted = Array.isArray(p.conceptIds) ? p.conceptIds.slice() : [];
-    const conceptRow = el('div', { class: 'row wrap', style: 'gap:6px' });
-    const paintConcepts = () => {
-      conceptRow.innerHTML = '';
-      if (!concepts.length) {
-        conceptRow.appendChild(el('span', { class: 'hint' }, 'No concepts defined yet.'));
-        return;
-      }
-      concepts.forEach(c => {
-        const on = !accepted.length || accepted.includes(c.id);
-        const explicit = accepted.includes(c.id);
-        conceptRow.appendChild(el('button', {
-          class: 'chip click ' + (on ? 'green' : 'gray'),
-          title: on ? 'Accepted for this product' : 'Not used for this product',
-          onclick: async () => {
-            // first click turns "all of them" into an explicit list
-            let next = accepted.length ? accepted.slice() : concepts.map(x => x.id);
-            next = next.includes(c.id) ? next.filter(x => x !== c.id) : next.concat([c.id]);
-            accepted.length = 0; accepted.push(...next);
-            const { mutate } = await import('../app.js');
-            mutate('products', p.id, x => { x.conceptIds = next.length === concepts.length ? [] : next; });
-            paintConcepts();
-          }
-        }, (on ? '✓ ' : '') + c.name));
-      });
-      const off = concepts.filter(c => accepted.length && !accepted.includes(c.id)).length;
-      conceptRow.appendChild(el('span', { class: 'hint', style: 'align-self:center' },
-        off ? off + ' not used for this product' : 'all concepts accepted'));
-    };
-    paintConcepts();
-
-    col.appendChild(el('div', { class: 'card col', style: 'padding:10px 11px;gap:10px' },
-      el('div', { class: 'row', style: 'gap:9px' },
-        el('label', { class: 'prod-shot-wrap', title: 'Upload a product image' }, shot, fileIn),
-        el('input', {
-          class: 'input', style: 'height:30px;font-size:12.5px;flex:1', value: p.name,
-          oninput: async e => {
-            const { mutateQuiet } = await import('../app.js');
-            mutateQuiet('products', p.id, x => x.name = e.target.value);
-            preview.textContent = e.target.value || 'Untitled';
-          }
-        }),
-        el('span', { class: 'hint', style: 'white-space:nowrap' }, used + (used === 1 ? ' avatar' : ' avatars')),
-        el('button', {
-          class: 'iconbtn danger', title: 'Delete product', onclick: async () => {
-            if (used && !confirm('This product is set on ' + used + ' avatar(s). Delete it anyway? They will simply have no product set.')) return;
-            const { removeItem, save } = await import('../app.js');
-            state.db.accounts.filter(a => a.productId === p.id).forEach(a => { a.productId = ''; save('accounts', a); });
-            removeItem('products', p.id);
-            openProducts();
-          }
-        }, '✕')),
-      el('div', { class: 'row wrap', style: 'gap:9px' }, swatches, preview),
-      el('div', { class: 'col', style: 'gap:5px' },
-        el('span', { class: 'label' }, 'CONCEPTS ACCEPTED'),
-        conceptRow)));
-  });
-  if (!list.length) col.appendChild(el('div', { class: 'hint' }, 'None yet.'));
+  if (!list.length) {
+    col.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:26px;font-size:12px' },
+      'No products yet. Add the first one below.'));
+  }
 
   col.appendChild(el('button', {
-    class: 'btn small', style: 'align-self:flex-start', onclick: async () => {
+    class: 'add-row', onclick: async () => {
       const name = prompt('Name of the new product:');
       if (!name || !name.trim()) return;
       const { save } = await import('../app.js');
       save('products', { id: uid('pr'), name: name.trim(), createdAt: Date.now() });
       openProducts();
     }
-  }, '+ Add product'));
+  }, '+  Add product'));
 
   body.appendChild(col);
   body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
     el('span', { class: 'spacer' }),
     el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
 
-  state.modal = overlay('Products', body);
+  state.modal = overlay('Products', body, { wide: true });
   forceEmit();
+}
+
+// One product, laid out as a card: picture and name on top, then the two
+// things that actually differ between products — its colour and the concepts
+// it takes. The colour is repeated as a rail down the left edge so a long list
+// stays scannable without reading a single word.
+function productCard(p, concepts) {
+  const used = state.db.accounts.filter(a => a.productId === p.id).length;
+  const card = el('div', { class: 'card col prod-card' });
+
+  // ---- colour ----
+  const preview = el('span', { class: 'chip' }, p.name || 'Untitled');
+  const paintColor = c => {
+    card.style.setProperty('--pc', c);
+    preview.style.cssText = 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55';
+  };
+  paintColor(productColor(p));
+
+  const swatches = el('div', { class: 'row wrap', style: 'gap:7px' }, PRODUCT_COLORS.map(c =>
+    el('button', {
+      class: 'swatch' + (c.toLowerCase() === productColor(p).toLowerCase() ? ' on' : ''),
+      style: 'background:' + c, title: c,
+      // capture the button BEFORE awaiting — currentTarget is nulled once the
+      // handler yields, which silently killed the repaint below
+      onclick: async e => {
+        const btn = e.currentTarget;
+        const { mutate } = await import('../app.js');
+        mutate('products', p.id, x => x.color = c);
+        p.color = c;
+        swatches.querySelectorAll('.swatch').forEach(s => s.classList.remove('on'));
+        btn.classList.add('on');
+        paintColor(c);
+      }
+    })));
+
+  // ---- picture ----
+  const shot = el('div', { class: 'prod-shot' });
+  const paintShot = () => {
+    shot.innerHTML = '';
+    shot.appendChild(p.imageUrl
+      ? el('img', { src: p.imageUrl, alt: '' })
+      : el('span', { class: 'shot-empty' }, 'add\nphoto'));
+    shot.appendChild(el('span', { class: 'shot-hover' }, p.imageUrl ? 'Change' : 'Upload'));
+  };
+  paintShot();
+  const fileIn = el('input', {
+    type: 'file', accept: 'image/*', style: 'display:none',
+    onchange: async e => {
+      const file = e.target.files && e.target.files[0]; if (!file) return;
+      try {
+        const { store, mutate } = await import('../app.js');
+        const url = await store.uploadImage(file);
+        mutate('products', p.id, x => x.imageUrl = url);
+        p.imageUrl = url; paintShot();
+      } catch (err) { alert('Image upload failed — try again.\n' + (err.message || '')); }
+      e.target.value = '';                       // let the same file be picked again
+    }
+  });
+
+  // ---- concepts it takes ----
+  // No list at all means it takes everything, so a product nobody has
+  // configured never blocks work. A list is exact.
+  const accepted = Array.isArray(p.conceptIds) && p.conceptIds.length ? p.conceptIds.slice() : [];
+  const boxes = el('div', { class: 'row wrap', style: 'gap:7px' });
+  const summary = el('span', { class: 'hint' });
+
+  const paintConcepts = () => {
+    boxes.innerHTML = '';
+    if (!concepts.length) {
+      boxes.appendChild(el('span', { class: 'hint' }, 'No concepts defined yet — add them under Avatars → Concepts.'));
+      summary.textContent = '';
+      return;
+    }
+    let off = 0;
+    concepts.forEach(c => {
+      const on = !accepted.length || accepted.includes(c.id);
+      if (!on) off++;                  // counted from what is drawn, so an id
+                                       // left over from a deleted concept can
+                                       // never skew the line below
+      boxes.appendChild(el('button', {
+        class: 'cbox' + (on ? ' on' : ''),
+        title: on ? c.name + ' is used for this product' : c.name + ' is not used for this product',
+        onclick: () => toggleConcept(c),
+      }, el('span', { class: 'bx' }, on ? '✓' : ''), c.name));
+    });
+    summary.textContent = off
+      ? off + ' of ' + concepts.length + ' not used for this product'
+      : 'Takes all ' + concepts.length + ' concepts';
+  };
+
+  const toggleConcept = async c => {
+    // the first click turns the implicit "all of them" into an explicit list;
+    // ids of concepts that no longer exist are dropped on the way through
+    const real = new Set(concepts.map(x => x.id));
+    let next = accepted.length ? accepted.filter(id => real.has(id)) : concepts.map(x => x.id);
+    next = next.includes(c.id) ? next.filter(x => x !== c.id) : next.concat([c.id]);
+    if (!next.length) {
+      summary.textContent = 'A product has to take at least one concept.';
+      return;
+    }
+    accepted.length = 0; accepted.push(...next);
+    const { mutate } = await import('../app.js');
+    // storing the full list as [] keeps "all of them" a single meaning
+    const stored = next.length === concepts.length ? [] : next;
+    mutate('products', p.id, x => { x.conceptIds = stored; });
+    p.conceptIds = stored;
+    paintConcepts();
+  };
+  paintConcepts();
+
+  card.appendChild(el('div', { class: 'row', style: 'gap:12px;align-items:flex-start' },
+    el('label', { class: 'prod-shot-wrap', title: 'Product photo' }, shot, fileIn),
+    el('div', { class: 'col', style: 'gap:6px;flex:1;min-width:0' },
+      el('input', {
+        class: 'input prod-name', value: p.name, placeholder: 'Product name',
+        oninput: async e => {
+          const { mutateQuiet } = await import('../app.js');
+          mutateQuiet('products', p.id, x => x.name = e.target.value);
+          preview.textContent = e.target.value || 'Untitled';
+        }
+      }),
+      el('div', { class: 'row', style: 'gap:7px' },
+        el('span', { class: 'prod-count' }, used ? used + (used === 1 ? ' avatar' : ' avatars') : 'unused'),
+        el('span', { class: 'hint' }, 'shows as'), preview)),
+    el('button', {
+      class: 'iconbtn danger', title: 'Delete product', onclick: async () => {
+        if (used && !confirm('This product is set on ' + used + ' avatar(s). Delete it anyway? They will simply have no product set.')) return;
+        const { removeItem, save } = await import('../app.js');
+        state.db.accounts.filter(a => a.productId === p.id).forEach(a => { a.productId = ''; save('accounts', a); });
+        removeItem('products', p.id);
+        openProducts();
+      }
+    }, '✕')));
+
+  card.appendChild(el('div', { class: 'prod-sec' },
+    el('span', { class: 'label' }, 'COLOUR'), swatches));
+
+  card.appendChild(el('div', { class: 'prod-sec' },
+    el('div', { class: 'row', style: 'gap:9px' },
+      el('span', { class: 'label' }, 'CONCEPTS IT TAKES'), summary),
+    boxes));
+
+  return card;
 }
 
 function profileSelect(platform, current, onset) {
@@ -1074,12 +1138,12 @@ function select(pairs, current, onset) {
   return sel;
 }
 
-export function overlay(title, body) {
+export function overlay(title, body, opts) {
   const ov = el('div', {
     class: 'overlay',
     onclick: e => { if (e.target === ov) closeModal(); }
   },
-    el('div', { class: 'modal' },
+    el('div', { class: 'modal' + (opts && opts.wide ? ' wide' : '') },
       el('div', { class: 'modal-head' }, title,
         el('button', { class: 'iconbtn', onclick: closeModal }, '✕')),
       body));

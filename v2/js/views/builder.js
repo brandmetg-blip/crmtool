@@ -118,7 +118,7 @@ function dayStrip(u) {
   const start = shiftDate(state.date, -dow);
   const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const T = todayStr();
-  const accts = builderAccounts(u, state.db);
+  const accts = liveAccounts(builderAccounts(u, state.db));
   const scriptsOn = state.builderMode === 'scripts';
 
   return el('div', { class: 'days' }, DOW.map((dw, i) => {
@@ -131,7 +131,7 @@ function dayStrip(u) {
       const n = state.db.scripts.filter(s => s.date === ds).length;
       caption = n ? n + (n === 1 ? ' script' : ' scripts') : '';
     } else {
-      const es = visibleEntries(u, state.db.dailyEntries.filter(e => e.date === ds), accts);
+      const es = dayEntries(u, ds, accts);
       caption = es.length ? es.filter(e => e.done).length + '/' + es.length : '';
     }
     return el('div', {
@@ -151,8 +151,7 @@ function videosMode(root, u) {
   // A dropped or banned page is out of the day's work entirely — its history
   // stays, but nobody should be handed new videos for it.
   const all = liveAccounts(builderAccounts(u, state.db));
-  const dayAll = state.db.dailyEntries.filter(e => e.date === state.date);
-  const day = visibleEntries(u, dayAll, all);
+  const day = dayEntries(u, state.date, all);
 
   if (state.builderAvatar) {
     const acct = byId(all, state.builderAvatar);
@@ -183,10 +182,21 @@ function videosMode(root, u) {
 
   // The admin gets a standing overview of what each editor still owes.
   if (u.role === 'admin') {
-    root.appendChild(el('div', { class: 'with-aside' }, main, outstandingPanel(dayAll, all)));
+    root.appendChild(el('div', { class: 'with-aside' }, main, outstandingPanel(day, all)));
   } else {
     root.appendChild(main);
   }
+}
+
+// One day's videos, as everyone who looks at that day should see them: on a
+// page still taking work, and visible to this person. Videos left behind on a
+// page that was later dropped — or on one deleted outright — are out of this
+// entirely, so the week strip, the summary and the aside cannot end up
+// counting a video the grid has no room to show.
+function dayEntries(u, date, accounts) {
+  const ids = new Set((accounts || []).map(a => a.id));
+  const onDay = state.db.dailyEntries.filter(e => e.date === date && ids.has(e.accountId));
+  return visibleEntries(u, onDay, accounts);
 }
 
 // Which avatars a given editor can work on — the same rule the editor's own
@@ -292,7 +302,9 @@ function outstandingPanel(dayAll, all) {
         el('span', { class: 'chip ' + tone }, String(entries.length))));
 
     [...perAcct.entries()].forEach(([id, n]) => {
-      const a = byId(all, id) || byId(state.db.accounts, id);
+      // only pages the grid itself shows — listing one it does not would give
+      // the admin a row that opens nothing when clicked
+      const a = byId(all, id);
       if (!a) return;
       card.appendChild(el('div', {
         class: 'row', style: 'gap:8px;cursor:pointer',
@@ -567,7 +579,9 @@ function openMassAdd(u) {
   function refreshDate() {
     blurb.textContent = 'Fill this in once. Every avatar you tick gets its own copy in their Daily Builder for '
       + fmtDate(draft.date) + ', which they can then complete independently.';
-    const n = state.db.dailyEntries.filter(e => e.date === draft.date).length;
+    // count what the day's grid will actually show, not every row on the date —
+    // videos stranded on a page that has since been dropped are in neither
+    const n = dayEntries(state.user, draft.date, accounts).length;
     dayCount.textContent = n ? n + (n === 1 ? ' video already on this day' : ' videos already on this day') : 'Nothing on this day yet';
     // a different day has a different set of pages still short of their target
     reselect();
@@ -749,9 +763,13 @@ function openMassAdd(u) {
       const off = row.querySelector('.offstage');
       const wrongStage = acct && !stageAllows(acct, draft.type);
       const wrongProduct = acct && useConcept && !accountAcceptsConcept(acct, draft.conceptId);
-      off.textContent = wrongStage ? 'not for this stage' : wrongProduct ? 'not for this product' : '';
-      off.title = wrongStage ? (stageOf(acct) || {}).name + ' does not take ' + draft.type + ' videos'
-        : wrongProduct ? 'This concept is not used for what this page promotes' : '';
+      // both reasons when both apply: they need different fixes, so showing
+      // only the first hides work from whoever is about to add the video
+      const why = [];
+      if (wrongStage) why.push(['not for this stage', ((stageOf(acct) || {}).name || 'This stage') + ' does not take ' + draft.type + ' videos']);
+      if (wrongProduct) why.push(['not for this product', 'This concept is not used for what this page promotes']);
+      off.textContent = why.map(w => w[0]).join(' · ');
+      off.title = why.map(w => w[1]).join('\n');
     });
   }
 
@@ -1048,13 +1066,22 @@ function entryRow(en, a, num, u) {
   card.appendChild(editorRow(en, u, canEdit));
 
   // ---- the brief
-  card.appendChild(el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:180px' },
-    el('span', { class: 'label' }, 'CONCEPT'),
-    canEdit
-      ? guarded('de:' + en.id + ':concept',
-          () => el('input', { class: 'input', value: en.concept || '', placeholder: 'e.g. Transformation, Villain…', oninput: e => eQuiet(en.id, x => x.concept = e.target.value) }),
-          () => el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—'))
-      : el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—')));
+  // A video's concept can come from the library — mass add sets it, and the
+  // body block below reads its bodies folder from it — or be typed free-hand.
+  // This row used to show only the typed one, so anything mass-added with a
+  // library concept read "—" here to the very people making it.
+  const lib = conceptLabel(en.conceptId, en.variationId, '');
+  const conceptCol = el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:180px' },
+    el('span', { class: 'label' }, 'CONCEPT'));
+  if (lib) conceptCol.appendChild(el('span', { class: 'chip violet', style: 'align-self:flex-start' }, lib));
+  if (canEdit) {
+    conceptCol.appendChild(guarded('de:' + en.id + ':concept',
+      () => el('input', { class: 'input', value: en.concept || '', placeholder: lib ? 'Add a note…' : 'e.g. Transformation, Villain…', oninput: e => eQuiet(en.id, x => x.concept = e.target.value) }),
+      () => el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—')));
+  } else if (!lib || (en.concept || '').trim()) {
+    conceptCol.appendChild(el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—'));
+  }
+  card.appendChild(conceptCol);
 
   card.appendChild(sourceBlock(en, 'hook', 'HOOK', 'The hook / opening line…', canEdit, a));
   card.appendChild(sourceBlock(en, 'body', 'BODY', 'The body / script…', canEdit, a));

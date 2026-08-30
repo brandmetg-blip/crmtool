@@ -9,14 +9,19 @@ import { state, builderAccounts, can } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
-import { lifecycleOf } from '../lifecycle.js';
+import { lifecycleOf, takesDailyVideos } from '../lifecycle.js';
 import { stageChip, qualityChip, qualityClass } from './accounts.js';
 
 export function renderAssets(root) {
   const u = state.user;
+  // Pages still taking videos come first. Dropped and banned ones stay — their
+  // folders are worth keeping to hand — but an editor opening this tab should
+  // not have to scroll past a banned page to reach the ones they work on.
   const accounts = builderAccounts(u, state.db)
     .slice()
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    .sort((a, b) =>
+      (takesDailyVideos(b) ? 1 : 0) - (takesDailyVideos(a) ? 1 : 0)
+      || (a.name || '').localeCompare(b.name || ''));
 
   const head = el('div', { class: 'page-head' },
     el('div', null,

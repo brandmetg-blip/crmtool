@@ -22,8 +22,13 @@ export function renderAnalytics(root) {
   if (!state.anFrom) { state.anFrom = shiftDate(todayStr(), -29); state.anTo = todayStr(); }
   const from = state.anFrom, to = state.anTo, group = state.anGroup || 'day';
 
+  // A post on an avatar that no longer exists is dropped here rather than in
+  // each chart, so the totals and the per-avatar breakdown are always counting
+  // the same posts — otherwise the tiles claim four avatars posted and the
+  // list underneath can only name three.
+  const live = new Set(state.db.accounts.map(a => a.id));
   const posts = state.db.dailyEntries
-    .filter(e => e.posted)
+    .filter(e => e.posted && live.has(e.accountId))
     .map(e => ({ ...e, on: e.postedDate || e.date }))
     .filter(e => e.on >= from && e.on <= to);
 

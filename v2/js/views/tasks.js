@@ -36,13 +36,13 @@ function assignables() {
 // ---------------------------------------------------------------------------
 export function taskProgress(t) {
   if (t.kind !== 'bodies' || !t.conceptId) return null;
-  const ids = t.accountIds || [];
-  if (!ids.length) return null;
-  const done = ids.filter(id => {
-    const a = byId(state.db.accounts, id);
-    return a && bodyLinkFor(a, t.conceptId);
-  }).length;
-  return { done, total: ids.length, complete: done === ids.length };
+  // count against the pages that still exist: a task naming an avatar that has
+  // since been deleted would otherwise sit at "3 of 4" forever, with no fourth
+  // page to go and do anything about
+  const pages = (t.accountIds || []).map(id => byId(state.db.accounts, id)).filter(Boolean);
+  if (!pages.length) return null;
+  const done = pages.filter(a => bodyLinkFor(a, t.conceptId)).length;
+  return { done, total: pages.length, complete: done === pages.length };
 }
 
 // Everything still open, not only what is assigned to you. The board is shared

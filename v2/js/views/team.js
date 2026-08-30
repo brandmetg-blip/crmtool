@@ -56,9 +56,13 @@ export function renderTeam(root) {
             m.name || 'Unnamed'),
           el('span', { class: 'hint', style: 'word-break:break-all' }, m.email || 'no email')),
         el('span', { class: 'chip ' + (ROLE_CHIP[m.role] || 'gray') }, roleLabel(m.role))),
+      // The role's description only holds while the role is all they have.
+      // Printing "sees only what is assigned to them" above a granted "See
+      // every page" chip states the opposite of what is true.
       el('div', { class: 'hint' },
         assigned ? assigned + (assigned === 1 ? ' avatar assigned' : ' avatars assigned')
-          : ROLE_NOTE[m.role] || ''),
+          : extraPerms(m).length ? 'Their role, widened by what is granted below.'
+            : ROLE_NOTE[m.role] || ''),
       // what this person can do beyond their role, at a glance
       extraPerms(m).length
         ? el('div', { class: 'row wrap', style: 'gap:5px' },

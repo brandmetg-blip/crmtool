@@ -7,7 +7,7 @@
 
 import { createStore } from './store.js';
 import { presence } from './presence.js';
-import { state, onChange, emit, forceEmit, uid, roleLabel, tabsFor, can } from './state.js';
+import { state, onChange, emit, forceEmit, uid, roleLabel, tabsFor, can, todayStr } from './state.js';
 import { el, avatar } from './ui.js';
 import { renderLogin } from './views/login.js';
 import { renderBuilder } from './views/builder.js';
@@ -185,6 +185,10 @@ function signOutState() {
   state.taskMine = false;
   state.acctProfile = 'all';
   state.acctProduct = 'all';
+  state.postScope = 'day';
+  state.postShowPosted = false;
+  state.anFrom = null; state.anTo = null; state.anGroup = 'day';
+  state.date = todayStr();
 }
 
 // Who else is in the workspace right now. Hidden when you're alone (and always
