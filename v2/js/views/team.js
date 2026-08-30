@@ -3,7 +3,7 @@
 
 import { state, forceEmit, uid, byId, ROLES, roleLabel, can, PERMISSIONS } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { overlay, qualityChip, productChip } from './accounts.js';
+import { overlay, qualityChip, byProduct, productColor } from './accounts.js';
 import { inRoster } from '../lifecycle.js';
 import { isAdminEmail } from '../store.js';
 import { MODE } from '../config.js';
@@ -162,42 +162,52 @@ function openMember(existing, draft) {
         }
       }, 'Clear')));
 
-    accounts.forEach(a => {
-      const on = m.assignments.includes(a.id);
-      const others = othersOn(a);
-      // taken by someone else and not by this person: dimmed, still clickable
-      const taken = others.length && !on;
-
-      const row = el('div', {
-        class: 'card row wrap', style: 'padding:8px 10px;gap:9px;cursor:pointer'
-          + (on ? ';border-color:rgba(52,224,138,0.3)' : '')
-          + (taken ? ';opacity:.55' : ''),
-        onclick: () => {
-          if (!on && others.length) {
-            const who = others.map(t => t.name || 'someone').join(', ');
-            if (!confirm((a.name || 'This avatar') + ' is already assigned to ' + who
-              + '.\n\nAssign ' + (m.name.trim() || 'this person') + ' as well?')) return;
-          }
-          m.assignments = on ? m.assignments.filter(x => x !== a.id) : m.assignments.concat([a.id]);
-          renderAssignments();
-        }
-      },
-        el('span', { class: 'check' + (on ? ' on' : '') }, on ? '✓' : ''),
-        avatar(a, 26),
-        el('div', { class: 'col', style: 'gap:3px;flex:1;min-width:130px' },
-          el('div', { class: 'row wrap', style: 'gap:6px' },
-            el('b', { style: 'font-size:12.5px' }, a.name || 'Untitled'),
-            qualityChip(a)),
-          // who has it, named rather than merely implied by the dimming — and
-          // said from this person's point of view, so a row ticked for them
-          // never reads "nobody assigned"
-          el('span', { class: 'hint' }, whoHasIt(on, others))),
-        productChip(a) || el('span', { class: 'chip gray' }, 'No product'));
-
-      assignWrap.appendChild(row);
+    // grouped by product, the same order the Avatars tab uses — you hand out
+    // pages a product at a time, not alphabetically
+    const groups = byProduct(accounts);
+    const heads = groups.some(g => g.product);
+    groups.forEach(g => {
+      const c = g.product ? productColor(g.product) : 'var(--dim)';
+      if (heads) assignWrap.appendChild(el('div', { class: 'group-head', style: 'margin-top:4px' },
+        el('span', { class: 'group-dot', style: 'background:' + c }),
+        el('b', { style: 'font-size:12.5px;color:' + c }, g.product ? g.product.name : 'No product'),
+        el('span', { class: 'hint' }, g.accounts.length + (g.accounts.length === 1 ? ' avatar' : ' avatars'))));
+      g.accounts.forEach(a => assignWrap.appendChild(pickRow(a)));
     });
 
     staleNote();
+  }
+
+  // The product is the heading this row sits under, so it is not repeated here.
+  function pickRow(a) {
+    const on = m.assignments.includes(a.id);
+    const others = othersOn(a);
+    // taken by someone else and not by this person: dimmed, still clickable
+    const taken = others.length && !on;
+
+    return el('div', {
+      class: 'card row wrap', style: 'padding:8px 10px;gap:9px;cursor:pointer'
+        + (on ? ';border-color:rgba(52,224,138,0.3)' : '')
+        + (taken ? ';opacity:.55' : ''),
+      onclick: () => {
+        if (!on && others.length) {
+          const who = others.map(t => t.name || 'someone').join(', ');
+          if (!confirm((a.name || 'This avatar') + ' is already assigned to ' + who
+            + '.\n\nAssign ' + (m.name.trim() || 'this person') + ' as well?')) return;
+        }
+        m.assignments = on ? m.assignments.filter(x => x !== a.id) : m.assignments.concat([a.id]);
+        renderAssignments();
+      }
+    },
+      el('span', { class: 'check' + (on ? ' on' : '') }, on ? '✓' : ''),
+      avatar(a, 26),
+      el('div', { class: 'col', style: 'gap:3px;flex:1;min-width:130px' },
+        el('b', { style: 'font-size:12.5px' }, a.name || 'Untitled'),
+        // who has it, named rather than merely implied by the dimming — and
+        // said from this person's point of view, so a row ticked for them
+        // never reads "nobody assigned"
+        el('span', { class: 'hint' }, whoHasIt(on, others))),
+      qualityChip(a));
   }
 
   function whoHasIt(on, others) {

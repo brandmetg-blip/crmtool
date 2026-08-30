@@ -17,13 +17,14 @@ import { state, forceEmit, uid } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
 import { getPref, setPref } from '../prefs.js';
-import { lifecycleChip, stageOnlyChip, productChip, qualityBadge, overlay } from './accounts.js';
+import { lifecycleChip, stageOnlyChip, qualityBadge, overlay, byProduct, productColor } from './accounts.js';
 
 // Fixed columns, in the order they read best: identity first, then state.
+// No Product column: the rows are grouped under the product already, and
+// repeating it on every row only ate frozen width you have to scroll past.
 const HEAD = [
   { id: 'num', label: '#', w: 44 },
   { id: 'pageCreated', label: 'Page created', type: 'check', w: 92 },
-  { id: 'product', label: 'Product', w: 138 },
   { id: 'pfp', label: 'PFP', w: 50 },
   { id: 'name', label: 'Name', w: 180 },
   { id: 'lifecycle', label: 'Status', w: 96 },
@@ -56,8 +57,18 @@ export function renderSheet(root, accounts, canEdit) {
   thead.appendChild(hrow);
   table.appendChild(thead);
 
+  // One block per product, in the same order as the cards. Row numbers run
+  // straight through, because they number the sheet and not the group.
+  const cols = HEAD.length + concepts.length + TAIL.length + custom.length;
+  const groups = byProduct(accounts);
+  // a lone "No product" heading over the whole sheet says nothing worth a row
+  const heads = groups.some(g => g.product);
   const tbody = el('tbody');
-  accounts.forEach((a, i) => tbody.appendChild(row(a, i + 1, concepts, custom, canEdit)));
+  let n = 0;
+  groups.forEach(g => {
+    if (heads) tbody.appendChild(groupRow(g, cols));
+    g.accounts.forEach(a => tbody.appendChild(row(a, ++n, concepts, custom, canEdit)));
+  });
   table.appendChild(tbody);
 
   // data-keepscroll: the shell remembers how far this was dragged sideways and
@@ -143,7 +154,22 @@ export function openColumns() {
 
 function colClass(id) {
   // the identifying columns stay put while the rest scrolls sideways
-  return ['num', 'pageCreated', 'product', 'pfp', 'name'].includes(id) ? 'stick s-' + id : '';
+  return ['num', 'pageCreated', 'pfp', 'name'].includes(id) ? 'stick s-' + id : '';
+}
+
+// A product's heading, spanning the whole table. The label itself is stuck to
+// the left edge, so it stays readable however far out you have scrolled.
+function groupRow(g, cols) {
+  const p = g.product;
+  const c = p ? productColor(p) : 'var(--dim)';
+  const n = g.accounts.length;
+  return el('tr', { class: 'grp' },
+    el('td', { colspan: String(cols) },
+      el('div', { class: 'grp-label' },
+        el('span', { class: 'group-dot', style: 'background:' + c }),
+        p && p.imageUrl ? el('img', { class: 'prod-ico', src: p.imageUrl, alt: '' }) : null,
+        el('b', { style: 'color:' + c }, p ? p.name : 'No product'),
+        el('span', { class: 'hint' }, n + (n === 1 ? ' avatar' : ' avatars')))));
 }
 
 function row(a, n, concepts, custom, canEdit) {
@@ -151,7 +177,6 @@ function row(a, n, concepts, custom, canEdit) {
 
   tr.appendChild(el('td', { class: colClass('num') }, el('span', { class: 'rownum' }, '#' + n)));
   tr.appendChild(el('td', { class: colClass('pageCreated') }, check(a, 'pageCreated', canEdit)));
-  tr.appendChild(el('td', { class: colClass('product') }, productChip(a) || el('span', { class: 'hint' }, '—')));
   tr.appendChild(el('td', { class: colClass('pfp') }, avatar(a, 30)));
   tr.appendChild(el('td', { class: colClass('name') },
     el('div', { class: 'row', style: 'gap:6px' },

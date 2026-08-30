@@ -21,7 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip, productColor, stageChip, qualityBadge } from './accounts.js';
+import { productChip, productColor, stageChip, qualityBadge, byProduct } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
@@ -359,23 +359,13 @@ function summary(day, u) {
 // progress. Falls back to one plain grid when there are no products to group
 // by, rather than showing a lone "No product" heading over everything.
 function avatarGroups(accounts, day, u) {
-  const byName = (a, b) => (a.name || '').localeCompare(b.name || '');
-  const sorted = accounts.slice().sort(byName);
-
-  const groups = [];
-  state.db.products.slice().sort(byName).forEach(p => {
-    const mine = sorted.filter(a => a.productId === p.id);
-    if (mine.length) groups.push({ product: p, accounts: mine });
-  });
-  // no product set, or pointing at a product that has since been deleted
-  const orphans = sorted.filter(a => !byId(state.db.products, a.productId));
-  if (orphans.length) groups.push({ product: null, accounts: orphans });
+  const groups = byProduct(accounts);
 
   const grid = list => el('div', { class: 'grid' },
     list.map(a => avatarCard(a, day.filter(e => e.accountId === a.id), u)));
 
   const worthGrouping = groups.some(g => g.product);
-  if (!worthGrouping) return grid(sorted);
+  if (!worthGrouping) return grid(groups.flatMap(g => g.accounts));
 
   return el('div', { class: 'col', style: 'gap:22px' }, groups.map(g => {
     const entries = day.filter(e => g.accounts.some(a => a.id === e.accountId));
@@ -784,17 +774,7 @@ function openMassAdd(u) {
   // long alphabetical mix. The heading IS the select-all for that product —
   // that replaces the old row of "by product" chips rather than adding to it,
   // and the per-row product chip goes too, since the heading above says it.
-  const groups = [];
-  state.db.products.slice()
-    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-    .forEach(p => {
-      const mine = accounts.filter(a => a.productId === p.id);
-      if (mine.length) groups.push({ product: p, accounts: mine });
-    });
-  const orphans = accounts.filter(a => !byId(state.db.products, a.productId));
-  if (orphans.length) groups.push({ product: null, accounts: orphans });
-
-  groups.forEach(g => {
+  byProduct(accounts).forEach(g => {
     const c = g.product ? productColor(g.product) : 'var(--dim)';
     const ids = g.accounts.map(a => a.id);
 

@@ -118,7 +118,9 @@ function archiveCards(shown, canEdit) {
         el('span', { class: 'hint' }, mine.length + (mine.length === 1 ? ' page' : ' pages')),
         el('span', { class: 'spacer' }),
         el('span', { class: 'hint' }, def.note)),
-      el('div', { class: 'grid' }, mine.map(a => archiveCard(a, canEdit)))));
+      // headed by why the page left, but still ordered product by product
+      el('div', { class: 'grid' },
+        byProduct(mine).flatMap(g => g.accounts).map(a => archiveCard(a, canEdit)))));
   });
   return wrap;
 }
@@ -155,18 +157,8 @@ function archiveCard(a, canEdit) {
 // which product is obvious without touching a filter. Falls back to one plain
 // grid when no products exist, rather than a lone "No product" heading.
 function groupedCards(shown, canEdit) {
-  const byName = (a, b) => (a.name || '').localeCompare(b.name || '');
   const grid = list => el('div', { class: 'grid' }, list.map(a => card(a, canEdit)));
-
-  const groups = [];
-  state.db.products.slice().sort(byName).forEach(p => {
-    const mine = shown.filter(a => a.productId === p.id);
-    if (mine.length) groups.push({ product: p, accounts: mine });
-  });
-  // no product set, or pointing at one that has since been deleted
-  const orphans = shown.filter(a => !byId(state.db.products, a.productId));
-  if (orphans.length) groups.push({ product: null, accounts: orphans });
-
+  const groups = byProduct(shown);
   if (!groups.some(g => g.product)) return grid(shown);
 
   return el('div', { class: 'col', style: 'gap:22px' }, groups.map(g => {
@@ -359,6 +351,29 @@ export function stageChip(a) {
     class: 'chip', title: (s.goal || '').trim() || s.name,
     style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
   }, s.name);
+}
+
+// ---------------------------------------------------------------------------
+// Avatars grouped by what they promote: products A-Z, avatars A-Z inside each,
+// and anything with no product — or one that has since been deleted — last.
+//
+// Every list of avatars in the app orders itself through this, so the roster
+// reads the same way wherever you meet it. A flat A-Z list makes you hold the
+// products in your head; grouped, the shape of the roster is just visible.
+export function byProduct(list) {
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '');
+  const all = (list || []).slice();
+  const groups = [];
+
+  state.db.products.slice().sort(byName).forEach(p => {
+    const mine = all.filter(a => a.productId === p.id).sort(byName);
+    if (mine.length) groups.push({ product: p, accounts: mine });
+  });
+
+  const orphans = all.filter(a => !byId(state.db.products, a.productId)).sort(byName);
+  if (orphans.length) groups.push({ product: null, accounts: orphans });
+
+  return groups;
 }
 
 export function productChip(a) {

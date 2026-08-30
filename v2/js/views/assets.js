@@ -11,18 +11,11 @@ import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
 import { lifecycleOf, takesDailyVideos } from '../lifecycle.js';
-import { stageChip, qualityChip, qualityClass } from './accounts.js';
+import { stageChip, qualityChip, qualityClass, byProduct, productColor } from './accounts.js';
 
 export function renderAssets(root) {
   const u = state.user;
-  // Pages still taking videos come first. Dropped and banned ones stay — their
-  // folders are worth keeping to hand — but an editor opening this tab should
-  // not have to scroll past a banned page to reach the ones they work on.
-  const accounts = builderAccounts(u, state.db)
-    .slice()
-    .sort((a, b) =>
-      (takesDailyVideos(b) ? 1 : 0) - (takesDailyVideos(a) ? 1 : 0)
-      || (a.name || '').localeCompare(b.name || ''));
+  const accounts = builderAccounts(u, state.db).slice();
 
   const head = el('div', { class: 'page-head' },
     el('div', null,
@@ -42,7 +35,24 @@ export function renderAssets(root) {
     return;
   }
 
-  root.appendChild(el('div', { class: 'grid' }, accounts.map(card)));
+  // Grouped by product, like every other list of avatars. Within a product the
+  // pages still taking videos come first — a dropped page keeps its folders,
+  // which are worth having to hand, but it should not head the group.
+  const groups = byProduct(accounts);
+  const heads = groups.some(g => g.product);
+  groups.forEach(g => {
+    const c = g.product ? productColor(g.product) : 'var(--dim)';
+    const n = g.accounts.length;
+    if (heads) root.appendChild(el('div', { class: 'group-head' },
+      el('span', { class: 'group-dot', style: 'background:' + c }),
+      g.product && g.product.imageUrl ? el('img', { class: 'prod-ico', src: g.product.imageUrl, alt: '' }) : null,
+      el('b', { style: 'font-size:13.5px;color:' + c }, g.product ? g.product.name : 'No product'),
+      el('span', { class: 'hint' }, n + (n === 1 ? ' avatar' : ' avatars'))));
+
+    const ordered = g.accounts.slice()
+      .sort((a, b) => (takesDailyVideos(b) ? 1 : 0) - (takesDailyVideos(a) ? 1 : 0));
+    root.appendChild(el('div', { class: 'grid', style: 'margin-bottom:22px' }, ordered.map(card)));
+  });
 }
 
 function card(a) {

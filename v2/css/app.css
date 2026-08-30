@@ -167,9 +167,22 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .sheet tbody tr:hover .stick { background: #16191b; }
 .sheet .s-num { left: 0; }
 .sheet .s-pageCreated { left: 44px; }
-.sheet .s-product { left: 136px; }
-.sheet .s-pfp { left: 274px; }
-.sheet .s-name { left: 324px; box-shadow: 1px 0 0 var(--line2); }
+.sheet .s-pfp { left: 136px; }
+.sheet .s-name { left: 186px; box-shadow: 1px 0 0 var(--line2); }
+
+/* a product's heading across the sheet */
+.sheet tr.grp td {
+  padding: 0; background: #14181a; border-right: none;
+  border-top: 1px solid var(--line2); border-bottom: 1px solid var(--line2);
+}
+.sheet tbody tr.grp:hover td { background: #14181a; }
+.sheet tbody tr.grp:first-child td { border-top: none; }
+/* the label rides the left edge however far the sheet is scrolled */
+.grp-label {
+  position: sticky; left: 0; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; font-size: 12.5px;
+}
+.grp-label .hint { font-size: 10.5px; }
 
 .rownum { font-weight: 800; color: var(--violet); font-size: 11.5px; }
 .sheet td.na { color: var(--dim); text-align: center; background: rgba(255,255,255,0.02); }
