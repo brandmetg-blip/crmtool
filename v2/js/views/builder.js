@@ -21,7 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip, productColor, stageChip, qualityChip } from './accounts.js';
+import { productChip, productColor, stageChip, qualityChip, qualityClass } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
@@ -425,7 +425,9 @@ function avatarCard(a, entries, u) {
       : (entries.length - done) + ((entries.length - done) === 1 ? ' video to make' : ' videos to make');
 
   const card = el('div', {
-    class: 'card col av-card' + (paused ? ' paused' : ' click'), style: 'gap:12px',
+    // the quality wash is safe here: done-ness on this card is carried by the
+    // bar and the text colour, not the background
+    class: 'card col av-card' + qualityClass(a) + (paused ? ' paused' : ' click'), style: 'gap:12px',
     onclick: paused ? null : () => { state.builderAvatar = a.id; forceEmit(); },
   },
     el('div', { class: 'row' },
