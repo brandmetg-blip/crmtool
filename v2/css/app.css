@@ -128,6 +128,17 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .check.on { background: var(--green); border: none; }
 .check[disabled] { cursor: default; opacity: .7; }
 
+/* ---- tasks board ---- */
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.board-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.task { border-left: 3px solid var(--line2); }
+.nav-count {
+  margin-left: auto; padding: 1px 7px; border-radius: 999px;
+  background: var(--amber); color: #241a02; font-size: 10px; font-weight: 800;
+}
+.nav-item.on .nav-count { background: rgba(0,0,0,0.28); color: inherit; }
+@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
+
 /* ---- the avatar sheet ----
    Wide by nature: the header row and the identifying columns stay put while
    the concept columns scroll sideways, so a row never loses its name. */

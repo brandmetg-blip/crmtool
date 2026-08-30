@@ -7,7 +7,8 @@
 export const state = {
   ready: false,
   user: null,                 // logged-in team member
-  db: { team: [], accounts: [], profiles: [], products: [], concepts: [], stages: [], settings: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
+  db: { team: [], accounts: [], profiles: [], products: [], concepts: [], stages: [], settings: [], tasks: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
+  taskMine: false,            // tasks board: only mine
   route: 'builder',           // builder | accounts | team | login | setup
   date: todayStr(),           // selected day in the builder
   builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts
@@ -92,6 +93,7 @@ export const PERMISSIONS = [
   ['editScripts', 'Write main scripts', 'Create and edit main scripts and their frames.'],
   ['editHooks', 'Write the day’s hooks', 'Add and edit the hooks shared across every page.'],
   ['seesAllAccounts', 'See every page', 'See all pages and the analytics, not only the ones assigned to them.'],
+  ['tasks', 'See and set tasks', 'Open the Tasks board, take work on it and hand work out.'],
 ];
 
 const granted = (u, key) => !!(u && u.perms && u.perms[key]);
@@ -110,6 +112,10 @@ export const can = {
   // grantable to anyone else who writes them.
   seeHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
   editHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
+  // The tasks board: work handed between the admin and whoever produces. Both
+  // sides need to add as well as finish, so seeing it and setting it are one
+  // permission.
+  seeTasks: u => isAdmin(u) || isManager(u) || granted(u, 'tasks'),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -157,6 +163,7 @@ export function tabsFor(u) {
   const tabs = ['builder'];
   if (can.editAccounts(u) || can.seesAllAccounts(u)) tabs.push('accounts');
   tabs.push('assets');
+  if (can.seeTasks(u)) tabs.push('tasks');
   if (can.seesAllAccounts(u)) tabs.push('analytics');
   if (can.manageTeam(u)) tabs.push('team');
   if (can.manageSettings(u)) tabs.push('settings');

@@ -16,6 +16,7 @@ import { renderTeam } from './views/team.js';
 import { renderAnalytics } from './views/analytics.js';
 import { renderAssets } from './views/assets.js';
 import { renderSettings } from './views/settings.js';
+import { renderTasks, openTaskCount } from './views/tasks.js';
 
 export const store = createStore();
 
@@ -92,6 +93,7 @@ const NAV = [
   ['builder', 'Daily Builder', 'M3 4.5h18M3 12h18M3 19.5h12'],
   ['accounts', 'Avatars', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8'],
   ['assets', 'Assets', 'M21 15l-5-5L5 21M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5zM8.5 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3'],
+  ['tasks', 'Tasks', 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
   ['analytics', 'Analytics', 'M3 3v18h18M7 15l4-4 3 3 5-6'],
   ['team', 'Team', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
   ['settings', 'Settings', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1'],
@@ -117,9 +119,16 @@ function renderShell(mode) {
   const tabs = tabsFor(state.user);
   if (!tabs.includes(state.route)) state.route = tabs[0];
 
-  const nav = NAV.filter(([k]) => tabs.includes(k)).map(([k, label, d]) =>
-    el('button', { class: 'nav-item' + (state.route === k ? ' on' : ''), onclick: () => { state.route = k; state.openScript = null; forceEmit(); } },
-      el('span', { html: icon(d) }), label));
+  const nav = NAV.filter(([k]) => tabs.includes(k)).map(([k, label, d]) => {
+    // open work worth noticing without opening the tab
+    const n = k === 'tasks' ? openTaskCount(state.user) : 0;
+    return el('button', {
+      class: 'nav-item' + (state.route === k ? ' on' : ''),
+      onclick: () => { state.route = k; state.openScript = null; forceEmit(); }
+    },
+      el('span', { html: icon(d) }), label,
+      n ? el('span', { class: 'nav-count' }, String(n)) : null);
+  });
 
   const side = el('div', { class: 'sidebar' },
     brandMark(),
@@ -135,6 +144,7 @@ function renderShell(mode) {
   if (state.route === 'builder') renderBuilder(main);
   else if (state.route === 'accounts') renderAccounts(main);
   else if (state.route === 'assets') renderAssets(main);
+  else if (state.route === 'tasks') renderTasks(main, state.user);
   else if (state.route === 'analytics') renderAnalytics(main);
   else if (state.route === 'team') renderTeam(main);
   else if (state.route === 'settings') renderSettings(main, state.user);
@@ -171,6 +181,8 @@ function signOutState() {
   state.loginError = null;
   state.authEmail = null;
   state.acctView = 'live';
+  state.acctLayout = 'cards';
+  state.taskMine = false;
   state.acctProfile = 'all';
   state.acctProduct = 'all';
 }
