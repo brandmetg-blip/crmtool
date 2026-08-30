@@ -1,9 +1,10 @@
 // team.js — who can sign in, what they are allowed to do, and (for editors)
 // which avatars they are responsible for. Admin only.
 
-import { state, forceEmit, uid, ROLES, roleLabel, can, PERMISSIONS } from '../state.js';
+import { state, forceEmit, uid, byId, ROLES, roleLabel, can, PERMISSIONS } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { overlay } from './accounts.js';
+import { overlay, qualityChip, productChip } from './accounts.js';
+import { inRoster } from '../lifecycle.js';
 import { isAdminEmail } from '../store.js';
 import { MODE } from '../config.js';
 
@@ -123,31 +124,113 @@ function openMember(existing, draft) {
   }
 
   // assignments — for anyone who can be handed a video (editors and managers)
+  //
+  // Only pages still on the roster are offered. An archived page takes no
+  // videos, so assigning one is work nobody will ever do; anything already
+  // assigned to one is surfaced separately rather than left invisible.
   function renderAssignments() {
     assignWrap.innerHTML = '';
     if (m.role !== 'editor' && m.role !== 'manager') return;
     assignWrap.appendChild(el('span', { class: 'label' }, 'ASSIGNED AVATARS'));
-    const accounts = state.db.accounts.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    const accounts = state.db.accounts.filter(inRoster)
+      .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
     if (!accounts.length) {
-      assignWrap.appendChild(el('div', { class: 'hint' }, 'No avatars exist yet — create them under Avatars first.'));
+      assignWrap.appendChild(el('div', { class: 'hint' },
+        state.db.accounts.length
+          ? 'Every avatar is archived. Only pages on the roster can be assigned.'
+          : 'No avatars exist yet — create them under Avatars first.'));
+      staleNote();
       return;
     }
+
     assignWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
-      el('button', { class: 'btn small', onclick: () => { m.assignments = accounts.map(a => a.id); renderAssignments(); } }, 'Select all'),
-      el('button', { class: 'btn small', onclick: () => { m.assignments = []; renderAssignments(); } }, 'Clear')));
+      // "Select all" takes the unclaimed ones: sweeping in pages that already
+      // belong to someone else is exactly the thing worth a deliberate click
+      el('button', {
+        class: 'btn small', onclick: () => {
+          const free = accounts.filter(a => !othersOn(a).length).map(a => a.id);
+          m.assignments = [...new Set(m.assignments.concat(free))];
+          renderAssignments();
+        }
+      }, 'Select unassigned'),
+      el('button', {
+        class: 'btn small', onclick: () => {
+          m.assignments = m.assignments.filter(id => !accounts.some(a => a.id === id));
+          renderAssignments();
+        }
+      }, 'Clear')));
+
     accounts.forEach(a => {
       const on = m.assignments.includes(a.id);
-      assignWrap.appendChild(el('div', {
-        class: 'card row', style: 'padding:7px 10px;gap:9px;cursor:pointer' + (on ? ';border-color:rgba(52,224,138,0.3)' : ''),
+      const others = othersOn(a);
+      // taken by someone else and not by this person: dimmed, still clickable
+      const taken = others.length && !on;
+
+      const row = el('div', {
+        class: 'card row wrap', style: 'padding:8px 10px;gap:9px;cursor:pointer'
+          + (on ? ';border-color:rgba(52,224,138,0.3)' : '')
+          + (taken ? ';opacity:.55' : ''),
         onclick: () => {
+          if (!on && others.length) {
+            const who = others.map(t => t.name || 'someone').join(', ');
+            if (!confirm((a.name || 'This avatar') + ' is already assigned to ' + who
+              + '.\n\nAssign ' + (m.name.trim() || 'this person') + ' as well?')) return;
+          }
           m.assignments = on ? m.assignments.filter(x => x !== a.id) : m.assignments.concat([a.id]);
           renderAssignments();
         }
       },
         el('span', { class: 'check' + (on ? ' on' : '') }, on ? '✓' : ''),
         avatar(a, 26),
-        el('span', { style: 'font-size:12.5px;font-weight:600' }, a.name || 'Untitled')));
+        el('div', { class: 'col', style: 'gap:3px;flex:1;min-width:130px' },
+          el('div', { class: 'row wrap', style: 'gap:6px' },
+            el('b', { style: 'font-size:12.5px' }, a.name || 'Untitled'),
+            qualityChip(a)),
+          // who has it, named rather than merely implied by the dimming — and
+          // said from this person's point of view, so a row ticked for them
+          // never reads "nobody assigned"
+          el('span', { class: 'hint' }, whoHasIt(on, others))),
+        productChip(a) || el('span', { class: 'chip gray' }, 'No product'));
+
+      assignWrap.appendChild(row);
     });
+
+    staleNote();
+  }
+
+  function whoHasIt(on, others) {
+    const names = others.map(t => t.name || 'Unnamed').join(', ');
+    if (on) return others.length ? 'Shared with ' + names : 'Assigned to them only';
+    return others.length ? 'Assigned to ' + names : 'Nobody assigned';
+  }
+
+  // Everyone else this page is already assigned to.
+  function othersOn(a) {
+    return state.db.team.filter(t =>
+      t.id !== m.id && Array.isArray(t.assignments) && t.assignments.includes(a.id));
+  }
+
+  // Assignments left pointing at archived or deleted pages. They do nothing,
+  // but they are in the record, so they get a line rather than silence.
+  function staleNote() {
+    const stale = m.assignments.filter(id => {
+      const a = byId(state.db.accounts, id);
+      return !a || !inRoster(a);
+    });
+    if (!stale.length) return;
+    assignWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:9px' },
+      el('span', { class: 'hint', style: 'flex:1;min-width:180px' },
+        stale.length === 1
+          ? '1 assignment points at an archived or deleted page and does nothing.'
+          : stale.length + ' assignments point at archived or deleted pages and do nothing.'),
+      el('button', {
+        class: 'btn small', onclick: () => {
+          m.assignments = m.assignments.filter(id => !stale.includes(id));
+          renderAssignments();
+        }
+      }, 'Remove ' + (stale.length === 1 ? 'it' : 'them'))));
   }
   renderAssignments();
   body.appendChild(assignWrap);
