@@ -138,9 +138,7 @@ function archiveCard(a, canEdit) {
   },
     el('div', { class: 'row' },
       avatar(a, 40),
-      el('div', { style: 'min-width:0;flex:1' },
-        el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
-        el('span', { class: 'hint' }, a.character || 'No character')),
+      el('b', { style: 'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
       lifecycleChip(a)),
     el('div', { class: 'hint' }, line + (dropped ? ' · dropped ' + dropped : '')));
 
@@ -297,9 +295,7 @@ function card(a, canEdit) {
   },
     el('div', { class: 'row' },
       avatar(a, 44),
-      el('div', { style: 'min-width:0;flex:1' },
-        el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
-        el('span', { class: 'hint' }, a.character || 'No character')),
+      el('b', { style: 'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
       lifecycleChip(a)),
 
     // no product chip here — the group heading above already says it
@@ -398,7 +394,6 @@ function startReplacement(old) {
     productId: old.productId || '',
     stageId: (sortedStages()[0] || {}).id || '',
     status: 'Building',
-    character: old.character || '',
   });
 }
 
@@ -411,7 +406,7 @@ function openAccount(existing, seed) {
     : {
       // 'Live' is what this status is called now; writing the old 'Active'
       // relied on the legacy map to translate it back on every read
-      id: uid('a'), name: '', character: '', status: 'Live', phase: 'P1',
+      id: uid('a'), name: '', status: 'Live', phase: 'P1',
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
@@ -456,11 +451,6 @@ function openAccount(existing, seed) {
   body.appendChild(field('NAME', el('input', {
     class: 'input', value: a.name, placeholder: 'e.g. Sarah — Wellness',
     oninput: e => a.name = e.target.value
-  })));
-
-  body.appendChild(field('CHARACTER', el('input', {
-    class: 'input', value: a.character || '', placeholder: 'The persona this avatar plays',
-    oninput: e => a.character = e.target.value
   })));
 
   // what kind of video this page makes — tints its card so it reads at a glance
@@ -563,7 +553,7 @@ function openAccount(existing, seed) {
 
   // ---- pre-made bodies, one folder per concept --------------------------------
   // The concept list is shared, so nothing is typed here — you just say where
-  // this character's bodies live. Variations normally share the concept's
+  // this avatar's bodies live. Variations normally share the concept's
   // folder; expand one only when a single angle has its own.
   const bodies = el('div', { class: 'col', style: 'gap:8px' });
   const openConcept = {};   // which concepts are expanded in this modal

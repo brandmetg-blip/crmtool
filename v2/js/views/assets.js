@@ -1,6 +1,7 @@
-// assets.js — the reference sheet an editor needs while cutting a video:
-// what the avatar looks like, who the character is, and where the base images
-// live. Read-only for everyone; it exists to be looked at and copied from.
+// assets.js — the reference sheet an editor needs while cutting a video: what
+// the avatar looks like, what its stage asks for, and where its base images and
+// bodies live. Read-only for everyone; it exists to be looked at and copied
+// from.
 //
 // An editor sees only the avatars they have access to — the same set they get
 // in the Daily Builder, so the two tabs never disagree about what is theirs.
@@ -53,10 +54,7 @@ function card(a) {
   const box = el('div', { class: 'card col' + qualityClass(a) + (st && st.retired ? ' retired' : ''), style: 'gap:14px' },
     el('div', { class: 'row', style: 'gap:13px' },
       avatar(a, 64),
-      el('div', { style: 'min-width:0;flex:1' },
-        el('b', { style: 'display:block;font-size:14.5px' }, a.name || 'Untitled'),
-        el('span', { class: 'hint' }, 'CHARACTER'),
-        el('div', { style: 'font-size:13px;font-weight:600;color:#cfd0d4' }, (a.character || '').trim() || '—')),
+      el('b', { style: 'flex:1;min-width:0;font-size:14.5px' }, a.name || 'Untitled'),
       el('div', { class: 'col', style: 'gap:5px;align-items:flex-end' }, stageChip(a), qualityChip(a))));
 
   // What this page needs right now — the reason stages exist rather than being
@@ -96,7 +94,7 @@ function card(a) {
   return box;
 }
 
-// The pre-made bodies for this character: a folder per concept, with an angle
+// The pre-made bodies for this avatar: a folder per concept, with an angle
 // listed separately only when it has its own folder rather than sharing.
 function bodiesBlock(a) {
   const concepts = sortedConcepts().filter(c => bodyLinkFor(a, c.id));
@@ -111,7 +109,7 @@ function bodiesBlock(a) {
     col.appendChild(el('span', { class: 'hint' },
       (a.bodyLinks || []).length
         ? 'Older links on this avatar are waiting to be imported — an admin can do it under Avatars → Concepts.'
-        : 'No concepts set up for this character yet.'));
+        : 'No concepts set up for this avatar yet.'));
     return col;
   }
 

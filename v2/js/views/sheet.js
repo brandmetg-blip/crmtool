@@ -156,8 +156,7 @@ function row(a, n, concepts, custom, canEdit) {
   tr.appendChild(el('td', { class: colClass('name') },
     el('div', { class: 'row', style: 'gap:6px' },
       el('b', { style: 'font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, a.name || 'Untitled'),
-      qualityBadge(a)),
-    el('span', { class: 'hint' }, a.character || 'No character')));
+      qualityBadge(a))));
   tr.appendChild(el('td', null, lifecycleChip(a)));
   tr.appendChild(el('td', null, stageOnlyChip(a)));
 
