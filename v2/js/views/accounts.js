@@ -11,11 +11,12 @@ import {
   sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor } from '../stages.js';
-import { LIFECYCLE, lifecycleOf, lifecycleDef, isLive, isBuilding, isDropped, pageStats } from '../lifecycle.js';
+import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, isBuilding, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 import { renderSheet } from './sheet.js';
 
-const STATUSES = LIFECYCLE.map(l => [l.id, l.tone]);
+// [stored id, tone, what a person reads]
+const STATUSES = LIFECYCLE.map(l => [l.id, l.tone, l.label]);
 
 // What kind of video a page makes. Not a judgement — a production type, so
 // everyone knows what they are making before they open anything.
@@ -71,7 +72,7 @@ export function renderAccounts(root) {
 
   const asSheet = state.acctLayout === 'sheet';
 
-  root.appendChild(head(canEdit, buckets.live.length));
+  root.appendChild(head(canEdit, buckets.live.length, buckets.building.length));
   if (view === 'live' && !asSheet) renderRoster(root, all, canEdit, startReplacement);
   root.appendChild(filters(all, buckets, view, asSheet));
 
@@ -90,7 +91,7 @@ export function renderAccounts(root) {
 }
 
 function emptyFor(view, canEdit) {
-  if (view === 'building') return 'No pages being built right now.';
+  if (view === 'building') return 'No pages waiting to be created.';
   if (view === 'archive') return 'Nothing archived yet. Pages you pause or drop are kept here.';
   return canEdit ? 'No live pages yet — add the first one.' : 'No pages assigned to you yet — ask an admin.';
 }
@@ -111,7 +112,7 @@ function archiveCards(shown, canEdit) {
     wrap.appendChild(el('div', null,
       el('div', { class: 'group-head' },
         el('span', { class: 'group-dot', style: 'background:var(--' + (def.tone === 'gray' ? 'dim' : def.tone === 'red' ? 'red' : def.tone === 'violet' ? 'violet' : 'amber') + ')' }),
-        el('b', { style: 'font-size:13.5px' }, key),
+        el('b', { style: 'font-size:13.5px' }, def.label),
         el('span', { class: 'hint' }, mine.length + (mine.length === 1 ? ' page' : ' pages')),
         el('span', { class: 'spacer' }),
         el('span', { class: 'hint' }, def.note)),
@@ -183,11 +184,14 @@ function groupedCards(shown, canEdit) {
   }));
 }
 
-function head(canEdit, liveCount) {
+function head(canEdit, liveCount, buildingCount) {
   const spacer = el('span', { class: 'spacer' });
+  // the roster is both together — a page being set up is already one of yours
+  const total = liveCount + buildingCount;
   const wrap = el('div', { class: 'page-head' },
     el('div', null, el('h1', null, 'Avatars'),
-      el('div', { class: 'sub' }, liveCount + (liveCount === 1 ? ' page live' : ' pages live'))),
+      el('div', { class: 'sub' }, total + (total === 1 ? ' page' : ' pages') + ' — '
+        + liveCount + ' live' + (buildingCount ? ', ' + buildingCount + ' setting up' : ''))),
     spacer);
   // async so it lands after the buttons below are appended — anchor on the
   // spacer so the pill sits to their left either way
@@ -213,7 +217,7 @@ function filters(all, buckets, view, asSheet) {
   const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   const row = el('div', { class: 'row wrap', style: 'margin-bottom:16px' },
-    el('div', { class: 'seg' }, [['live', 'Live'], ['building', 'Building'], ['archive', 'Archive']].map(([k, label]) =>
+    el('div', { class: 'seg' }, [['live', 'Live'], ['building', 'Setting up'], ['archive', 'Archive']].map(([k, label]) =>
       el('button', {
         class: view === k ? 'on' : '',
         onclick: () => { state.acctView = k; forceEmit(); }
@@ -270,7 +274,7 @@ function card(a, canEdit) {
   // Read through lifecycleOf, never a raw lookup: a page still carrying a
   // legacy status ("Active") is not in this list and would fall through to the
   // first entry, labelling every live page as Building.
-  const st = [lifecycleOf(a), lifecycleDef(a).tone];
+  const st = [lifecycleLabel(a), lifecycleDef(a).tone];
   const fb = byId(state.db.profiles, a.facebookProfileId);
   const ig = byId(state.db.profiles, a.instagramProfileId);
 
@@ -317,7 +321,7 @@ export function productColor(p) {
 // different question from "how far along is it" and both need answering.
 export function lifecycleChip(a) {
   const def = lifecycleDef(a);
-  return el('span', { class: 'chip ' + def.tone, title: def.note }, lifecycleOf(a));
+  return el('span', { class: 'chip ' + def.tone, title: def.note }, lifecycleLabel(a));
 }
 
 // The stage alone, never standing in for the lifecycle — used where a
@@ -338,7 +342,7 @@ export function stageChip(a) {
   // Anything not taking new videos says so instead — where a page sits in the
   // funnel stops mattering once it is out of the roster.
   const def = lifecycleDef(a);
-  if (!def.work) return el('span', { class: 'chip ' + def.tone }, lifecycleOf(a));
+  if (!def.work) return el('span', { class: 'chip ' + def.tone }, lifecycleLabel(a));
   const s = stageOf(a);
   if (!s) return el('span', { class: 'chip gray' }, 'No stage');
   const c = stageColor(s);
@@ -492,7 +496,7 @@ function openAccount(existing, seed) {
   };
 
   body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
-    field('LIFECYCLE', select(STATUSES.map(s => [s[0], s[0]]), lifecycleOf(a),
+    field('LIFECYCLE', select(STATUSES.map(s => [s[0], s[2]]), lifecycleOf(a),
       v => {
         // starting to post is when the clock for reviews should begin
         if (v === 'Live' && !isLive(a) && !a.wentLiveAt) a.wentLiveAt = Date.now();

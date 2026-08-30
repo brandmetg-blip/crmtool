@@ -99,7 +99,7 @@ export function pageStanding(a) {
   if (!a) return null;
   const def = lifecycleDef(a);
   if (!def.work) {
-    return { retired: isDropped(a), label: lifecycleOf(a), tone: def.tone, note: def.note };
+    return { retired: isDropped(a), label: lifecycleDef(a).label, tone: def.tone, note: def.note };
   }
   const s = stageOf(a);
   if (!s) return { retired: false, label: 'No stage set', tone: 'gray', note: '' };

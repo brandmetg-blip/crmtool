@@ -33,33 +33,34 @@ export function renderRoster(root, accounts, canEdit, onReplace) {
 
 // ---- 1. are the slots full? ------------------------------------------------
 function slotBar(r, reviewDays) {
-  const full = r.live >= r.target;
-  const tone = full ? 'green' : (r.live >= r.target - 1 ? 'amber' : 'red');
+  const tone = r.open === 0 ? 'green' : (r.open === 1 ? 'amber' : 'red');
 
-  // one square per slot, so "two short" is seen rather than read
+  // one square per slot: filled and posting, filled but not created yet, empty
   const pips = el('div', { class: 'slots' });
-  for (let i = 0; i < Math.max(r.target, r.live); i++) {
-    const filled = i < r.live;
-    const building = !filled && i < r.live + r.building;
+  for (let i = 0; i < Math.max(r.target, r.filled); i++) {
+    const live = i < r.live;
+    const building = !live && i < r.filled;
     pips.appendChild(el('span', {
-      class: 'slot' + (filled ? ' on' : building ? ' building' : ''),
-      title: filled ? 'Live page' : building ? 'Being built' : 'Empty slot',
+      class: 'slot' + (live ? ' on' : building ? ' building' : ''),
+      title: live ? 'Live and posting' : building ? 'Setting up — page not created yet' : 'Empty slot, no page against it',
     }));
   }
 
-  const line = r.open === 0
-    ? (r.over ? r.over + ' more live than the target of ' + r.target + '.' : 'The roster is full.')
-    : r.unstarted > 0
-      ? r.unstarted + ' new page' + (r.unstarted === 1 ? '' : 's') + ' still to be started.'
-      : 'All open slots have a page in the works.';
+  const line = r.open
+    ? r.open + ' slot' + (r.open === 1 ? '' : 's') + ' with no page against ' + (r.open === 1 ? 'it' : 'them') + ' yet.'
+    : r.over
+      ? r.over + ' more than the target of ' + r.target + '.'
+      : 'Every slot has a page against it.';
 
   return el('div', { class: 'card col', style: 'gap:11px;margin-bottom:16px' },
     el('div', { class: 'row wrap', style: 'gap:10px' },
-      el('span', { style: 'font-size:22px;font-weight:800' }, r.live + ' / ' + r.target),
-      el('span', { class: 'label', style: 'align-self:center' }, 'PAGES LIVE'),
+      // the roster is everything you run, posting or not
+      el('span', { style: 'font-size:22px;font-weight:800' }, r.filled + ' / ' + r.target),
+      el('span', { class: 'label', style: 'align-self:center' }, 'PAGES'),
       el('span', { class: 'spacer' }),
-      r.building ? el('span', { class: 'chip amber' }, r.building + ' building') : null,
-      r.open ? el('span', { class: 'chip ' + tone }, r.open + ' slot' + (r.open === 1 ? '' : 's') + ' open') : el('span', { class: 'chip green' }, 'full')),
+      el('span', { class: 'chip green' }, r.live + ' live'),
+      r.building ? el('span', { class: 'chip amber' }, r.building + ' setting up') : null,
+      r.open ? el('span', { class: 'chip ' + tone }, r.open + ' empty') : null),
     pips,
     el('span', { class: 'hint' }, line
       + ' A live page with no winner after ' + reviewDays + ' days comes up for review.'));

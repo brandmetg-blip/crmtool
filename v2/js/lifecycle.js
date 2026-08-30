@@ -22,13 +22,19 @@
 
 import { state, byId } from './state.js';
 
+// `roster` means this page counts toward the number you run. A page still
+// being set up is already one of them — the slot is spoken for — it just is not
+// posting yet. `work` is the narrower question of whether it takes videos today.
+//
+// The stored id is kept as it was written so existing pages keep working; the
+// label is what anyone reads.
 export const LIFECYCLE = [
-  { id: 'Building', tone: 'amber', slot: false, work: false, note: 'Being set up — not posting yet.' },
-  { id: 'Live', tone: 'green', slot: true, work: true, note: 'Posting on the daily schedule.' },
-  { id: 'Paused', tone: 'gray', slot: false, work: false, note: 'Temporarily not posting.' },
-  { id: 'Reposting', tone: 'violet', slot: false, work: false, note: 'Out of the roster — repost its old winners, no new videos.' },
-  { id: 'Stopped', tone: 'red', slot: false, work: false, note: 'Dropped for lack of traction. No new videos.' },
-  { id: 'Banned', tone: 'red', slot: false, work: false, note: 'Ended by the platform. No new videos.' },
+  { id: 'Live', label: 'Live', tone: 'green', roster: true, work: true, note: 'Created and posting on the daily schedule.' },
+  { id: 'Building', label: 'Setting up', tone: 'amber', roster: true, work: false, note: 'One of your pages — the page itself still needs creating.' },
+  { id: 'Paused', label: 'Paused', tone: 'gray', roster: false, work: false, note: 'Temporarily not posting.' },
+  { id: 'Reposting', label: 'Reposting', tone: 'violet', roster: false, work: false, note: 'Out of the roster — repost its old winners, no new videos.' },
+  { id: 'Stopped', label: 'Stopped', tone: 'red', roster: false, work: false, note: 'Dropped for lack of traction. No new videos.' },
+  { id: 'Banned', label: 'Banned', tone: 'red', roster: false, work: false, note: 'Ended by the platform. No new videos.' },
 ];
 
 // Pages written before this existed carry the old words.
@@ -42,10 +48,16 @@ export function lifecycleOf(a) {
 
 export function lifecycleDef(a) {
   const id = lifecycleOf(a);
-  return LIFECYCLE.find(l => l.id === id) || LIFECYCLE[1];
+  return LIFECYCLE.find(l => l.id === id) || LIFECYCLE[0];
 }
 
-export const isLive = a => lifecycleDef(a).slot;
+// What anyone reads, as opposed to what is stored.
+export function lifecycleLabel(a) {
+  return lifecycleDef(a).label;
+}
+
+export const isLive = a => lifecycleDef(a).work;          // created and posting
+export const inRoster = a => lifecycleDef(a).roster;      // counts toward the number you run
 export const takesDailyVideos = a => lifecycleDef(a).work;
 export const isDropped = a => ['Reposting', 'Stopped', 'Banned'].includes(lifecycleOf(a));
 export const isBuilding = a => lifecycleOf(a) === 'Building';
@@ -53,18 +65,21 @@ export const isBuilding = a => lifecycleOf(a) === 'Building';
 // ---------------------------------------------------------------------------
 // the roster
 // ---------------------------------------------------------------------------
+// A slot is taken by any page in the roster, whether it is posting yet or not.
+// Ten live and four being set up is fourteen of the fourteen you run — the work
+// left is creating four pages, not finding four more.
 export function roster(accounts, target) {
   const live = (accounts || []).filter(isLive);
   const building = (accounts || []).filter(isBuilding);
   const t = Math.max(0, Math.round(target || 0));
+  const filled = live.length + building.length;
   return {
     target: t,
     live: live.length,
     building: building.length,
-    // slots not filled by a live page, minus the ones already being built
-    open: Math.max(0, t - live.length),
-    unstarted: Math.max(0, t - live.length - building.length),
-    over: Math.max(0, live.length - t),
+    filled,
+    open: Math.max(0, t - filled),      // slots with no page against them at all
+    over: Math.max(0, filled - t),
     liveAccounts: live,
     buildingAccounts: building,
   };

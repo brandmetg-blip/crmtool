@@ -107,9 +107,9 @@ function rosterSection() {
     el('div', null,
       el('b', { style: 'font-size:14px' }, 'The roster'),
       el('div', { class: 'hint' },
-        'How many pages you run at once. Drop one and a slot opens; the Avatars tab shows the gap and what is owed a replacement.')),
+        'How many pages you run at once, counting the ones still being set up — those slots are already spoken for. Drop one and a slot opens; the Avatars tab shows the gap and what is owed a replacement.')),
     el('div', { class: 'row wrap', style: 'gap:20px' },
-      num('rosterTarget', 'PAGES LIVE AT ONCE', 'The target the roster is measured against.', 1, 100),
+      num('rosterTarget', 'PAGES YOU RUN', 'Live and setting up together are measured against this.', 1, 100),
       num('reviewAfterDays', 'REVIEW AFTER (DAYS)', 'A live page with no winning video by then comes up for review.', 3, 365)));
 }
 
