@@ -146,6 +146,16 @@ to them, and the one thing they may change is marking their own video made.
 | Assets | ✅ | ✅ all | ✅ theirs only |
 | Analytics | ✅ | ✅ | ❌ |
 | Team | ✅ | ❌ | ❌ |
+| Settings | ✅ | ❌ | ❌ |
+
+**Extra permissions.** The table above is what each role does by default. Under
+**Team**, any member can be granted extra abilities on top of their role —
+manage pages, write the daily brief, mark videos posted, write main scripts,
+write the day's hooks, or see every page. Use these to let one person do more
+without making them an admin.
+
+Managing the team and changing settings are deliberately not grantable: either
+would let someone give themselves everything else, so they stay with the admin.
 
 ---
 

@@ -77,21 +77,38 @@ const isAdmin = u => !!u && u.role === 'admin';
 const isManager = u => !!u && u.role === 'manager';
 const isEditor = u => !!u && u.role === 'editor';
 
+// Extra permissions granted to one person on top of their role. The role is
+// the sensible default; a grant is how you say "this one also does X" without
+// promoting them to admin.
+//
+// Managing the team and changing settings are deliberately NOT here. Those two
+// hand over the keys — anyone with them could grant themselves everything else
+// — so they stay with the admin.
+export const PERMISSIONS = [
+  ['editAccounts', 'Manage pages', 'Create and edit avatars, products, concepts and profiles.'],
+  ['editVideos', 'Write the daily brief', 'Add and mass add videos, assign editors, edit a video’s brief.'],
+  ['markPosted', 'Mark videos posted', 'Use the posting queue and tick posted with platforms.'],
+  ['editScripts', 'Write main scripts', 'Create and edit main scripts and their frames.'],
+  ['editHooks', 'Write the day’s hooks', 'Add and edit the hooks shared across every page.'],
+  ['seesAllAccounts', 'See every page', 'See all pages and the analytics, not only the ones assigned to them.'],
+];
+
+const granted = (u, key) => !!(u && u.perms && u.perms[key]);
+
 export const can = {
-  editScripts: isAdmin,
-  editAccounts: isAdmin,
+  editScripts: u => isAdmin(u) || granted(u, 'editScripts'),
+  editAccounts: u => isAdmin(u) || granted(u, 'editAccounts'),
   manageTeam: isAdmin,
-  seesAllAccounts: u => isAdmin(u) || isManager(u),   // viewing, not writing
-  // daily builder
-  editVideos: isAdmin,                                // write the brief, assign editors
-  logCompletion: u => isAdmin(u) || isEditor(u),      // main-script completion
-  markPosted: isAdmin,                                // tick "posted" + platforms
-  // The day's shared hooks. The one thing a marketing manager writes rather
-  // than reads — producing these is their job — and the only section an editor
-  // cannot see at all.
-  seeHooks: u => isAdmin(u) || isManager(u),
-  editHooks: u => isAdmin(u) || isManager(u),
   manageSettings: isAdmin,
+  seesAllAccounts: u => isAdmin(u) || isManager(u) || granted(u, 'seesAllAccounts'),
+  // daily builder
+  editVideos: u => isAdmin(u) || granted(u, 'editVideos'),   // write the brief, assign editors
+  logCompletion: u => isAdmin(u) || isEditor(u),             // main-script completion
+  markPosted: u => isAdmin(u) || granted(u, 'markPosted'),   // tick "posted" + platforms
+  // The day's shared hooks: a marketing manager's job by default, and
+  // grantable to anyone else who writes them.
+  seeHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
+  editHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -132,11 +149,17 @@ export function builderAccounts(u, db) {
   (db.dailyEntries || []).forEach(e => { if (e.assignedEditorId === u.id) ids.add(e.accountId); });
   return db.accounts.filter(a => ids.has(a.id));
 }
+// Tabs follow what a person can actually do, not their role — otherwise
+// granting someone a permission would leave the tab it applies to hidden.
 export function tabsFor(u) {
   if (!u) return [];
-  if (u.role === 'admin') return ['builder', 'accounts', 'assets', 'analytics', 'team', 'settings'];
-  if (u.role === 'manager') return ['builder', 'accounts', 'assets', 'analytics'];
-  return ['builder', 'assets'];   // video editor
+  const tabs = ['builder'];
+  if (can.editAccounts(u) || can.seesAllAccounts(u)) tabs.push('accounts');
+  tabs.push('assets');
+  if (can.seesAllAccounts(u)) tabs.push('analytics');
+  if (can.manageTeam(u)) tabs.push('team');
+  if (can.manageSettings(u)) tabs.push('settings');
+  return tabs;
 }
 export function myAccounts(u, db) {
   if (can.seesAllAccounts(u)) return db.accounts;

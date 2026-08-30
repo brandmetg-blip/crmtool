@@ -1,7 +1,7 @@
 // team.js — who can sign in, what they are allowed to do, and (for editors)
 // which avatars they are responsible for. Admin only.
 
-import { state, forceEmit, uid, ROLES, roleLabel, can } from '../state.js';
+import { state, forceEmit, uid, ROLES, roleLabel, can, PERMISSIONS } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { overlay } from './accounts.js';
 import { isAdminEmail } from '../store.js';
@@ -58,17 +58,33 @@ export function renderTeam(root) {
         el('span', { class: 'chip ' + (ROLE_CHIP[m.role] || 'gray') }, roleLabel(m.role))),
       el('div', { class: 'hint' },
         assigned ? assigned + (assigned === 1 ? ' avatar assigned' : ' avatars assigned')
-          : ROLE_NOTE[m.role] || ''));
+          : ROLE_NOTE[m.role] || ''),
+      // what this person can do beyond their role, at a glance
+      extraPerms(m).length
+        ? el('div', { class: 'row wrap', style: 'gap:5px' },
+          extraPerms(m).map(p => el('span', { class: 'chip green' }, p)))
+        : null);
   })));
+}
+
+// Only what was granted on top of the role — a chip for something the role
+// already includes would say nothing.
+function extraPerms(m) {
+  return PERMISSIONS
+    .filter(([key]) => !roleGrants(m.role, key) && m.perms && m.perms[key])
+    .map(([, label]) => label);
 }
 
 function closeModal() { state.modal = null; forceEmit(); }
 
-function openMember(existing) {
-  const m = existing
+// `draft` carries the in-progress edits when the modal repaints itself after a
+// permission toggle, so nothing typed is lost.
+function openMember(existing, draft) {
+  const m = draft || (existing
     ? JSON.parse(JSON.stringify(existing))
-    : { id: uid('t'), name: '', email: '', role: 'editor', password: '', assignments: [], createdAt: Date.now() };
+    : { id: uid('t'), name: '', email: '', role: 'editor', password: '', assignments: [], perms: {}, createdAt: Date.now() });
   if (!Array.isArray(m.assignments)) m.assignments = [];
+  if (!m.perms) m.perms = {};
 
   const body = el('div', { class: 'modal-body' });
   const err = el('div', { class: 'error', style: 'display:none' });
@@ -131,7 +147,41 @@ function openMember(existing) {
   }
   renderAssignments();
   body.appendChild(assignWrap);
+
+  // Extra permissions on top of the role — how you let one person do more
+  // without making them an admin.
+  const permWrap = el('div', { class: 'col', style: 'gap:7px' },
+    el('span', { class: 'label' }, 'EXTRA PERMISSIONS'),
+    el('span', { class: 'hint' },
+      'Their role already covers the usual work. Tick anything extra this person should be able to do.'));
+
+  PERMISSIONS.forEach(([key, label, note]) => {
+    const byRole = roleGrants(m.role, key);
+    const on = byRole || !!(m.perms && m.perms[key]);
+    permWrap.appendChild(el('div', {
+      class: 'card row', style: 'padding:8px 11px;gap:10px;align-items:flex-start'
+        + (byRole ? ';opacity:.6' : ';cursor:pointer') + (on && !byRole ? ';border-color:rgba(52,224,138,0.3)' : ''),
+      onclick: byRole ? null : () => {
+        if (!m.perms) m.perms = {};
+        if (m.perms[key]) delete m.perms[key]; else m.perms[key] = true;
+        openMemberRepaint();
+      }
+    },
+      el('span', { class: 'check' + (on ? ' on' : ''), style: 'margin-top:1px' }, on ? '✓' : ''),
+      el('div', { style: 'min-width:0;flex:1' },
+        el('b', { style: 'font-size:12.5px;display:block' }, label),
+        el('span', { class: 'hint' }, byRole ? 'Included in their role.' : note))));
+  });
+  body.appendChild(permWrap);
   body.appendChild(err);
+
+  // repaint just this modal in place, keeping whatever is typed in the fields
+  function openMemberRepaint() {
+    const scroll = body.parentElement ? body.parentElement.scrollTop : 0;
+    openMember(existing, m);
+    const modal = state.modal && state.modal.querySelector('.modal');
+    if (modal) modal.scrollTop = scroll;
+  }
 
   body.appendChild(el('div', { class: 'row', style: 'gap:9px;padding-top:4px' },
     existing && el('button', {
@@ -152,6 +202,9 @@ function openMember(existing) {
         if (m._newPassword) m.password = m._newPassword;
         delete m._newPassword;
         if (m.role !== 'editor' && m.role !== 'manager') m.assignments = [];
+        // drop grants the role already covers, so a role change cannot leave a
+        // permission silently attached
+        PERMISSIONS.forEach(([key]) => { if (roleGrants(m.role, key)) delete m.perms[key]; });
         const { save } = await import('../app.js');
         save('team', m);
         closeModal();
@@ -160,6 +213,13 @@ function openMember(existing) {
 
   state.modal = overlay(existing ? 'Edit member' : 'Add team member', body);
   forceEmit();
+}
+
+// Which permissions a role already includes, so they show as ticked-and-locked
+// rather than as something you could take away here.
+function roleGrants(role, key) {
+  if (role === 'manager') return ['seesAllAccounts', 'editHooks'].includes(key);
+  return false;
 }
 
 function validate(m, existing) {
