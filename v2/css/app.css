@@ -150,6 +150,14 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* an empty chip should take no space at all */
 .chip:empty { display: none; }
 
+/* What kind of video a page makes, as a wash across its card. Kept faint — it
+   should be recognisable at a glance without competing with the content, and a
+   chip always says it in words too. */
+.card.q-high { background: linear-gradient(150deg, rgba(52,224,138,0.13) 0%, rgba(52,224,138,0.03) 45%, #0d1110 100%); border-color: rgba(52,224,138,0.22); }
+.card.q-low  { background: linear-gradient(150deg, rgba(240,179,65,0.13) 0%, rgba(240,179,65,0.03) 45%, #0d1110 100%); border-color: rgba(240,179,65,0.22); }
+.card.q-high.click:hover { border-color: rgba(52,224,138,0.45); }
+.card.q-low.click:hover  { border-color: rgba(240,179,65,0.45); }
+
 /* a page that is out of play reads as dead, not merely dim */
 .card.retired { opacity: .72; border-color: rgba(240,88,78,0.3); }
 .card.retired .avatar { filter: grayscale(1); }

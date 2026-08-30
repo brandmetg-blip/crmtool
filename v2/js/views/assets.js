@@ -10,7 +10,7 @@ import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
 import { lifecycleOf } from '../lifecycle.js';
-import { stageChip } from './accounts.js';
+import { stageChip, qualityChip, qualityClass } from './accounts.js';
 
 export function renderAssets(root) {
   const u = state.user;
@@ -45,14 +45,14 @@ function card(a) {
 
   const st = pageStanding(a);
 
-  const box = el('div', { class: 'card col' + (st && st.retired ? ' retired' : ''), style: 'gap:14px' },
+  const box = el('div', { class: 'card col' + qualityClass(a) + (st && st.retired ? ' retired' : ''), style: 'gap:14px' },
     el('div', { class: 'row', style: 'gap:13px' },
       avatar(a, 64),
       el('div', { style: 'min-width:0;flex:1' },
         el('b', { style: 'display:block;font-size:14.5px' }, a.name || 'Untitled'),
         el('span', { class: 'hint' }, 'CHARACTER'),
         el('div', { style: 'font-size:13px;font-weight:600;color:#cfd0d4' }, (a.character || '').trim() || '—')),
-      stageChip(a)));
+      el('div', { class: 'col', style: 'gap:5px;align-items:flex-end' }, stageChip(a), qualityChip(a))));
 
   // What this page needs right now — the reason stages exist rather than being
   // a colour on a card. A retired page says so loudly instead.

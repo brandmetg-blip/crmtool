@@ -16,6 +16,33 @@ import { renderRoster, lineageNote } from './roster.js';
 
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone]);
 
+// What kind of video a page makes. Not a judgement — a production type, so
+// everyone knows what they are making before they open anything.
+export const QUALITY = [
+  ['high', 'High quality', '#34e08a'],
+  ['low', 'Low quality', '#f0b341'],
+];
+
+export function qualityOf(a) {
+  return QUALITY.find(q => q[0] === (a && a.quality)) || null;
+}
+
+// The tint goes on the card; the chip says it in words, so the meaning never
+// rests on colour alone.
+export function qualityClass(a) {
+  const q = qualityOf(a);
+  return q ? ' q-' + q[0] : '';
+}
+
+export function qualityChip(a) {
+  const q = qualityOf(a);
+  if (!q) return null;
+  return el('span', {
+    class: 'chip', title: q[1] + ' videos',
+    style: 'color:' + q[2] + ';background:' + q[2] + '1f;border-color:' + q[2] + '55',
+  }, q[1]);
+}
+
 export function renderAccounts(root) {
   const u = state.user;
   const canEdit = can.editAccounts(u);
@@ -225,7 +252,7 @@ function card(a, canEdit) {
   const ig = byId(state.db.profiles, a.instagramProfileId);
 
   const c = el('div', {
-    class: 'card col' + (canEdit ? ' click' : ''), style: 'gap:12px',
+    class: 'card col' + qualityClass(a) + (canEdit ? ' click' : ''), style: 'gap:12px',
     onclick: canEdit ? () => openAccount(a) : null,
   },
     el('div', { class: 'row' },
@@ -238,6 +265,7 @@ function card(a, canEdit) {
     // no product chip here — the group heading above already says it
     el('div', { class: 'row wrap', style: 'gap:6px' },
       stageOnlyChip(a),
+      qualityChip(a),
       handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
@@ -345,7 +373,7 @@ function openAccount(existing, seed) {
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
-      stageId: '', replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
+      stageId: '', quality: '', replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
       notes: '', createdAt: Date.now(),
     };
@@ -392,6 +420,13 @@ function openAccount(existing, seed) {
     class: 'input', value: a.character || '', placeholder: 'The persona this avatar plays',
     oninput: e => a.character = e.target.value
   })));
+
+  // what kind of video this page makes — tints its card so it reads at a glance
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'VIDEO QUALITY'),
+    select([['', 'Not set']].concat(QUALITY.map(q => [q[0], q[1]])), a.quality || '', v => a.quality = v),
+    el('span', { class: 'hint' },
+      'Tints this page’s card so you and the editors can tell at a glance what kind of videos it makes.')));
 
   // what this avatar promotes
   body.appendChild(el('div', { class: 'col', style: 'gap:5px' },

@@ -21,7 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip, productColor, stageChip } from './accounts.js';
+import { productChip, productColor, stageChip, qualityChip } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
@@ -438,6 +438,7 @@ function avatarCard(a, entries, u) {
     // one line: where the page is, how it's doing, and the day's target
     el('div', { class: 'row wrap', style: 'gap:8px' },
       stageChip(a),
+      qualityChip(a),
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
       can.seesAllAccounts(u) && posted ? el('span', { class: 'hint' }, posted + ' posted') : null,
