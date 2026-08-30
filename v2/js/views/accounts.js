@@ -13,6 +13,7 @@ import {
 import { sortedStages, stageOf, stageColor } from '../stages.js';
 import { LIFECYCLE, lifecycleOf, lifecycleDef, isLive, isBuilding, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
+import { renderSheet } from './sheet.js';
 
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone]);
 
@@ -68,9 +69,11 @@ export function renderAccounts(root) {
   };
   const view = buckets[state.acctView] ? state.acctView : 'live';
 
+  const asSheet = state.acctLayout === 'sheet';
+
   root.appendChild(head(canEdit, buckets.live.length));
-  if (view === 'live') renderRoster(root, all, canEdit, startReplacement);
-  root.appendChild(filters(all, buckets, view));
+  if (view === 'live' && !asSheet) renderRoster(root, all, canEdit, startReplacement);
+  root.appendChild(filters(all, buckets, view, asSheet));
 
   const shown = buckets[view]
     .filter(a => state.acctProfile === 'all' || a.facebookProfileId === state.acctProfile)
@@ -82,7 +85,8 @@ export function renderAccounts(root) {
       buckets[view].length ? 'No pages match these filters.' : emptyFor(view, canEdit)));
     return;
   }
-  root.appendChild(view === 'archive' ? archiveCards(shown, canEdit) : groupedCards(shown, canEdit));
+  if (asSheet) renderSheet(root, shown, canEdit);
+  else root.appendChild(view === 'archive' ? archiveCards(shown, canEdit) : groupedCards(shown, canEdit));
 }
 
 function emptyFor(view, canEdit) {
@@ -204,7 +208,7 @@ function matchesProduct(a, pid) {
   return a.productId === pid;
 }
 
-function filters(all, buckets, view) {
+function filters(all, buckets, view, asSheet) {
   const fbProfiles = state.db.profiles.filter(p => p.platform === 'facebook');
   const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
@@ -243,6 +247,14 @@ function filters(all, buckets, view) {
     sel.value = state.acctProfile;
     row.appendChild(sel);
   }
+
+  // cards to work from, sheet to see everything at once
+  row.appendChild(el('span', { class: 'spacer' }));
+  row.appendChild(el('div', { class: 'seg blue' }, [['cards', 'Cards'], ['sheet', 'Sheet']].map(([k, label]) =>
+    el('button', {
+      class: (asSheet ? 'sheet' : 'cards') === k ? 'on' : '',
+      onclick: () => { state.acctLayout = k; forceEmit(); }
+    }, label))));
 
   const filtered = (state.acctProduct && state.acctProduct !== 'all') || state.acctProfile !== 'all';
   if (filtered) {

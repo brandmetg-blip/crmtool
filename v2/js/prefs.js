@@ -10,6 +10,7 @@ const ROW = 'workspace';
 export const DEFAULTS = {
   rosterTarget: 10,     // how many pages should be live at once
   reviewAfterDays: 30,  // runway before a page with no winners is worth a decision
+  sheetColumns: [],     // extra columns on the avatar sheet
 };
 
 export function prefs() {

@@ -18,6 +18,7 @@ export const state = {
   builderProduct: 'all',      // ...and/or to one product ('none' = no product set)
   openScript: null,           // script id open in detail view
   acctView: 'live',           // avatars tab: live | building | archive
+  acctLayout: 'cards',        // avatars tab: cards | sheet
   acctProfile: 'all',
   acctProduct: 'all',
   modal: null,                // { type, ... } | null

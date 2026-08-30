@@ -128,6 +128,53 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .check.on { background: var(--green); border: none; }
 .check[disabled] { cursor: default; opacity: .7; }
 
+/* ---- the avatar sheet ----
+   Wide by nature: the header row and the identifying columns stay put while
+   the concept columns scroll sideways, so a row never loses its name. */
+.sheet-wrap {
+  overflow: auto; max-height: calc(100vh - 210px);
+  border: 1px solid var(--line); border-radius: 13px; background: var(--panel2);
+}
+.sheet { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 12px; }
+.sheet th, .sheet td {
+  padding: 9px 11px; text-align: left; vertical-align: middle;
+  border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+  white-space: nowrap;
+}
+.sheet th {
+  position: sticky; top: 0; z-index: 3;
+  background: #101314; color: var(--mut);
+  font-size: 10px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+}
+.sheet th.concept { color: #c3b0ff; }
+.sheet tbody tr:hover td { background: rgba(255,255,255,0.03); }
+.sheet tbody tr:last-child td { border-bottom: none; }
+
+/* frozen identity columns */
+.sheet .stick { position: sticky; z-index: 2; background: var(--panel2); }
+.sheet th.stick { z-index: 4; background: #101314; }
+.sheet tbody tr:hover .stick { background: #16191b; }
+.sheet .s-num { left: 0; }
+.sheet .s-pageCreated { left: 44px; }
+.sheet .s-product { left: 136px; }
+.sheet .s-pfp { left: 274px; }
+.sheet .s-name { left: 324px; box-shadow: 1px 0 0 var(--line2); }
+
+.rownum { font-weight: 800; color: var(--violet); font-size: 11.5px; }
+
+/* a checkbox cell */
+.tick {
+  width: 20px; height: 20px; padding: 0; border-radius: 5px; cursor: pointer;
+  border: 1.5px solid rgba(255,255,255,0.22); background: transparent;
+  color: #06140c; font-size: 12px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.tick.on { background: var(--green); border-color: var(--green); }
+.tick[disabled] { cursor: default; opacity: .75; }
+.input.cell { height: 28px; font-size: 11.5px; min-width: 120px; }
+
+@media (max-width: 900px) { .sheet-wrap { max-height: none; } }
+
 /* ---- product grouping in the builder ---- */
 .group-head {
   display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
