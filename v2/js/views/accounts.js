@@ -11,7 +11,7 @@ import {
   sortedConcepts, discoverLegacyConcepts, bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor } from '../stages.js';
-import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, isBuilding, isDropped, pageStats } from '../lifecycle.js';
+import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 import { renderSheet } from './sheet.js';
 
@@ -61,19 +61,21 @@ export function renderAccounts(root) {
   const canEdit = can.editAccounts(u);
   const all = myAccounts(u, state.db);
 
-  // Three buckets, not a six-way filter. The front page is the pages that are
-  // actually running; everything else is a click away and never deleted.
+  // Two buckets. The pages you run — posting or still being created — belong
+  // together, because that is the number you manage against. Everything out of
+  // play is one click away and never deleted.
   const buckets = {
-    live: all.filter(isLive),
-    building: all.filter(isBuilding),
-    archive: all.filter(a => !isLive(a) && !isBuilding(a)),
+    roster: all.filter(inRoster),
+    archive: all.filter(a => !inRoster(a)),
   };
-  const view = buckets[state.acctView] ? state.acctView : 'live';
+  // old saved values from when live and setting up were separate tabs
+  const view = buckets[state.acctView] ? state.acctView : 'roster';
 
   const asSheet = state.acctLayout === 'sheet';
 
-  root.appendChild(head(canEdit, buckets.live.length, buckets.building.length));
-  if (view === 'live' && !asSheet) renderRoster(root, all, canEdit, startReplacement);
+  const liveCount = buckets.roster.filter(isLive).length;
+  root.appendChild(head(canEdit, liveCount, buckets.roster.length - liveCount));
+  if (view === 'roster' && !asSheet) renderRoster(root, all, canEdit, startReplacement);
   root.appendChild(filters(all, buckets, view, asSheet));
 
   const shown = buckets[view]
@@ -91,9 +93,8 @@ export function renderAccounts(root) {
 }
 
 function emptyFor(view, canEdit) {
-  if (view === 'building') return 'No pages waiting to be created.';
   if (view === 'archive') return 'Nothing archived yet. Pages you pause or drop are kept here.';
-  return canEdit ? 'No live pages yet — add the first one.' : 'No pages assigned to you yet — ask an admin.';
+  return canEdit ? 'No pages yet — add the first one.' : 'No pages assigned to you yet — ask an admin.';
 }
 
 // ---------------------------------------------------------------------------
@@ -217,7 +218,7 @@ function filters(all, buckets, view, asSheet) {
   const products = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
   const row = el('div', { class: 'row wrap', style: 'margin-bottom:16px' },
-    el('div', { class: 'seg' }, [['live', 'Live'], ['building', 'Setting up'], ['archive', 'Archive']].map(([k, label]) =>
+    el('div', { class: 'seg' }, [['roster', 'Pages'], ['archive', 'Archive']].map(([k, label]) =>
       el('button', {
         class: view === k ? 'on' : '',
         onclick: () => { state.acctView = k; forceEmit(); }

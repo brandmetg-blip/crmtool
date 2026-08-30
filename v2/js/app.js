@@ -180,7 +180,7 @@ function signOutState() {
   state.modal = null;
   state.loginError = null;
   state.authEmail = null;
-  state.acctView = 'live';
+  state.acctView = 'roster';
   state.acctLayout = 'cards';
   state.taskMine = false;
   state.acctProfile = 'all';
