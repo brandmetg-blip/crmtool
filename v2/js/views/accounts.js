@@ -11,7 +11,7 @@ import {
   sortedConcepts, conceptsForAccount, discoverLegacyConcepts,
   bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
-import { sortedStages, stageOf, stageColor } from '../stages.js';
+import { sortedStages, stageOf, stageColor, VIDEO_TYPES, quotaForAccount, quotaSummaryFor } from '../stages.js';
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 import { renderSheet, openColumns } from './sheet.js';
@@ -55,6 +55,31 @@ export function qualityChip(a) {
     class: 'chip', title: q[1] + ' videos',
     style: 'color:' + q[2] + ';background:' + q[2] + '1f;border-color:' + q[2] + '55',
   }, q[1]);
+}
+
+// Who the page's audience is set to. Broad is the ordinary case and left
+// unset by default, so this stays quiet on every normal page; it only speaks
+// up where it actually changes something — a page a video can get wrong
+// without anyone noticing until it's already out.
+export const TARGETING = [
+  ['us', 'US only', '#5bd5ef'],
+  ['restricted', 'Restricted', '#f0958e'],
+];
+
+export function targetingOf(a) {
+  return TARGETING.find(t => t[0] === (a && a.targeting)) || null;
+}
+
+// Shown only when set to something other than broad — an unmarked page is the
+// default case and gets no chip, so the chips that do appear are worth reading.
+export function targetingChip(a) {
+  const t = targetingOf(a);
+  if (!t) return null;
+  const note = (a.targetingNote || '').trim();
+  return el('span', {
+    class: 'chip', title: note || t[1],
+    style: 'color:' + t[2] + ';background:' + t[2] + '1f;border-color:' + t[2] + '55',
+  }, t[1]);
 }
 
 export function renderAccounts(root) {
@@ -294,6 +319,7 @@ function card(a, canEdit) {
     el('div', { class: 'row wrap', style: 'gap:6px' },
       stageOnlyChip(a),
       qualityChip(a),
+      targetingChip(a),
       handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
@@ -325,16 +351,32 @@ export function lifecycleChip(a) {
   return el('span', { class: 'chip ' + def.tone, title: def.note }, lifecycleLabel(a));
 }
 
+// A small marker on the stage chip for a page whose mix is pinned rather than
+// inherited — the one visual cue that this page is not doing what its stage
+// says every other page at that stage does. Its own tooltip carries the
+// numbers, so the stage chip's tooltip can stay the stage's goal text.
+function mixDot(a) {
+  if (!a.quotaOverride) return null;
+  return el('span', {
+    class: 'mix-dot',
+    title: 'Pinned for this page: ' + quotaSummaryFor(a) + ' — overrides its stage.',
+  });
+}
+
 // The stage alone, never standing in for the lifecycle — used where a
 // lifecycle chip sits beside it.
 export function stageOnlyChip(a) {
   const s = stageOf(a);
-  if (!s) return el('span', { class: 'chip gray' }, 'No stage');
+  if (!s) {
+    return a.quotaOverride
+      ? el('span', { class: 'chip violet' }, 'Custom mix', mixDot(a))
+      : el('span', { class: 'chip gray' }, 'No stage');
+  }
   const c = stageColor(s);
   return el('span', {
     class: 'chip', title: (s.goal || '').trim() || s.name,
     style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
-  }, s.name);
+  }, s.name, mixDot(a));
 }
 
 // The stage a page is at, in the stage's own colour. Where a page is not
@@ -345,12 +387,16 @@ export function stageChip(a) {
   const def = lifecycleDef(a);
   if (!def.work) return el('span', { class: 'chip ' + def.tone }, lifecycleLabel(a));
   const s = stageOf(a);
-  if (!s) return el('span', { class: 'chip gray' }, 'No stage');
+  if (!s) {
+    return a.quotaOverride
+      ? el('span', { class: 'chip violet' }, 'Custom mix', mixDot(a))
+      : el('span', { class: 'chip gray' }, 'No stage');
+  }
   const c = stageColor(s);
   return el('span', {
     class: 'chip', title: (s.goal || '').trim() || s.name,
     style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
-  }, s.name);
+  }, s.name, mixDot(a));
 }
 
 // ---------------------------------------------------------------------------
@@ -425,7 +471,8 @@ function openAccount(existing, seed) {
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
-      stageId: '', quality: '', replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
+      stageId: '', quality: '', quotaOverride: null, targeting: '', targetingNote: '',
+      replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
       notes: '', createdAt: Date.now(),
     };
@@ -475,6 +522,28 @@ function openAccount(existing, seed) {
     el('span', { class: 'hint' },
       'Tints this page’s card so you and the editors can tell at a glance what kind of videos it makes.')));
 
+  // who the page is set to reach — quiet by default, since most pages are
+  // broad; it only needs saying where it is not
+  const targetNoteRow = el('div', { class: 'col', style: 'gap:5px' });
+  const paintTargetNote = () => {
+    targetNoteRow.innerHTML = '';
+    if (!a.targeting) return;
+    targetNoteRow.appendChild(el('span', { class: 'label' },
+      a.targeting === 'us' ? 'NOTE (OPTIONAL)' : 'WHAT IS RESTRICTED'));
+    targetNoteRow.appendChild(el('input', {
+      class: 'input', value: a.targetingNote || '',
+      placeholder: a.targeting === 'us' ? 'e.g. English captions only' : 'e.g. no EU, no UK',
+      oninput: e => a.targetingNote = e.target.value,
+    }));
+  };
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'TARGETING'),
+    select([['', 'Broad']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting || '',
+      v => { a.targeting = v; paintTargetNote(); }),
+    el('span', { class: 'hint' }, 'Broad needs no flag. Anything narrower shows as a chip everywhere this page is listed.')));
+  body.appendChild(targetNoteRow);
+  paintTargetNote();
+
   // what this avatar promotes
   body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
     el('span', { class: 'label' }, 'PRODUCT'),
@@ -489,11 +558,71 @@ function openAccount(existing, seed) {
       ? 'At this stage: ' + s.goal.trim()
       : (s ? 'This stage has no instructions yet — add them under Settings.' : '');
   };
+
+  // How many videos of each type THIS page makes a day. Every page at a stage
+  // shares that stage's mix by default — that is the point of stages — but a
+  // real roster is not that uniform: one page tests product-only while the
+  // rest of "Growing" still gets both. Pinning a mix here is the exception,
+  // scoped to this one page; the stage itself, and every other page at it,
+  // is untouched.
+  const mixWrap = el('div', { class: 'col', style: 'gap:8px' });
+  const paintMix = () => {
+    mixWrap.innerHTML = '';
+    const custom = !!a.quotaOverride;
+    mixWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:9px' },
+      el('span', { class: 'label' }, 'VIDEOS PER DAY'),
+      el('div', { class: 'seg mini' }, [['stage', 'Stage default'], ['custom', 'Custom for this page']].map(([k, label]) =>
+        el('button', {
+          class: (custom ? 'custom' : 'stage') === k ? 'on' : '',
+          onclick: () => {
+            if (k === 'custom' && !a.quotaOverride) {
+              // start from what this page currently gets, not from zero —
+              // switching the toggle should not itself change any behaviour
+              const seed = {};
+              VIDEO_TYPES.forEach(t => seed[t] = quotaForAccount(a, t));
+              a.quotaOverride = seed;
+            } else if (k === 'stage') {
+              a.quotaOverride = null;
+            }
+            paintMix();
+          }
+        }, label)))));
+
+    if (!custom) {
+      mixWrap.appendChild(el('span', { class: 'hint' },
+        a.stageId
+          ? 'Follows ' + ((byId(state.db.stages, a.stageId) || {}).name || 'its stage') + ': ' + quotaSummaryFor(a) + '.'
+          : 'No stage set, so nothing is planned for this page yet — pick a stage above, or pin a mix below.'));
+      return;
+    }
+
+    mixWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:14px' }, VIDEO_TYPES.map(t => {
+      const n = a.quotaOverride[t] || 0;
+      const bump = by => { a.quotaOverride[t] = Math.max(0, Math.min(20, (a.quotaOverride[t] || 0) + by)); paintMix(); };
+      return el('div', { class: 'row', style: 'gap:7px' },
+        el('span', {
+          style: 'font-size:12.5px;font-weight:700;min-width:62px;color:'
+            + (n ? (t === 'Growth' ? 'var(--blue)' : 'var(--green)') : 'var(--dim)')
+        }, t),
+        el('button', { class: 'iconbtn', title: 'One fewer', onclick: () => bump(-1) }, '−'),
+        el('input', {
+          class: 'input', type: 'number', min: '0', max: '20', value: String(n),
+          style: 'width:62px;height:30px;text-align:center;font-weight:800',
+          onchange: e => { a.quotaOverride[t] = Math.max(0, Math.min(20, Math.round(+e.target.value || 0))); paintMix(); }
+        }),
+        el('button', { class: 'iconbtn', title: 'One more', onclick: () => bump(1) }, '+'));
+    })));
+    mixWrap.appendChild(el('span', { class: 'hint' },
+      quotaSummaryFor(a) + ' — pinned to this page, overriding '
+      + (a.stageId ? ((byId(state.db.stages, a.stageId) || {}).name || 'its stage') : 'no stage') + '.'));
+  };
+
   const stageSel = sortedStages().length
     ? select([['', 'No stage set']].concat(sortedStages().map(s => [s.id, s.name])), a.stageId || '',
-        v => { a.stageId = v; paintStageNote(); })
+        v => { a.stageId = v; paintStageNote(); paintMix(); })
     : el('span', { class: 'hint' }, 'No stages defined yet — add them under Settings.');
   paintStageNote();
+  paintMix();
 
   const lifeNote = el('div', { class: 'hint' });
   const reasonWrap = el('div', { class: 'col', style: 'gap:5px' });
@@ -530,6 +659,7 @@ function openAccount(existing, seed) {
   paintLife();
   body.appendChild(reasonWrap);
   body.appendChild(stageNote);
+  body.appendChild(mixWrap);
 
   // what this page replaced, or what replaced it
   const lineage = lineageNote(a);

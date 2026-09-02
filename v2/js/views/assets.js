@@ -11,7 +11,7 @@ import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
 import { lifecycleOf, takesDailyVideos } from '../lifecycle.js';
-import { stageChip, qualityChip, qualityClass, byProduct, productColor } from './accounts.js';
+import { stageChip, qualityChip, qualityClass, targetingChip, byProduct, productColor } from './accounts.js';
 
 export function renderAssets(root) {
   const u = state.user;
@@ -65,7 +65,7 @@ function card(a) {
     el('div', { class: 'row', style: 'gap:13px' },
       avatar(a, 64),
       el('b', { style: 'flex:1;min-width:0;font-size:14.5px' }, a.name || 'Untitled'),
-      el('div', { class: 'col', style: 'gap:5px;align-items:flex-end' }, stageChip(a), qualityChip(a))));
+      el('div', { class: 'col', style: 'gap:5px;align-items:flex-end' }, stageChip(a), qualityChip(a), targetingChip(a))));
 
   // What this page needs right now — the reason stages exist rather than being
   // a colour on a card. A retired page says so loudly instead.

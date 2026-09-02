@@ -124,6 +124,9 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .chip.gray { color: var(--mut); background: rgba(255,255,255,0.04); border-color: var(--line2); }
 .chip.red { color: #f0958e; background: rgba(240,88,78,0.1); border-color: rgba(240,88,78,0.3); }
 
+/* the marker on a stage chip for a page whose mix is pinned rather than inherited */
+.mix-dot { width: 6px; height: 6px; border-radius: 50%; background: #c3b0ff; flex: 0 0 auto; }
+
 .check { width: 24px; height: 24px; border-radius: 7px; border: 1.6px solid rgba(255,255,255,0.22); background: transparent; color: #06140c; font-size: 14px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; padding: 0; }
 .check.on { background: var(--green); border: none; }
 .check[disabled] { cursor: default; opacity: .7; }

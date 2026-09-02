@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct } from './accounts.js';
-import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaFor } from '../stages.js';
+import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaForAccount } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -392,11 +392,10 @@ function avatarGroups(accounts, day, u) {
 // Admin only: it is a planning figure, not something an editor acts on.
 function quotaLine(a, entries, u) {
   if (!u || u.role !== 'admin') return null;
-  const s = stageOf(a);
-  if (!s) return null;
+  if (!stageOf(a) && !a.quotaOverride) return null;
 
   const parts = TYPES.map(t => {
-    const need = quotaFor(s, t);
+    const need = quotaForAccount(a, t);
     if (!need) return null;
     const have = entries.filter(e => (e.type || 'Product') === t).length;
     return { t, need, have, done: have >= need };
@@ -752,7 +751,13 @@ function openMassAdd(u) {
       // both reasons when both apply: they need different fixes, so showing
       // only the first hides work from whoever is about to add the video
       const why = [];
-      if (wrongStage) why.push(['not for this stage', ((stageOf(acct) || {}).name || 'This stage') + ' does not take ' + draft.type + ' videos']);
+      if (wrongStage) {
+        // a page's own pin, not its stage, may be the thing excluding it —
+        // say whichever one is actually responsible
+        why.push(acct.quotaOverride
+          ? ['not for this page', 'This page’s own mix does not include ' + draft.type + ' videos']
+          : ['not for this stage', ((stageOf(acct) || {}).name || 'This stage') + ' does not take ' + draft.type + ' videos']);
+      }
       if (wrongProduct) why.push(['not for this product', 'This concept is not used for what this page promotes']);
       off.textContent = why.map(w => w[0]).join(' · ');
       off.title = why.map(w => w[1]).join('\n');
@@ -835,8 +840,9 @@ function openMassAdd(u) {
           + wrongProduct.map(a => '  • ' + (a.name || 'Untitled')).join('\n'));
       }
       if (off.length) {
-        bits.push(off.length + ' should not get a ' + draft.type + ' video at their stage:\n'
-          + off.map(a => '  • ' + (a.name || 'Untitled') + ' (' + ((stageOf(a) || {}).name || 'no stage') + ')').join('\n'));
+        bits.push(off.length + ' should not get a ' + draft.type + ' video:\n'
+          + off.map(a => '  • ' + (a.name || 'Untitled') + ' ('
+            + (a.quotaOverride ? 'custom mix' : ((stageOf(a) || {}).name || 'no stage')) + ')').join('\n'));
       }
       if (over.length) {
         bits.push(over.length + ' already have their ' + draft.type.toLowerCase() + ' videos for this day:\n'
@@ -984,8 +990,8 @@ function editorFor(account, mode, editors) {
 // the same deliberate confirmation the bulk path uses.
 function setType(en, a, type) {
   if (!stageAllows(a, type)) {
-    const s = stageOf(a);
-    const ok = confirm((a.name || 'This page') + ' is at ' + ((s && s.name) || 'no stage')
+    const where = a.quotaOverride ? 'has its own mix pinned' : 'is at ' + ((stageOf(a) || {}).name || 'no stage');
+    const ok = confirm((a.name || 'This page') + ' ' + where
       + ', which does not take ' + type + ' videos.\n\nSet it to ' + type + ' anyway?');
     if (!ok) return;
   }
@@ -1012,7 +1018,8 @@ function entryRow(en, a, num, u) {
     !stageAllows(a, en.type || 'Product')
       ? el('span', {
         class: 'chip red',
-        title: ((stageOf(a) || {}).name || 'This stage') + ' does not take ' + (en.type || 'Product') + ' videos',
+        title: (a.quotaOverride ? 'This page’s own mix' : ((stageOf(a) || {}).name || 'This stage'))
+          + ' does not take ' + (en.type || 'Product') + ' videos',
       }, 'off-stage')
       : null,
     seg(PROD, en.prod || 'Assembly', canEdit, v => eLoud(en.id, x => x.prod = v), 'violet'),

@@ -72,17 +72,49 @@ export function allowedTypes(stage) {
   return on.length ? on : VIDEO_TYPES.slice();
 }
 
+// ---------------------------------------------------------------------------
+// per-page pinned mix — the exception to the stage's default
+// ---------------------------------------------------------------------------
+// A stage sets what every page at it makes by default. Real pages don't all
+// grow the same way, so any page can pin its own mix instead — same shape as
+// a stage's quota, and it simply wins wherever it is set. Nothing else about
+// the stage (its goal, its colour, what "Growing" means for every other page
+// at it) changes; only this one page's numbers do.
+//
+// Every function below that used to read a stage's quota for a given page now
+// reads this first. Nothing that calls them had to change.
+export function quotaForAccount(account, type) {
+  if (account && account.quotaOverride) {
+    const v = account.quotaOverride[type];
+    return typeof v === 'number' ? Math.max(0, Math.round(v)) : 0;
+  }
+  return quotaFor(stageOf(account), type);
+}
+
+export function allowedTypesFor(account) {
+  if (account && account.quotaOverride) {
+    const on = VIDEO_TYPES.filter(t => quotaForAccount(account, t) > 0);
+    return on.length ? on : VIDEO_TYPES.slice();
+  }
+  return allowedTypes(stageOf(account));
+}
+
+// A page with a pinned mix and no stage is a real, deliberate setup — testing
+// a variant before it even has a stage assigned — so a target exists whenever
+// either is present, not only when a stage is.
+function hasQuotaTarget(account) {
+  return !!(account && (account.quotaOverride || stageOf(account)));
+}
+
 export function stageAllows(account, type) {
-  const s = stageOf(account);
-  if (!s) return true;                       // no stage set: nothing to enforce
-  return quotaFor(s, type) > 0;
+  if (!hasQuotaTarget(account)) return true;   // nothing pinned, no stage: nothing to enforce
+  return quotaForAccount(account, type) > 0;
 }
 
 // What this page still needs of `type` on `date`. need === null means the page
-// has no stage, so there is no target to measure against.
+// has neither a pin nor a stage, so there is no target to measure against.
 export function quotaProgress(account, type, date, entries) {
-  const s = stageOf(account);
-  const need = s ? quotaFor(s, type) : null;
+  const need = hasQuotaTarget(account) ? quotaForAccount(account, type) : null;
   const have = (entries || state.db.dailyEntries || [])
     .filter(e => e.date === date && e.accountId === account.id && (e.type || 'Product') === type).length;
   return { need, have, remaining: need == null ? null : Math.max(0, need - have) };
@@ -90,8 +122,18 @@ export function quotaProgress(account, type, date, entries) {
 
 // The type a new video should default to for this page.
 export function defaultTypeFor(account) {
-  const allowed = allowedTypes(stageOf(account));
+  const allowed = allowedTypesFor(account);
   return allowed.includes('Product') && allowed.length === 1 ? 'Product' : allowed[0] || 'Product';
+}
+
+// Text description of a page's effective daily mix — its pin if it has one,
+// otherwise its stage's default. Used both to preview what "follow the stage"
+// currently means and to explain a pin wherever one is flagged.
+export function quotaSummaryFor(account) {
+  const parts = VIDEO_TYPES.map(t => [t, quotaForAccount(account, t)]).filter(p => p[1] > 0);
+  if (!parts.length) return 'No videos planned.';
+  const total = parts.reduce((n, p) => n + p[1], 0);
+  return parts.map(p => p[1] + '× ' + p[0]).join(' + ') + ' a day (' + total + ' total)';
 }
 
 // Everything an editor needs to know before touching a page, in one place.

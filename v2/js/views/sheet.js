@@ -17,7 +17,7 @@ import { state, forceEmit, uid } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
 import { getPref, setPref } from '../prefs.js';
-import { lifecycleChip, stageOnlyChip, qualityBadge, overlay, byProduct, productColor } from './accounts.js';
+import { lifecycleChip, stageOnlyChip, qualityBadge, targetingChip, overlay, byProduct, productColor } from './accounts.js';
 
 // Fixed columns, in the order they read best: identity first, then state.
 // No Product column: the rows are grouped under the product already, and
@@ -183,7 +183,7 @@ function row(a, n, concepts, custom, canEdit) {
       el('b', { style: 'font-size:12.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, a.name || 'Untitled'),
       qualityBadge(a))));
   tr.appendChild(el('td', null, lifecycleChip(a)));
-  tr.appendChild(el('td', null, stageOnlyChip(a)));
+  tr.appendChild(el('td', null, el('div', { class: 'row wrap', style: 'gap:5px' }, stageOnlyChip(a), targetingChip(a))));
 
   // one cell per concept: has a body script, and a way straight to it. A
   // concept the page's product does not take is struck through rather than
