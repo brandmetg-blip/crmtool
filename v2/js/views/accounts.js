@@ -12,6 +12,7 @@ import {
   bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor, VIDEO_TYPES, quotaForAccount, quotaSummaryFor } from '../stages.js';
+import { captionFor, setCaption, captionsNeeded, legacyCaption } from '../captions.js';
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 import { renderSheet, openColumns } from './sheet.js';
@@ -707,6 +708,38 @@ export function openAccount(existing, seed) {
   body.appendChild(reasonWrap);
   body.appendChild(stageNote);
   body.appendChild(mixWrap);
+
+  // What goes out with this page's videos. One per kind, because a growth
+  // video and a product video are not selling the same thing.
+  const capWrap = el('div', { class: 'col', style: 'gap:9px' });
+  const paintCaptions = () => {
+    capWrap.innerHTML = '';
+    capWrap.appendChild(el('span', { class: 'label' }, 'CAPTIONS'));
+    const needed = captionsNeeded(a);
+    VIDEO_TYPES.forEach(t => {
+      capWrap.appendChild(el('div', { class: 'col', style: 'gap:4px' },
+        el('div', { class: 'row', style: 'gap:7px' },
+          el('span', { class: 'label' }, t.toUpperCase() + ' VIDEO'),
+          needed.includes(t) ? null : el('span', { class: 'hint' }, 'this page makes none')),
+        el('textarea', {
+          class: 'input', style: 'min-height:52px;font-size:12.5px',
+          placeholder: 'The caption posted with this page’s ' + t.toLowerCase() + ' videos…',
+          oninput: e => setCaption(a, t, e.target.value),
+        }, captionFor(a, t))));
+    });
+    const old = legacyCaption(a);
+    if (old && !captionFor(a, 'Product') && !captionFor(a, 'Growth')) {
+      capWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('span', { class: 'hint', style: 'flex:1;min-width:150px' },
+          'Earlier caption on this page: “' + old + '”'),
+        VIDEO_TYPES.map(t => el('button', {
+          class: 'btn small',
+          onclick: () => { setCaption(a, t, old); paintCaptions(); },
+        }, 'Use as ' + t.toLowerCase()))));
+    }
+  };
+  paintCaptions();
+  body.appendChild(capWrap);
 
   // what this page replaced, or what replaced it
   const lineage = lineageNote(a);

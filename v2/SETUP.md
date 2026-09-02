@@ -157,11 +157,14 @@ write the day's hooks, see every page, see and set tasks, or set up new pages.
 Use these to let one person do more without making them an admin.
 
 **Onboarding.** A new page does not go straight into Avatars. It starts in
-**Onboarding** and works through a checklist — name, profile picture, cover
-photo, page link, LinkTwin links, automations, product, targeting, quality,
-stage, base images, and a body for each concept it starts on. Most items tick
-themselves off the record; the LinkTwin and automations boxes are ticked by
-hand, because that work happens outside the tool. Only when every item is
+**Onboarding** and works through a checklist — the Facebook page exists, name,
+profile picture, cover photo, page link, LinkTwin links, automations, Amazon
+settings, product, targeting, quality, stage, captions, base images, and a body
+for each concept it starts on. Most items tick themselves off the record; the
+Facebook page, LinkTwin, automations and Amazon boxes are ticked by hand,
+because that work happens outside the tool. Three of those four are the same
+boxes the Avatars sheet has always had, so ticking one ticks the other. Only
+when every item is
 filled in can it be submitted, at which point it joins the Avatars centre and
 goes Live. Pages
 still in the pipeline count toward the roster target (the slot is spoken for)

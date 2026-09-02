@@ -17,6 +17,7 @@ import { state, forceEmit, uid } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
 import { getPref, setPref } from '../prefs.js';
+import { captionFor, setCaption, captionsNeeded } from '../captions.js';
 import { lifecycleChip, stageOnlyChip, qualityBadge, targetingChip, overlay, byProduct, productColor } from './accounts.js';
 
 // Fixed columns, in the order they read best: identity first, then state.
@@ -30,10 +31,14 @@ const HEAD = [
   { id: 'lifecycle', label: 'Status', w: 96 },
   { id: 'stage', label: 'Stage', w: 118 },
 ];
+// One caption column per kind of video, replacing the single one pages used to
+// share: a growth video and a product video never go out under the same words.
 const TAIL = [
-  { id: 'caption', label: 'Caption', type: 'text', w: 160 },
   { id: 'linkCreated', label: 'Link created', type: 'check', w: 92 },
   { id: 'linkAdded', label: 'Link added', type: 'check', w: 90 },
+  { id: 'amazonAdded', label: 'Amazon', type: 'check', w: 80 },
+  { id: 'capGrowth', label: 'Growth caption', type: 'caption', of: 'Growth', w: 190 },
+  { id: 'capProduct', label: 'Product caption', type: 'caption', of: 'Product', w: 190 },
 ];
 
 export function renderSheet(root, accounts, canEdit) {
@@ -94,8 +99,8 @@ export function openColumns() {
   const body = el('div', { class: 'modal-body' });
 
   body.appendChild(el('div', { class: 'hint' },
-    'The sheet already has the page tick, product, name, status, stage, caption and both link ticks, ' +
-    'plus a column per concept. Add anything else you track.'));
+    'The sheet already has the page tick, name, status, stage, the link and Amazon ticks, ' +
+    'a caption per video type, and a column per concept. Add anything else you track.'));
 
   const save = async next => { await setPref('sheetColumns', next); forceEmit(); openColumns(); };
 
@@ -201,9 +206,10 @@ function row(a, n, concepts, custom, canEdit) {
       : el('span', { class: 'tick' }, '')));
   });
 
-  tr.appendChild(el('td', null, text(a, 'caption', canEdit, 'Caption…')));
-  tr.appendChild(el('td', null, check(a, 'linkCreated', canEdit)));
-  tr.appendChild(el('td', null, check(a, 'linkAdded', canEdit)));
+  TAIL.forEach(c => {
+    if (c.type === 'check') { tr.appendChild(el('td', null, check(a, c.id, canEdit))); return; }
+    tr.appendChild(el('td', null, captionCell(a, c.of, canEdit)));
+  });
 
   custom.forEach(c => tr.appendChild(el('td', null, customCell(a, c, canEdit))));
   return tr;
@@ -235,13 +241,19 @@ function check(a, key, canEdit) {
   });
 }
 
-function text(a, key, canEdit, ph) {
-  if (!canEdit) return el('span', { class: 'ro-text', style: 'font-size:11.5px' }, (a[key] || '').trim() || '—');
+// A page that makes no videos of this kind is not missing its caption — it is
+// struck through, the same way a concept its product does not take is.
+function captionCell(a, type, canEdit) {
+  if (!captionsNeeded(a).includes(type)) {
+    return el('span', { class: 'na', title: 'This page makes no ' + type.toLowerCase() + ' videos' }, '—');
+  }
+  const value = captionFor(a, type);
+  if (!canEdit) return el('span', { class: 'ro-text', style: 'font-size:11.5px' }, value || '—');
   return el('input', {
-    class: 'input cell', value: a[key] || '', placeholder: ph,
+    class: 'input cell', value, placeholder: type + ' caption…',
     oninput: async e => {
       const { save } = await import('../app.js');
-      a[key] = e.target.value;
+      setCaption(a, type, e.target.value);
       save('accounts', a);          // quiet: no re-render while typing
     },
   });

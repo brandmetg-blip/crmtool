@@ -21,7 +21,8 @@
 
 import { state, forceEmit, uid, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { sortedStages, stageOf, quotaSummaryFor } from '../stages.js';
+import { sortedStages, stageOf, quotaSummaryFor, VIDEO_TYPES } from '../stages.js';
+import { captionFor, setCaption, captionsNeeded, captionsReady, legacyCaption } from '../captions.js';
 import {
   conceptsForAccount, bodyLinkFor, scriptLinkFor, setConceptLink, setConceptScript,
 } from '../concepts.js';
@@ -51,12 +52,21 @@ const STEPS = {
     label: 'Page link', hint: 'Where the page actually lives.',
     done: a => !!((a.platforms || {}).facebook || '').trim() || !!((a.platforms || {}).instagram || '').trim(),
   },
-  // The two below are ticked by hand, and they are the only ones that are.
-  // Both happen somewhere this tool cannot see — in LinkTwin, and on the page
-  // itself — so there is no field to read them off. A box someone ticks is
+  // The hand-ticked steps, and the only ones that are. Each happens somewhere
+  // this tool cannot see — on Facebook, in LinkTwin, on the page itself, in
+  // Amazon — so there is no field to read them off. A box someone ticks is
   // honest about that; inferring it from anything here would not be.
-  linktwin: { label: 'LinkTwin links', hint: 'The links for this page are created.', done: a => !!a.linktwinDone },
-  automations: { label: 'Automations', hint: 'Automations and links added to the page.', done: a => !!a.automationsDone },
+  //
+  // Three of them write the fields the Avatars sheet already had, so a page
+  // ticked in one place is ticked in the other: it is one fact, not two.
+  fbPage: { label: 'Facebook page', hint: 'The page actually exists on Facebook.', done: a => !!a.pageCreated },
+  linktwin: { label: 'LinkTwin links', hint: 'The links for this page are created.', done: a => !!a.linkCreated },
+  automations: { label: 'Automations', hint: 'Automations and links added to the page.', done: a => !!a.linkAdded },
+  amazon: { label: 'Amazon settings', hint: 'The page is added in Amazon.', done: a => !!a.amazonAdded },
+  captions: {
+    label: 'Captions', hint: 'What goes out with its videos.',
+    done: a => captionsReady(a),
+  },
   product: { label: 'Product', hint: 'What this page promotes.', done: a => !!byId(state.db.products, a.productId) },
   targeting: { label: 'Targeting', hint: 'Who it is set to reach.', done: a => !!a.targeting },
   quality: { label: 'Video quality', hint: 'Whether its videos are built from scratch or assembled.', done: a => !!a.quality },
@@ -70,14 +80,36 @@ const STEPS = {
 
 const PHASES = [
   {
-    label: 'The page itself', note: 'What it looks like, where it lives, and what is wired up on it.',
-    steps: ['name', 'avatar', 'cover', 'links', 'linktwin', 'automations'],
+    label: 'The page itself', note: 'That it exists, what it looks like, and what is wired up on it.',
+    steps: ['fbPage', 'name', 'avatar', 'cover', 'links', 'linktwin', 'automations', 'amazon'],
   },
   { label: 'How it runs', note: 'What it sells, who it reaches, how much it makes a day.', steps: ['product', 'targeting', 'quality', 'stage'] },
-  { label: 'Content ready', note: 'What an editor needs before they can make anything for it.', steps: ['base', 'bodies'] },
+  { label: 'Content ready', note: 'What an editor needs before they can make anything for it.', steps: ['captions', 'base', 'bodies'] },
 ];
 
 const ALL_STEPS = PHASES.reduce((list, p) => list.concat(p.steps), []);
+
+// The steps a person confirms rather than the record answering. Three write
+// the fields the Avatars sheet has always used, so the two views tick the
+// same box rather than each keeping their own.
+const TICKS = {
+  fbPage: {
+    field: 'pageCreated', said: 'Page exists',
+    why: 'The same box as “Page created” on the Avatars sheet.',
+  },
+  linktwin: {
+    field: 'linkCreated', said: 'Links created',
+    why: 'Done in LinkTwin — the same box as “Link created” on the sheet.',
+  },
+  automations: {
+    field: 'linkAdded', said: 'Added to the page',
+    why: 'Done on the page itself — the same box as “Link added” on the sheet.',
+  },
+  amazon: {
+    field: 'amazonAdded', said: 'Added in Amazon',
+    why: 'Done in Amazon, so this is the only record of it here.',
+  },
+};
 
 function chosenConcepts(a) {
   return (Array.isArray(a.setupConcepts) ? a.setupConcepts : [])
@@ -115,8 +147,8 @@ export async function startNewPage(seed) {
     stageId: '', quality: '', quotaOverride: null, targeting: '', targetingNote: '',
     replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
     metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '',
-    linktwinDone: false, automationsDone: false,
-    bodyLinks: [], setupConcepts: [], notes: '',
+    pageCreated: false, linkCreated: false, linkAdded: false, amazonAdded: false,
+    captions: {}, bodyLinks: [], setupConcepts: [], notes: '',
     onboarding: true, createdAt: Date.now(),
   }, seed || {});
   save('accounts', a);
@@ -214,7 +246,23 @@ function pageCard(a) {
 // ---------------------------------------------------------------------------
 // the setup sheet — one page, worked through top to bottom
 // ---------------------------------------------------------------------------
+// Briefly, LinkTwin and automations had flags of their own, before it was
+// spotted that the Avatars sheet had been carrying the same two ticks all
+// along. Anything ticked under the old names is folded into the real fields
+// once, here, so no one loses a tick and nothing is asked for twice.
+// Folded on the record itself before anything reads it, so the checklist below
+// never renders off the old fields for a frame. Persisting it can wait.
+function foldLegacyTicks(a) {
+  if (a.linktwinDone === undefined && a.automationsDone === undefined) return;
+  if (a.linktwinDone && !a.linkCreated) a.linkCreated = true;
+  if (a.automationsDone && !a.linkAdded) a.linkAdded = true;
+  delete a.linktwinDone;
+  delete a.automationsDone;
+  import('../app.js').then(({ save }) => save('accounts', a));
+}
+
 function setupSheet(a) {
+  foldLegacyTicks(a);
   const wrap = el('div', { class: 'col', style: 'gap:16px' });
 
   // Written straight to the record rather than to a copy: a page half set up
@@ -371,23 +419,52 @@ function buildControl(a, key, box, set, paint, hooks) {
     return;
   }
 
-  // The two hand-ticked steps. The box carries the words, so what is being
+  // The hand-ticked steps. The box carries the words, so what is being
   // confirmed is on screen rather than remembered from the label alone.
-  if (key === 'linktwin' || key === 'automations') {
-    const f = key === 'linktwin' ? 'linktwinDone' : 'automationsDone';
-    const said = key === 'linktwin' ? 'Links created' : 'Added to the page';
-    const btn = el('button', { class: 'cbox' + (a[f] ? ' on' : '') },
-      el('span', { class: 'bx' }, a[f] ? '✓' : ''), said);
+  if (TICKS[key]) {
+    const { field, said, why } = TICKS[key];
+    const btn = el('button', { class: 'cbox' + (a[field] ? ' on' : '') },
+      el('span', { class: 'bx' }, a[field] ? '✓' : ''), said);
     btn.onclick = async () => {
-      const next = !a[f];
-      await set(x => x[f] = next);
+      const next = !a[field];
+      await set(x => x[field] = next);
       btn.classList.toggle('on', next);
       btn.firstChild.textContent = next ? '✓' : '';
     };
     box.appendChild(btn);
-    box.appendChild(el('span', { class: 'hint' }, key === 'linktwin'
-      ? 'Done in LinkTwin, so this is the only record of it here.'
-      : 'Done on the page itself, so this is the only record of it here.'));
+    box.appendChild(el('span', { class: 'hint' }, why));
+    return;
+  }
+
+  if (key === 'captions') {
+    // which captions are needed follows the page's mix, so the stage step can
+    // ask for this to be redrawn when it changes
+    if (hooks) hooks.repaintCaptions = () => { box.innerHTML = ''; buildControl(a, key, box, set, paint, hooks); paint(); };
+    const needed = captionsNeeded(a);
+    VIDEO_TYPES.forEach(t => {
+      const wanted = needed.includes(t);
+      box.appendChild(el('div', { class: 'col', style: 'gap:4px' },
+        el('div', { class: 'row', style: 'gap:7px' },
+          el('span', { class: 'label' }, t.toUpperCase() + ' VIDEO CAPTION'),
+          wanted ? null : el('span', { class: 'hint' }, 'not needed — this page makes none')),
+        el('textarea', {
+          class: 'input', style: 'min-height:52px;font-size:12.5px',
+          placeholder: 'The caption posted with this page’s ' + t.toLowerCase() + ' videos…',
+          oninput: e => set(x => setCaption(x, t, e.target.value)),
+        }, captionFor(a, t))));
+    });
+    const old = legacyCaption(a);
+    if (old && !captionFor(a, 'Product') && !captionFor(a, 'Growth')) {
+      // the single caption this page carried before there was one per type —
+      // offered back rather than guessed at, since which one it was meant to
+      // be is not knowable from here
+      box.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('span', { class: 'hint', style: 'flex:1;min-width:150px' }, 'Earlier caption on this page: “' + old + '”'),
+        VIDEO_TYPES.map(t => el('button', {
+          class: 'btn small',
+          onclick: async () => { await set(x => setCaption(x, t, old)); hooks && hooks.repaintCaptions && hooks.repaintCaptions(); },
+        }, 'Use as ' + t.toLowerCase()))));
+    }
     return;
   }
 
@@ -452,7 +529,13 @@ function buildControl(a, key, box, set, paint, hooks) {
     // the same breath as the choice
     const sel = el('select', {
       class: 'input', style: 'width:auto;min-width:170px',
-      onchange: async e => { await set(x => x.stageId = e.target.value); paintNote(); },
+      onchange: async e => {
+        await set(x => x.stageId = e.target.value);
+        paintNote();
+        // the stage decides which kinds of video this page makes, and so which
+        // captions it needs at all
+        if (hooks && hooks.repaintCaptions) hooks.repaintCaptions();
+      },
     }, [['', 'No stage set']].concat(stages.map(s => [s.id, s.name]))
       .map(([v, label]) => el('option', { value: v }, label)));
     sel.value = a.stageId || '';
