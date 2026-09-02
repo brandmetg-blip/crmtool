@@ -51,6 +51,12 @@ const STEPS = {
     label: 'Page link', hint: 'Where the page actually lives.',
     done: a => !!((a.platforms || {}).facebook || '').trim() || !!((a.platforms || {}).instagram || '').trim(),
   },
+  // The two below are ticked by hand, and they are the only ones that are.
+  // Both happen somewhere this tool cannot see — in LinkTwin, and on the page
+  // itself — so there is no field to read them off. A box someone ticks is
+  // honest about that; inferring it from anything here would not be.
+  linktwin: { label: 'LinkTwin links', hint: 'The links for this page are created.', done: a => !!a.linktwinDone },
+  automations: { label: 'Automations', hint: 'Automations and links added to the page.', done: a => !!a.automationsDone },
   product: { label: 'Product', hint: 'What this page promotes.', done: a => !!byId(state.db.products, a.productId) },
   targeting: { label: 'Targeting', hint: 'Who it is set to reach.', done: a => !!a.targeting },
   quality: { label: 'Video quality', hint: 'Whether its videos are built from scratch or assembled.', done: a => !!a.quality },
@@ -63,7 +69,10 @@ const STEPS = {
 };
 
 const PHASES = [
-  { label: 'The page itself', note: 'What it looks like and where it lives.', steps: ['name', 'avatar', 'cover', 'links'] },
+  {
+    label: 'The page itself', note: 'What it looks like, where it lives, and what is wired up on it.',
+    steps: ['name', 'avatar', 'cover', 'links', 'linktwin', 'automations'],
+  },
   { label: 'How it runs', note: 'What it sells, who it reaches, how much it makes a day.', steps: ['product', 'targeting', 'quality', 'stage'] },
   { label: 'Content ready', note: 'What an editor needs before they can make anything for it.', steps: ['base', 'bodies'] },
 ];
@@ -106,6 +115,7 @@ export async function startNewPage(seed) {
     stageId: '', quality: '', quotaOverride: null, targeting: '', targetingNote: '',
     replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
     metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '',
+    linktwinDone: false, automationsDone: false,
     bodyLinks: [], setupConcepts: [], notes: '',
     onboarding: true, createdAt: Date.now(),
   }, seed || {});
@@ -358,6 +368,26 @@ function buildControl(a, key, box, set, paint, hooks) {
         class: 'btn small danger',
         onclick: async () => { await set(x => x[field] = ''); paintShot(); }
       }, 'Remove') : null));
+    return;
+  }
+
+  // The two hand-ticked steps. The box carries the words, so what is being
+  // confirmed is on screen rather than remembered from the label alone.
+  if (key === 'linktwin' || key === 'automations') {
+    const f = key === 'linktwin' ? 'linktwinDone' : 'automationsDone';
+    const said = key === 'linktwin' ? 'Links created' : 'Added to the page';
+    const btn = el('button', { class: 'cbox' + (a[f] ? ' on' : '') },
+      el('span', { class: 'bx' }, a[f] ? '✓' : ''), said);
+    btn.onclick = async () => {
+      const next = !a[f];
+      await set(x => x[f] = next);
+      btn.classList.toggle('on', next);
+      btn.firstChild.textContent = next ? '✓' : '';
+    };
+    box.appendChild(btn);
+    box.appendChild(el('span', { class: 'hint' }, key === 'linktwin'
+      ? 'Done in LinkTwin, so this is the only record of it here.'
+      : 'Done on the page itself, so this is the only record of it here.'));
     return;
   }
 
