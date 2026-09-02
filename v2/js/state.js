@@ -22,6 +22,7 @@ export const state = {
   acctLayout: 'cards',        // avatars tab: cards | sheet
   acctProfile: 'all',
   acctProduct: 'all',
+  onboardAvatar: null,        // page id whose setup checklist is open
   modal: null,                // { type, ... } | null
   loginError: null,
   authEmail: null,            // cloud mode: the signed-in Supabase Auth email
@@ -94,6 +95,7 @@ export const PERMISSIONS = [
   ['editHooks', 'Write the day’s hooks', 'Add and edit the hooks shared across every page.'],
   ['seesAllAccounts', 'See every page', 'See all pages and the analytics, not only the ones assigned to them.'],
   ['tasks', 'See and set tasks', 'Open the Tasks board, take work on it and hand work out.'],
+  ['onboarding', 'Set up new pages', 'Open the onboarding pipeline and take new pages through it.'],
 ];
 
 const granted = (u, key) => !!(u && u.perms && u.perms[key]);
@@ -116,6 +118,10 @@ export const can = {
   // sides need to add as well as finish, so seeing it and setting it are one
   // permission.
   seeTasks: u => isAdmin(u) || isManager(u) || granted(u, 'tasks'),
+  // Setting a page up is the admin's and the manager's work. An editor never
+  // sees a page that has not finished the pipeline — the account centre is
+  // finished pages, and that is the whole point of having a pipeline.
+  seeOnboarding: u => isAdmin(u) || isManager(u) || granted(u, 'onboarding'),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -162,6 +168,7 @@ export function tabsFor(u) {
   if (!u) return [];
   const tabs = ['builder'];
   if (can.editAccounts(u) || can.seesAllAccounts(u)) tabs.push('accounts');
+  if (can.seeOnboarding(u)) tabs.push('onboarding');
   tabs.push('assets');
   if (can.seeTasks(u)) tabs.push('tasks');
   if (can.seesAllAccounts(u)) tabs.push('analytics');

@@ -125,6 +125,20 @@ export function setConceptLink(account, conceptId, url) {
   return row;
 }
 
+// The script an editor works FROM, as opposed to the folder the finished
+// bodies land in. Both hang off the same row, because they are two halves of
+// one thing: what to make, and where it went.
+export function scriptLinkFor(account, conceptId) {
+  const row = bodyRow(account, conceptId);
+  return row ? (row.scriptUrl || '').trim() : '';
+}
+
+export function setConceptScript(account, conceptId, url) {
+  const row = setConceptLink(account, conceptId, (bodyRow(account, conceptId) || {}).url || '');
+  row.scriptUrl = url;
+  return row;
+}
+
 export function setVariationLink(account, conceptId, variationId, url) {
   const row = setConceptLink(account, conceptId, bodyRow(account, conceptId)?.url || '');
   if (!row.varUrls) row.varUrls = {};
@@ -133,10 +147,13 @@ export function setVariationLink(account, conceptId, variationId, url) {
   return row;
 }
 
-// Rows worth keeping: anything with a concept link or at least one override.
+// Rows worth keeping: a folder, an angle's own folder, or a script to work
+// from — a row carrying only a script is a body that has been briefed but not
+// made yet, which is exactly the state onboarding leaves them in.
 export function pruneBodyLinks(account) {
   account.bodyLinks = (account.bodyLinks || []).filter(r =>
-    (r.url || '').trim() || Object.values(r.varUrls || {}).some(v => (v || '').trim()));
+    (r.url || '').trim() || (r.scriptUrl || '').trim()
+    || Object.values(r.varUrls || {}).some(v => (v || '').trim()));
 }
 
 // ---------------------------------------------------------------------------

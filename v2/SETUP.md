@@ -144,6 +144,7 @@ to them, and the one thing they may change is marking their own video made.
 | Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see |
 | Main Scripts (frames, prompts) | ✅ | ❌ view + copy | ❌ view + copy |
 | Avatars | ✅ | ❌ view only | ❌ |
+| Onboarding (new pages, before they join Avatars) | ✅ | ✅ **sets them up** | ❌ cannot see |
 | Assets | ✅ | ✅ all | ✅ theirs only |
 | Analytics | ✅ | ✅ | ❌ |
 | Team | ✅ | ❌ | ❌ |
@@ -152,8 +153,16 @@ to them, and the one thing they may change is marking their own video made.
 **Extra permissions.** The table above is what each role does by default. Under
 **Team**, any member can be granted extra abilities on top of their role —
 manage pages, write the daily brief, mark videos posted, write main scripts,
-write the day's hooks, or see every page. Use these to let one person do more
-without making them an admin.
+write the day's hooks, see every page, see and set tasks, or set up new pages.
+Use these to let one person do more without making them an admin.
+
+**Onboarding.** A new page does not go straight into Avatars. It starts in
+**Onboarding** and works through a checklist — name, profile picture, cover
+photo, page link, product, targeting, quality, stage, base images, and a body
+for each concept it starts on. Only when every item is filled in can it be
+submitted, at which point it joins the Avatars centre and goes Live. Pages
+still in the pipeline count toward the roster target (the slot is spoken for)
+but never appear in the account centre.
 
 Managing the team and changing settings are deliberately not grantable: either
 would let someone give themselves everything else, so they stay with the admin.

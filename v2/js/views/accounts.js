@@ -15,6 +15,7 @@ import { sortedStages, stageOf, stageColor, VIDEO_TYPES, quotaForAccount, quotaS
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 import { renderSheet, openColumns } from './sheet.js';
+import { onboardingPages, startNewPage } from './onboarding.js';
 
 // [stored id, tone, what a person reads]
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone, l.label]);
@@ -85,7 +86,10 @@ export function targetingChip(a) {
 export function renderAccounts(root) {
   const u = state.user;
   const canEdit = can.editAccounts(u);
-  const all = myAccounts(u, state.db);
+  // This is the account centre: finished pages only. A page still working
+  // through its setup checklist lives in Onboarding until it is submitted, so
+  // nothing half-built ever turns up here looking ready.
+  const all = myAccounts(u, state.db).filter(a => !a.onboarding);
 
   // Two buckets. The pages you run — posting or still being created — belong
   // together, because that is the number you manage against. Everything out of
@@ -101,7 +105,9 @@ export function renderAccounts(root) {
 
   const liveCount = buckets.roster.filter(isLive).length;
   root.appendChild(head(canEdit, liveCount, buckets.roster.length - liveCount));
-  if (view === 'roster' && !asSheet) renderRoster(root, all, canEdit, startReplacement);
+  if (view === 'roster' && !asSheet) {
+    renderRoster(root, all, canEdit, startReplacement, onboardingPages(state.db));
+  }
   root.appendChild(filters(all, buckets, view, asSheet, canEdit));
 
   const shown = buckets[view]
@@ -220,7 +226,11 @@ function head(canEdit, liveCount, buildingCount) {
     wrap.appendChild(el('button', { class: 'btn', onclick: openConcepts }, 'Concepts'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProducts }, 'Products'));
     wrap.appendChild(el('button', { class: 'btn', onclick: openProfiles }, 'Profiles'));
-    wrap.appendChild(el('button', { class: 'btn primary', onclick: () => openAccount(null) }, '+ New avatar'));
+    // A new page starts in the pipeline, not here — this tab is the finished
+    // ones. For anyone without the onboarding tab, the old direct-add stands.
+    wrap.appendChild(can.seeOnboarding(state.user)
+      ? el('button', { class: 'btn primary', onclick: () => startNewPage() }, '+ New page')
+      : el('button', { class: 'btn primary', onclick: () => openAccount(null) }, '+ New avatar'));
   }
   return wrap;
 }
@@ -450,15 +460,18 @@ function closeModal() { state.modal = null; forceEmit(); }
 // the product it promotes and the stage it starts at — and records the link, so
 // the roster reads as a chain rather than a pile of unrelated pages.
 function startReplacement(old) {
-  openAccount(null, {
+  const seed = {
     replacesId: old.id,
     productId: old.productId || '',
     stageId: (sortedStages()[0] || {}).id || '',
     status: 'Building',
-  });
+  };
+  // a replacement is a new page like any other: it goes through the pipeline
+  if (can.seeOnboarding(state.user)) startNewPage(seed);
+  else openAccount(null, seed);
 }
 
-function openAccount(existing, seed) {
+export function openAccount(existing, seed) {
   // Edit a COPY. Nothing is written until Save, so an abandoned modal can't
   // half-write a record, and a live update from someone else can't be
   // scribbled over by a form the user never submitted.
@@ -473,7 +486,7 @@ function openAccount(existing, seed) {
       facebookProfileId: '', instagramProfileId: '',
       stageId: '', quality: '', quotaOverride: null, targeting: '', targetingNote: '',
       replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
-      metaBusinessSuiteUrl: '', avatarUrl: '', baseImageLink: '', bodyLinks: [],
+      metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '', bodyLinks: [],
       notes: '', createdAt: Date.now(),
     };
   if (seed) Object.assign(a, seed);
@@ -515,6 +528,37 @@ function openAccount(existing, seed) {
     oninput: e => a.name = e.target.value
   })));
 
+  // the banner across the top of the page — set during onboarding, editable
+  // here for as long as the page runs
+  const coverBox = el('div', { class: 'ob-cover' });
+  const paintCover = () => {
+    coverBox.innerHTML = '';
+    coverBox.appendChild(a.coverUrl
+      ? el('img', { src: a.coverUrl, alt: '' })
+      : el('span', { class: 'hint', style: 'font-size:9.5px' }, 'none yet'));
+  };
+  paintCover();
+  const coverIn = el('input', {
+    type: 'file', accept: 'image/*', style: 'display:none',
+    onchange: async e => {
+      const file = e.target.files && e.target.files[0]; if (!file) return;
+      try {
+        const { store } = await import('../app.js');
+        a.coverUrl = await store.uploadImage(file);
+        paintCover();
+      } catch (err) { alert('Image upload failed — try again.\n' + (err.message || '')); }
+      e.target.value = '';
+    }
+  });
+  body.appendChild(el('div', { class: 'col', style: 'gap:6px' },
+    el('span', { class: 'label' }, 'COVER PHOTO'),
+    el('div', { class: 'row wrap', style: 'gap:10px' },
+      coverBox,
+      el('label', { class: 'btn small', style: 'cursor:pointer' }, 'Upload', coverIn),
+      a.coverUrl ? el('button', {
+        class: 'btn small danger', onclick: () => { a.coverUrl = ''; paintCover(); }
+      }, 'Remove') : null)));
+
   // what kind of video this page makes — tints its card so it reads at a glance
   body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
     el('span', { class: 'label' }, 'VIDEO QUALITY'),
@@ -538,9 +582,12 @@ function openAccount(existing, seed) {
   };
   body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
     el('span', { class: 'label' }, 'TARGETING'),
-    select([['', 'Broad']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting || '',
+    // Broad is an explicit choice, not the absence of one — otherwise a page
+    // nobody has thought about looks identical to one deliberately left open,
+    // and onboarding could never tell whether the question had been answered.
+    select([['', 'Not set'], ['broad', 'Broad']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting || '',
       v => { a.targeting = v; paintTargetNote(); }),
-    el('span', { class: 'hint' }, 'Broad needs no flag. Anything narrower shows as a chip everywhere this page is listed.')));
+    el('span', { class: 'hint' }, 'Broad carries no flag. Anything narrower shows as a chip everywhere this page is listed.')));
   body.appendChild(targetNoteRow);
   paintTargetNote();
 

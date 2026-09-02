@@ -15,12 +15,18 @@ import {
   roster, pageStats, needsReview, unreplaced, lifecycleOf, isLive, replacementFor, replacedPage,
 } from '../lifecycle.js';
 
-export function renderRoster(root, accounts, canEdit, onReplace) {
+// `pipeline` is the pages still in onboarding. They are not shown on this tab,
+// but they hold a slot — the whole point of the roster model is that a page
+// being built is already one of the ones you run. Counting them here and
+// naming where they are keeps the number honest without putting half-built
+// pages in the account centre.
+export function renderRoster(root, accounts, canEdit, onReplace, pipeline) {
   const target = getPref('rosterTarget');
-  const r = roster(accounts, target);
+  const inPipeline = pipeline || [];
+  const r = roster(accounts.concat(inPipeline), target);
   const reviewDays = getPref('reviewAfterDays');
 
-  root.appendChild(slotBar(r, reviewDays));
+  root.appendChild(slotBar(r, reviewDays, inPipeline.length));
 
   if (canEdit) {
     const due = accounts.filter(a => needsReview(a, reviewDays));
@@ -32,7 +38,7 @@ export function renderRoster(root, accounts, canEdit, onReplace) {
 }
 
 // ---- 1. are the slots full? ------------------------------------------------
-function slotBar(r, reviewDays) {
+function slotBar(r, reviewDays, inPipeline) {
   const tone = r.open === 0 ? 'green' : (r.open === 1 ? 'amber' : 'red');
 
   // one square per slot: filled and posting, filled but not created yet, empty
@@ -63,7 +69,11 @@ function slotBar(r, reviewDays) {
       r.open ? el('span', { class: 'chip ' + tone }, r.open + ' empty') : null),
     pips,
     el('span', { class: 'hint' }, line
-      + ' A live page with no winner after ' + reviewDays + ' days comes up for review.'));
+      + ' A live page with no winner after ' + reviewDays + ' days comes up for review.'),
+    // said out loud, because these count above but are not in the list below
+    inPipeline ? el('span', { class: 'hint' },
+      inPipeline + (inPipeline === 1 ? ' page is' : ' pages are')
+      + ' still in Onboarding — counted here, and shown here once submitted.') : null);
 }
 
 // ---- 2. which pages need a decision? ---------------------------------------
