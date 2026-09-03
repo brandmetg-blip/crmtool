@@ -59,11 +59,12 @@ export function qualityChip(a) {
   }, q[1]);
 }
 
-// Who the page's audience is set to. Broad is the ordinary case and left
-// unset by default, so this stays quiet on every normal page; it only speaks
-// up where it actually changes something — a page a video can get wrong
-// without anyone noticing until it's already out.
+// Who the page's audience is set to. Broad is muted rather than absent: a page
+// deliberately set to Broad reads differently from one nobody has decided on
+// yet, and the person who chose it wants to see the choice land. The narrower
+// two are loud, because those are the ones a video can get wrong.
 export const TARGETING = [
+  ['broad', 'Broad', '#8b8b93'],
   ['us', 'US only', '#5bd5ef'],
   ['restricted', 'Restricted', '#f0958e'],
 ];
@@ -72,8 +73,8 @@ export function targetingOf(a) {
   return TARGETING.find(t => t[0] === (a && a.targeting)) || null;
 }
 
-// Shown only when set to something other than broad — an unmarked page is the
-// default case and gets no chip, so the chips that do appear are worth reading.
+// Shown for any page whose targeting has been decided — including Broad. Only a
+// page still left unset (no choice made) gets no chip.
 export function targetingChip(a) {
   const t = targetingOf(a);
   if (!t) return null;
@@ -572,7 +573,9 @@ export function openAccount(existing, seed) {
   const targetNoteRow = el('div', { class: 'col', style: 'gap:5px' });
   const paintTargetNote = () => {
     targetNoteRow.innerHTML = '';
-    if (!a.targeting) return;
+    // Broad has nothing to restrict, and unset has nothing decided — the note
+    // only belongs to the two that narrow the audience.
+    if (a.targeting !== 'us' && a.targeting !== 'restricted') return;
     targetNoteRow.appendChild(el('span', { class: 'label' },
       a.targeting === 'us' ? 'NOTE (OPTIONAL)' : 'WHAT IS RESTRICTED'));
     targetNoteRow.appendChild(el('input', {
@@ -586,9 +589,9 @@ export function openAccount(existing, seed) {
     // Broad is an explicit choice, not the absence of one — otherwise a page
     // nobody has thought about looks identical to one deliberately left open,
     // and onboarding could never tell whether the question had been answered.
-    select([['', 'Not set'], ['broad', 'Broad']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting || '',
+    select([['', 'Not set']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting || '',
       v => { a.targeting = v; paintTargetNote(); }),
-    el('span', { class: 'hint' }, 'Broad carries no flag. Anything narrower shows as a chip everywhere this page is listed.')));
+    el('span', { class: 'hint' }, 'Every choice shows as a chip wherever this page is listed — Broad quietly, the narrower two loudly.')));
   body.appendChild(targetNoteRow);
   paintTargetNote();
 

@@ -505,9 +505,9 @@ function buildControl(a, key, box, set, paint, hooks) {
 
   if (key === 'targeting') {
     box.appendChild(pick(
-      [['', 'Not set'], ['broad', 'Broad']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting,
+      [['', 'Not set']].concat(TARGETING.map(t => [t[0], t[1]])), a.targeting,
       (x, v) => x.targeting = v));
-    box.appendChild(el('span', { class: 'hint' }, 'Broad still counts as a decision — it just carries no flag.'));
+    box.appendChild(el('span', { class: 'hint' }, 'Broad still counts as a decision — it just shows as a quiet chip rather than a loud one.'));
     return;
   }
 
