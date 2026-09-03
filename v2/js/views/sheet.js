@@ -17,7 +17,8 @@ import { state, forceEmit, uid } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
 import { getPref, setPref } from '../prefs.js';
-import { captionFor, setCaption, captionsNeeded } from '../captions.js';
+import { captionFor, captionOverride, setCaption, captionsNeeded, captionTemplate } from '../captions.js';
+import { productOf } from '../concepts.js';
 import { lifecycleChip, stageOnlyChip, qualityBadge, targetingChip, overlay, byProduct, productColor } from './accounts.js';
 
 // Fixed columns, in the order they read best: identity first, then state.
@@ -247,10 +248,19 @@ function captionCell(a, type, canEdit) {
   if (!captionsNeeded(a).includes(type)) {
     return el('span', { class: 'na', title: 'This page makes no ' + type.toLowerCase() + ' videos' }, '—');
   }
-  const value = captionFor(a, type);
-  if (!canEdit) return el('span', { class: 'ro-text', style: 'font-size:11.5px' }, value || '—');
+  // A page following its product's template is left as an empty cell whose
+  // placeholder says so — the full caption belongs in the editor, not spread
+  // across a spreadsheet row. Only an override is shown and edited inline.
+  const product = productOf(a);
+  const tpl = captionTemplate(product, type);
+  const override = captionOverride(a, type);
+  const ph = tpl.trim() ? 'From ' + (product ? product.name : 'product') + '…' : type + ' caption…';
+  if (!canEdit) {
+    const shown = override.trim() || (tpl.trim() ? '(' + (product ? product.name : 'product') + ' template)' : '');
+    return el('span', { class: 'ro-text', style: 'font-size:11.5px' }, shown || '—');
+  }
   return el('input', {
-    class: 'input cell', value, placeholder: type + ' caption…',
+    class: 'input cell', value: override, placeholder: ph, title: captionFor(a, type),
     oninput: async e => {
       const { save } = await import('../app.js');
       setCaption(a, type, e.target.value);

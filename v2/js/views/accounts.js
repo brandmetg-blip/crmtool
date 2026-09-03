@@ -8,11 +8,15 @@
 import { state, emit, forceEmit, uid, byId, can, myAccounts } from '../state.js';
 import { el, avatar, nameColor } from '../ui.js';
 import {
-  sortedConcepts, conceptsForAccount, discoverLegacyConcepts,
+  sortedConcepts, conceptsForAccount, discoverLegacyConcepts, productOf,
   bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor, VIDEO_TYPES, quotaForAccount, quotaSummaryFor } from '../stages.js';
-import { captionFor, setCaption, captionsNeeded, legacyCaption } from '../captions.js';
+import {
+  captionFor, captionOverride, hasOwnCaption, setCaption, clearCaption,
+  captionsNeeded, legacyCaption, captionTemplate, hasPlaceholder,
+  LINKTWIN_LINKS, linktwinLink, setLinktwinLink, linktwinComplete,
+} from '../captions.js';
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
 import { renderRoster, lineageNote } from './roster.js';
 import { renderSheet, openColumns } from './sheet.js';
@@ -83,6 +87,105 @@ export function targetingChip(a) {
     class: 'chip', title: note || t[1],
     style: 'color:' + t[2] + ';background:' + t[2] + '1f;border-color:' + t[2] + '55',
   }, t[1]);
+}
+
+// ---------------------------------------------------------------------------
+// caption fields — one UI, used in the avatar editor and the onboarding step
+// ---------------------------------------------------------------------------
+// A page usually follows its product's caption template; where it does, the
+// caption is shown resolved and read-only, with one click to break away and
+// write its own. Where it has broken away, or its product has no template, it
+// is a plain editable field with a way back to the product default.
+//
+// `onMutate(fn)` applies fn to the account and persists it however the caller
+// persists (the editor mutates a copy and saves on Save; onboarding writes
+// live). Rebuilding the block on structural changes is handled here, so a
+// caller only has to say how to store a change.
+export function captionFieldsInto(container, account, onMutate) {
+  container.innerHTML = '';
+  const rebuild = () => captionFieldsInto(container, account, onMutate);
+  const needed = captionsNeeded(account);
+  const product = productOf(account);
+
+  VIDEO_TYPES.forEach(t => {
+    const wanted = needed.includes(t);
+    const tpl = captionTemplate(product, t);
+    const col = el('div', { class: 'col', style: 'gap:4px' });
+    col.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
+      el('span', { class: 'label' }, t.toUpperCase() + ' VIDEO CAPTION'),
+      wanted ? null : el('span', { class: 'hint' }, 'not needed — this page makes none')));
+
+    if (tpl.trim() && !hasOwnCaption(account, t)) {
+      // following the product template — a live, read-only preview
+      const resolved = captionFor(account, t);
+      const pending = hasPlaceholder(resolved);
+      col.appendChild(el('div', {
+        class: 'ro-text', style: 'white-space:pre-wrap;font-size:12px;line-height:1.5'
+      }, resolved || '—'));
+      col.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+        el('span', { class: 'hint', style: 'flex:1;min-width:150px' },
+          pending
+            ? 'Add the caption link above and this fills itself.'
+            : 'From the ' + (product ? product.name : 'product') + ' template — edit it under Products to change every page.'),
+        el('button', {
+          class: 'btn small',
+          onclick: () => { onMutate(x => setCaption(x, t, resolved)); rebuild(); }
+        }, 'Customise for this page')));
+    } else {
+      // its own caption, or a product with no template for this type
+      col.appendChild(el('textarea', {
+        class: 'input', style: 'min-height:52px;font-size:12.5px',
+        placeholder: 'The caption posted with this page’s ' + t.toLowerCase() + ' videos…',
+        oninput: e => onMutate(x => setCaption(x, t, e.target.value)),
+      }, captionOverride(account, t)));
+      if (tpl.trim()) {
+        col.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+          el('span', { class: 'hint', style: 'flex:1;min-width:150px' }, 'Customised — not following the product.'),
+          el('button', {
+            class: 'btn small',
+            onclick: () => { onMutate(x => clearCaption(x, t)); rebuild(); }
+          }, 'Use ' + (product ? product.name : 'product') + ' default')));
+      }
+    }
+    container.appendChild(col);
+  });
+
+  // the single caption pages carried before there was one per type — offered
+  // back rather than guessed at, and only where nothing else has filled in
+  const old = legacyCaption(account);
+  if (old && !hasOwnCaption(account, 'Product') && !hasOwnCaption(account, 'Growth')
+    && !captionTemplate(product, 'Product').trim() && !captionTemplate(product, 'Growth').trim()) {
+    container.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+      el('span', { class: 'hint', style: 'flex:1;min-width:150px' }, 'Earlier caption on this page: “' + old + '”'),
+      VIDEO_TYPES.map(t => el('button', {
+        class: 'btn small',
+        onclick: () => { onMutate(x => setCaption(x, t, old)); rebuild(); }
+      }, 'Use as ' + t.toLowerCase()))));
+  }
+}
+
+// The four LinkTwin links, as an editable block. Same onMutate contract.
+// `afterCaptionLink` fires when the caption link changes, so a caller can
+// refresh the captions that are built around it.
+export function linktwinFieldsInto(container, account, onMutate, afterCaptionLink) {
+  container.innerHTML = '';
+  LINKTWIN_LINKS.forEach(([k, label]) => {
+    container.appendChild(el('div', { class: 'col', style: 'gap:3px' },
+      el('span', { class: 'label' }, label.toUpperCase()),
+      el('input', {
+        class: 'input', style: 'height:30px;font-size:12px',
+        value: linktwinLink(account, k), placeholder: label + ' URL…',
+        oninput: e => {
+          onMutate(x => {
+            setLinktwinLink(x, k, e.target.value);
+            // the sheet's "Link created" tick means exactly "the LinkTwin links
+            // exist", so keep it in step with the four fields
+            x.linkCreated = linktwinComplete(x);
+          });
+          if (k === 'caption' && afterCaptionLink) afterCaptionLink();
+        },
+      })));
+  });
 }
 
 export function renderAccounts(root) {
@@ -489,10 +592,12 @@ export function openAccount(existing, seed) {
       stageId: '', quality: '', quotaOverride: null, targeting: '', targetingNote: '',
       replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '', bodyLinks: [],
-      notes: '', createdAt: Date.now(),
+      linktwin: {}, captions: {}, notes: '', createdAt: Date.now(),
     };
   if (seed) Object.assign(a, seed);
   if (!a.platforms) a.platforms = { facebook: '', instagram: '' };
+  if (!a.linktwin) a.linktwin = {};                    // added with the LinkTwin links
+  if (!a.captions) a.captions = {};
   if (!Array.isArray(a.bodyLinks)) a.bodyLinks = [];   // added after the first avatars existed
 
   const body = el('div', { class: 'modal-body' });
@@ -712,36 +817,20 @@ export function openAccount(existing, seed) {
   body.appendChild(stageNote);
   body.appendChild(mixWrap);
 
-  // What goes out with this page's videos. One per kind, because a growth
-  // video and a product video are not selling the same thing.
+  // What goes out with this page's videos, following its product by default.
+  // Declared before the links so the caption-link field can refresh it.
   const capWrap = el('div', { class: 'col', style: 'gap:9px' });
-  const paintCaptions = () => {
-    capWrap.innerHTML = '';
-    capWrap.appendChild(el('span', { class: 'label' }, 'CAPTIONS'));
-    const needed = captionsNeeded(a);
-    VIDEO_TYPES.forEach(t => {
-      capWrap.appendChild(el('div', { class: 'col', style: 'gap:4px' },
-        el('div', { class: 'row', style: 'gap:7px' },
-          el('span', { class: 'label' }, t.toUpperCase() + ' VIDEO'),
-          needed.includes(t) ? null : el('span', { class: 'hint' }, 'this page makes none')),
-        el('textarea', {
-          class: 'input', style: 'min-height:52px;font-size:12.5px',
-          placeholder: 'The caption posted with this page’s ' + t.toLowerCase() + ' videos…',
-          oninput: e => setCaption(a, t, e.target.value),
-        }, captionFor(a, t))));
-    });
-    const old = legacyCaption(a);
-    if (old && !captionFor(a, 'Product') && !captionFor(a, 'Growth')) {
-      capWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
-        el('span', { class: 'hint', style: 'flex:1;min-width:150px' },
-          'Earlier caption on this page: “' + old + '”'),
-        VIDEO_TYPES.map(t => el('button', {
-          class: 'btn small',
-          onclick: () => { setCaption(a, t, old); paintCaptions(); },
-        }, 'Use as ' + t.toLowerCase()))));
-    }
-  };
-  paintCaptions();
+  const repaintCaps = () => captionFieldsInto(capWrap, a, fn => fn(a));
+
+  // The four LinkTwin links. The caption link among them is what every caption
+  // is built around, so it stays editable here after the page has graduated.
+  body.appendChild(el('span', { class: 'label' }, 'LINKTWIN LINKS'));
+  const ltWrap = el('div', { class: 'col', style: 'gap:8px' });
+  linktwinFieldsInto(ltWrap, a, fn => fn(a), repaintCaps);
+  body.appendChild(ltWrap);
+
+  body.appendChild(el('span', { class: 'label' }, 'CAPTIONS'));
+  repaintCaps();
   body.appendChild(capWrap);
 
   // what this page replaced, or what replaced it
@@ -1317,6 +1406,31 @@ function productCard(p, concepts) {
     el('div', { class: 'row', style: 'gap:9px' },
       el('span', { class: 'label' }, 'CONCEPTS IT TAKES'), summary),
     boxes));
+
+  // The captions every page on this product posts. Written once here, with a
+  // [caption link] placeholder each page fills with its own caption link — so a
+  // hundred pages share one caption and a change here reaches all of them.
+  const tplSec = el('div', { class: 'prod-sec' },
+    el('div', { class: 'row wrap', style: 'gap:9px' },
+      el('span', { class: 'label' }, 'CAPTION TEMPLATES'),
+      el('span', { class: 'hint' }, 'Use [caption link] where each page’s link should go.')));
+  VIDEO_TYPES.forEach(t => {
+    const val = (p.captionTemplates || {})[t] || '';
+    tplSec.appendChild(el('div', { class: 'col', style: 'gap:3px' },
+      el('span', { class: 'label' }, t.toUpperCase() + ' VIDEO'),
+      el('textarea', {
+        class: 'input', style: 'min-height:70px;font-size:12px;line-height:1.5',
+        placeholder: 'Caption for ' + t.toLowerCase() + ' videos… include [caption link]',
+        oninput: async e => {
+          const { mutateQuiet } = await import('../app.js');
+          mutateQuiet('products', p.id, x => {
+            if (!x.captionTemplates) x.captionTemplates = {};
+            x.captionTemplates[t] = e.target.value;
+          });
+        }
+      }, val)));
+  });
+  card.appendChild(tplSec);
 
   return card;
 }

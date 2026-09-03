@@ -21,12 +21,12 @@
 
 import { state, forceEmit, uid, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { sortedStages, stageOf, quotaSummaryFor, VIDEO_TYPES } from '../stages.js';
-import { captionFor, setCaption, captionsNeeded, captionsReady, legacyCaption } from '../captions.js';
+import { sortedStages, stageOf, quotaSummaryFor } from '../stages.js';
+import { captionsReady, linktwinComplete } from '../captions.js';
 import {
   conceptsForAccount, bodyLinkFor, scriptLinkFor, setConceptLink, setConceptScript,
 } from '../concepts.js';
-import { QUALITY, TARGETING, openAccount } from './accounts.js';
+import { QUALITY, TARGETING, openAccount, captionFieldsInto, linktwinFieldsInto } from './accounts.js';
 
 // Pages still in the pipeline. Anything without the flag has already
 // graduated, which is what makes this safe for avatars that existed before
@@ -60,8 +60,11 @@ const STEPS = {
   // Three of them write the fields the Avatars sheet already had, so a page
   // ticked in one place is ticked in the other: it is one fact, not two.
   fbPage: { label: 'Facebook page', hint: 'The page actually exists on Facebook.', done: a => !!a.pageCreated },
-  linktwin: { label: 'LinkTwin links', hint: 'The links for this page are created.', done: a => !!a.linkCreated },
   automations: { label: 'Automations', hint: 'Automations and links added to the page.', done: a => !!a.linkAdded },
+  // Not a hand-tick any more: the four LinkTwin links are entered here, and the
+  // step is done once all four are in. The caption link among them is what
+  // every caption is built around.
+  linktwin: { label: 'LinkTwin links', hint: 'The four links this page runs on.', done: a => linktwinComplete(a) },
   amazon: { label: 'Amazon settings', hint: 'The page is added in Amazon.', done: a => !!a.amazonAdded },
   captions: {
     label: 'Captions', hint: 'What goes out with its videos.',
@@ -81,7 +84,7 @@ const STEPS = {
 const PHASES = [
   {
     label: 'The page itself', note: 'That it exists, what it looks like, and what is wired up on it.',
-    steps: ['fbPage', 'name', 'avatar', 'cover', 'links', 'linktwin', 'automations', 'amazon'],
+    steps: ['fbPage', 'name', 'avatar', 'cover', 'links', 'automations', 'amazon', 'linktwin'],
   },
   { label: 'How it runs', note: 'What it sells, who it reaches, how much it makes a day.', steps: ['product', 'targeting', 'quality', 'stage'] },
   { label: 'Content ready', note: 'What an editor needs before they can make anything for it.', steps: ['captions', 'base', 'bodies'] },
@@ -96,10 +99,6 @@ const TICKS = {
   fbPage: {
     field: 'pageCreated', said: 'Page exists',
     why: 'The same box as “Page created” on the Avatars sheet.',
-  },
-  linktwin: {
-    field: 'linkCreated', said: 'Links created',
-    why: 'Done in LinkTwin — the same box as “Link created” on the sheet.',
   },
   automations: {
     field: 'linkAdded', said: 'Added to the page',
@@ -148,7 +147,7 @@ export async function startNewPage(seed) {
     replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
     metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '',
     pageCreated: false, linkCreated: false, linkAdded: false, amazonAdded: false,
-    captions: {}, bodyLinks: [], setupConcepts: [], notes: '',
+    linktwin: {}, captions: {}, bodyLinks: [], setupConcepts: [], notes: '',
     onboarding: true, createdAt: Date.now(),
   }, seed || {});
   save('accounts', a);
@@ -274,6 +273,16 @@ function setupSheet(a) {
     paint();
   };
 
+  // Like `set`, but applies the change to the record synchronously so anything
+  // that rebuilds itself right after (the shared caption/link blocks) sees it.
+  // `a` is the live account, so the mutation lands immediately; the save is
+  // quiet and can happen a tick later.
+  const setSync = fn => {
+    fn(a);
+    import('../app.js').then(m => m.save('accounts', a));
+    paint();
+  };
+
   const ticks = {};                     // step id -> its tick element
   const bar = el('i');
   const counter = el('span', { class: 'hint' });
@@ -324,7 +333,7 @@ function setupSheet(a) {
   // has to be able to trigger it: changing the product changes which concepts
   // the page can take, and a stale list would offer bodies that are not
   // allowed on it.
-  const hooks = {};
+  const hooks = { setSync };
 
   // ---- phases
   PHASES.forEach((ph, i) => {
@@ -436,35 +445,22 @@ function buildControl(a, key, box, set, paint, hooks) {
     return;
   }
 
+  if (key === 'linktwin') {
+    // the caption preview downstream is built around the caption link, so a
+    // change to it re-renders the captions step
+    linktwinFieldsInto(box, a, hooks.setSync, () => hooks && hooks.repaintCaptions && hooks.repaintCaptions());
+    box.appendChild(el('span', { class: 'hint' },
+      'All four are needed. Every caption is built around the caption link.'));
+    return;
+  }
+
   if (key === 'captions') {
-    // which captions are needed follows the page's mix, so the stage step can
-    // ask for this to be redrawn when it changes
-    if (hooks) hooks.repaintCaptions = () => { box.innerHTML = ''; buildControl(a, key, box, set, paint, hooks); paint(); };
-    const needed = captionsNeeded(a);
-    VIDEO_TYPES.forEach(t => {
-      const wanted = needed.includes(t);
-      box.appendChild(el('div', { class: 'col', style: 'gap:4px' },
-        el('div', { class: 'row', style: 'gap:7px' },
-          el('span', { class: 'label' }, t.toUpperCase() + ' VIDEO CAPTION'),
-          wanted ? null : el('span', { class: 'hint' }, 'not needed — this page makes none')),
-        el('textarea', {
-          class: 'input', style: 'min-height:52px;font-size:12.5px',
-          placeholder: 'The caption posted with this page’s ' + t.toLowerCase() + ' videos…',
-          oninput: e => set(x => setCaption(x, t, e.target.value)),
-        }, captionFor(a, t))));
-    });
-    const old = legacyCaption(a);
-    if (old && !captionFor(a, 'Product') && !captionFor(a, 'Growth')) {
-      // the single caption this page carried before there was one per type —
-      // offered back rather than guessed at, since which one it was meant to
-      // be is not knowable from here
-      box.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
-        el('span', { class: 'hint', style: 'flex:1;min-width:150px' }, 'Earlier caption on this page: “' + old + '”'),
-        VIDEO_TYPES.map(t => el('button', {
-          class: 'btn small',
-          onclick: async () => { await set(x => setCaption(x, t, old)); hooks && hooks.repaintCaptions && hooks.repaintCaptions(); },
-        }, 'Use as ' + t.toLowerCase()))));
-    }
+    // the shared caption UI, following the page's product by default. Which
+    // captions are needed follows the page's mix, so the stage step can ask
+    // for this to be redrawn when it changes.
+    const render = () => captionFieldsInto(box, a, hooks.setSync);
+    if (hooks) hooks.repaintCaptions = () => { render(); paint(); };
+    render();
     return;
   }
 
