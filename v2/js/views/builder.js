@@ -21,7 +21,7 @@ import {
   myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
-import { productChip, productColor, stageChip, qualityBadge, byProduct } from './accounts.js';
+import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaForAccount } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount } from './posting.js';
@@ -507,8 +507,18 @@ async function addEntry(a) {
 // Mass add — write the brief once, create one video per selected avatar.
 // ---------------------------------------------------------------------------
 function openMassAdd(u) {
-  const accounts = liveAccounts(builderAccounts(u, state.db))
+  // Everything eligible today, and the slice of it this batch is aimed at.
+  // A batch is usually meant for one kind of page — assembly work goes to the
+  // low-quality pages, a new concept to the high-quality ones — so the picker
+  // narrows to that kind rather than making you untick half the roster.
+  const allAccounts = liveAccounts(builderAccounts(u, state.db))
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  let quality = 'all';
+  let accounts = allAccounts;
+  const applyQuality = () => {
+    accounts = quality === 'all' ? allAccounts : allAccounts.filter(a => (a.quality || '') === quality);
+  };
+
   const editors = assignableMembers(state.db);
 
   // Who still needs one of this type today, per their stage's daily target.
@@ -565,8 +575,10 @@ function openMassAdd(u) {
     blurb.textContent = 'Fill this in once. Every avatar you tick gets its own copy in their Daily Builder for '
       + fmtDate(draft.date) + ', which they can then complete independently.';
     // count what the day's grid will actually show, not every row on the date —
-    // videos stranded on a page that has since been dropped are in neither
-    const n = dayEntries(state.user, draft.date, accounts).length;
+    // videos stranded on a page that has since been dropped are in neither.
+    // The whole day, not just the slice being aimed at: narrowing the picker
+    // does not make the other videos stop existing.
+    const n = dayEntries(state.user, draft.date, allAccounts).length;
     dayCount.textContent = n ? n + (n === 1 ? ' video already on this day' : ' videos already on this day') : 'Nothing on this day yet';
     // a different day has a different set of pages still short of their target
     reselect();
@@ -764,9 +776,31 @@ function openMassAdd(u) {
     });
   }
 
+  // Rebuilt whenever the quality filter changes, because that changes which
+  // avatars exist as far as this batch is concerned.
+  function buildPicker() {
+  pickWrap.innerHTML = '';
+
+  const qualitySeg = el('div', { class: 'seg mini' },
+    [['all', 'All pages']].concat(QUALITY.map(q => [q[0], q[1]])).map(([k, label]) =>
+      el('button', {
+        class: quality === k ? 'on' : '',
+        onclick: () => {
+          quality = k;
+          applyQuality();
+          // re-pick inside the new slice: this also drops anything selected
+          // that is no longer on screen, so nothing invisible gets a video
+          reselect();
+          autoRemoved = 0;
+          buildPicker();
+          refresh();
+        }
+      }, label)));
+
   pickWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
     el('span', { class: 'label' }, 'AVATARS'), countLabel,
     el('span', { class: 'spacer' }),
+    qualitySeg,
     // bulk selection never sweeps in a page whose stage rules out this type;
     // those have to be chosen one at a time, on purpose
     el('button', {
@@ -774,6 +808,24 @@ function openMassAdd(u) {
       onclick: () => { accounts.filter(a => stillNeeds(a, draft.type, draft.date)).forEach(a => picked.add(a.id)); refresh(); }
     }, 'Still needed'),
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
+
+  // A page with no quality set belongs to neither list, so say so rather than
+  // letting it quietly vanish from a filtered picker.
+  if (quality !== 'all') {
+    const unset = allAccounts.filter(a => !(a.quality || '')).length;
+    if (unset) {
+      pickWrap.appendChild(el('span', { class: 'hint' },
+        unset + (unset === 1 ? ' page has' : ' pages have') + ' no quality set, so'
+        + (unset === 1 ? ' it is' : ' they are') + ' in neither list. Set it on the avatar to include'
+        + (unset === 1 ? ' it' : ' them') + '.'));
+    }
+  }
+
+  if (!accounts.length) {
+    pickWrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:26px;font-size:12px' },
+      'No pages of this kind are taking videos today.'));
+    return;
+  }
 
   // One block per product, so the list reads product by product instead of one
   // long alphabetical mix. The heading IS the select-all for that product —
@@ -808,7 +860,10 @@ function openMassAdd(u) {
       },
         el('span', { class: 'check' }),
         avatar(a, 26),
-        el('b', { style: 'font-size:12.5px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+        el('b', { style: 'font-size:12.5px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+        // which kind of page this is, so an unfiltered list still reads at a glance
+        qualityBadge(a),
+        el('span', { class: 'spacer' }),
         paused && el('span', { class: 'chip gray' }, 'Paused'),
         // both only flag exceptions — a badge on every healthy row is noise
         el('span', { class: 'chip red offstage' }),
@@ -817,6 +872,9 @@ function openMassAdd(u) {
         el('span', { class: 'hint already' })));
     });
   });
+  }
+
+  buildPicker();
   body.appendChild(pickWrap);
 
   // ---- footer
