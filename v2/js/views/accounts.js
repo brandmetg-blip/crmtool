@@ -1402,6 +1402,19 @@ function productCard(p, concepts) {
   card.appendChild(el('div', { class: 'prod-sec' },
     el('span', { class: 'label' }, 'COLOUR'), swatches));
 
+  // Where this product's photos live. Editors see this on Assets — but only for
+  // the products their own pages promote — so they can grab the product shots.
+  card.appendChild(el('div', { class: 'prod-sec' },
+    el('span', { class: 'label' }, 'PRODUCT PHOTOS LINK'),
+    el('input', {
+      class: 'input', style: 'height:32px;font-size:12.5px', value: p.assetsLink || '',
+      placeholder: 'Drive folder with this product’s photos…',
+      oninput: async e => {
+        const { mutateQuiet } = await import('../app.js');
+        mutateQuiet('products', p.id, x => x.assetsLink = e.target.value);
+      }
+    })));
+
   card.appendChild(el('div', { class: 'prod-sec' },
     el('div', { class: 'row', style: 'gap:9px' },
       el('span', { class: 'label' }, 'CONCEPTS IT TAKES'), summary),

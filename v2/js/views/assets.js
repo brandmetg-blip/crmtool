@@ -6,7 +6,7 @@
 // An editor sees only the avatars they have access to — the same set they get
 // in the Daily Builder, so the two tabs never disagree about what is theirs.
 
-import { state, builderAccounts, can } from '../state.js';
+import { state, builderAccounts, can, byId } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
@@ -35,6 +35,11 @@ export function renderAssets(root) {
     return;
   }
 
+  // The products these avatars promote, so an editor can grab the product's
+  // photos. Scoped to what THIS person's pages actually use — someone running
+  // three avatars on three products sees those three, not the whole catalogue.
+  productsSection(root, accounts);
+
   // Grouped by product, like every other list of avatars. Within a product the
   // pages still taking videos come first — a dropped page keeps its folders,
   // which are worth having to hand, but it should not head the group.
@@ -53,6 +58,43 @@ export function renderAssets(root) {
       .sort((a, b) => (takesDailyVideos(b) ? 1 : 0) - (takesDailyVideos(a) ? 1 : 0));
     root.appendChild(el('div', { class: 'grid', style: 'margin-bottom:22px' }, ordered.map(card)));
   });
+}
+
+// The distinct products across the person's avatars, each with a button to its
+// photos folder. Distinct by product, in name order — a product used by five of
+// their pages still appears once.
+function productsSection(root, accounts) {
+  const seen = new Map();
+  accounts.forEach(a => {
+    const p = byId(state.db.products, a.productId);
+    if (p) seen.set(p.id, p);
+  });
+  const products = [...seen.values()].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  if (!products.length) return;
+
+  root.appendChild(el('div', { class: 'group-head' },
+    el('span', { class: 'group-dot', style: 'background:var(--mut)' }),
+    el('b', { style: 'font-size:13.5px' }, 'Products'),
+    el('span', { class: 'hint' }, products.length + (products.length === 1 ? ' product' : ' products') + ' your pages promote')));
+
+  root.appendChild(el('div', { class: 'grid', style: 'margin-bottom:26px' }, products.map(productAssetCard)));
+}
+
+function productAssetCard(p) {
+  const c = productColor(p);
+  const link = (p.assetsLink || '').trim();
+  const isUrl = /^https?:\/\//.test(link);
+
+  return el('div', { class: 'card row', style: 'gap:12px' },
+    p.imageUrl
+      ? el('img', { src: p.imageUrl, alt: '', style: 'width:46px;height:46px;border-radius:10px;object-fit:contain;background:#0e0e11;border:1px solid var(--line2);flex:0 0 auto' })
+      : el('span', { class: 'avatar', style: 'width:46px;height:46px;color:' + c + ';background:' + c + '22', }, (p.name || '?').charAt(0)),
+    el('div', { style: 'min-width:0;flex:1' },
+      el('b', { style: 'display:block;font-size:13.5px;color:' + c }, p.name || 'Untitled'),
+      el('span', { class: 'hint' }, isUrl ? 'Product photos' : 'No photos link set yet')),
+    isUrl
+      ? el('a', { class: 'btn small primary', href: link, target: '_blank', rel: 'noopener' }, 'Open photos ↗')
+      : null);
 }
 
 function card(a) {
