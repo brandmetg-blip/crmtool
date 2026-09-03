@@ -18,6 +18,7 @@ import { renderAssets } from './views/assets.js';
 import { renderSettings } from './views/settings.js';
 import { renderTasks, openTaskCount } from './views/tasks.js';
 import { renderOnboarding, onboardingCount } from './views/onboarding.js';
+import { renderCaptionBoard } from './views/captionboard.js';
 
 export const store = createStore();
 
@@ -95,6 +96,7 @@ const NAV = [
   ['accounts', 'Avatars', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8'],
   ['onboarding', 'Onboarding', 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'],
   ['assets', 'Assets', 'M21 15l-5-5L5 21M3 5.5A2.5 2.5 0 0 1 5.5 3h13A2.5 2.5 0 0 1 21 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5zM8.5 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3'],
+  ['captions', 'Captions', 'M8 7h12M8 12h12M8 17h8M3.5 7h.01M3.5 12h.01M3.5 17h.01'],
   ['tasks', 'Tasks', 'M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'],
   ['analytics', 'Analytics', 'M3 3v18h18M7 15l4-4 3 3 5-6'],
   ['team', 'Team', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'],
@@ -153,6 +155,7 @@ function renderShell(mode) {
   else if (state.route === 'accounts') renderAccounts(main);
   else if (state.route === 'onboarding') renderOnboarding(main, state.user);
   else if (state.route === 'assets') renderAssets(main);
+  else if (state.route === 'captions') renderCaptionBoard(main, state.user);
   else if (state.route === 'tasks') renderTasks(main, state.user);
   else if (state.route === 'analytics') renderAnalytics(main);
   else if (state.route === 'team') renderTeam(main);
@@ -216,6 +219,7 @@ function signOutState() {
   state.acctProfile = 'all';
   state.acctProduct = 'all';
   state.onboardAvatar = null;
+  state.capSearch = '';
   state.postScope = 'day';
   state.postShowPosted = false;
   state.anFrom = null; state.anTo = null; state.anGroup = 'day';

@@ -127,6 +127,14 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* the marker on a stage chip for a page whose mix is pinned rather than inherited */
 .mix-dot { width: 6px; height: 6px; border-radius: 50%; background: #c3b0ff; flex: 0 0 auto; }
 
+/* ---- caption board ---- */
+.cap-block { border-top: 1px solid var(--line); padding-top: 10px; }
+.cap-text {
+  white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.55;
+  color: var(--text); background: rgba(255,255,255,0.02); border: 1px solid var(--line);
+  border-radius: 9px; padding: 9px 11px; max-height: 168px; overflow-y: auto;
+}
+
 /* ---- onboarding pipeline ---- */
 .ob-phase { display: flex; align-items: center; gap: 10px; margin: 20px 0 2px; }
 .ob-num {

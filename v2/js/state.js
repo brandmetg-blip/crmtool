@@ -22,6 +22,7 @@ export const state = {
   acctLayout: 'cards',        // avatars tab: cards | sheet
   acctProfile: 'all',
   acctProduct: 'all',
+  capSearch: '',              // caption board: filter text
   onboardAvatar: null,        // page id whose setup checklist is open
   modal: null,                // { type, ... } | null
   loginError: null,
@@ -122,6 +123,9 @@ export const can = {
   // sees a page that has not finished the pipeline — the account centre is
   // finished pages, and that is the whole point of having a pipeline.
   seeOnboarding: u => isAdmin(u) || isManager(u) || granted(u, 'onboarding'),
+  // The caption board is a posting tool: whoever posts (has markPosted) needs
+  // it, and the admin and manager who oversee posting see it too.
+  seeCaptions: u => isAdmin(u) || isManager(u) || granted(u, 'markPosted'),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -170,6 +174,7 @@ export function tabsFor(u) {
   if (can.editAccounts(u) || can.seesAllAccounts(u)) tabs.push('accounts');
   if (can.seeOnboarding(u)) tabs.push('onboarding');
   tabs.push('assets');
+  if (can.seeCaptions(u)) tabs.push('captions');
   if (can.seeTasks(u)) tabs.push('tasks');
   if (can.seesAllAccounts(u)) tabs.push('analytics');
   if (can.manageTeam(u)) tabs.push('team');
