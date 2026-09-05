@@ -18,7 +18,7 @@
 
 import {
   state, emit, forceEmit, uid, todayStr, shiftDate, fmtDate, byId, can,
-  myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis,
+  myAccounts, visibleEntries, builderAccounts, assignableMembers, roleLabel, canMakeThis, isPoster,
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
@@ -37,6 +37,9 @@ const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
 // ---------------------------------------------------------------------------
 export function renderBuilder(root) {
   const u = state.user;
+  // A poster only posts: their Daily Builder is the posting queue and nothing
+  // else, so the other modes never open for them.
+  if (isPoster(u)) state.builderMode = 'posting';
   // some modes are gated; if the role changed under one, fall back
   if (state.builderMode === 'posting' && !can.markPosted(u)) state.builderMode = 'videos';
   if (state.builderMode === 'hooks' && !can.seeHooks(u)) state.builderMode = 'videos';
@@ -81,6 +84,9 @@ function head(u) {
 // that is the whole reason it is easy to forget.
 function modeSeg(u) {
   const mode = state.builderMode;
+  // A poster has one mode — posting — so there is nothing to switch between.
+  if (isPoster(u)) return el('span');
+
   const seg = el('div', { class: 'seg blue' },
     el('button', {
       class: mode === 'videos' ? 'on' : '',

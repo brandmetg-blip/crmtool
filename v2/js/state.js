@@ -66,6 +66,7 @@ export function byId(list, id) { return (list || []).find(x => x.id === id) || n
 export const ROLES = [
   ['manager', 'Marketing Manager'],
   ['editor', 'Video Editor'],
+  ['poster', 'Poster'],
 ];
 export const ALL_ROLES = [['admin', 'Admin']].concat(ROLES);
 export function roleLabel(r) { const f = ALL_ROLES.find(x => x[0] === r); return f ? f[1] : r; }
@@ -80,6 +81,9 @@ export function roleLabel(r) { const f = ALL_ROLES.find(x => x[0] === r); return
 const isAdmin = u => !!u && u.role === 'admin';
 const isManager = u => !!u && u.role === 'manager';
 const isEditor = u => !!u && u.role === 'editor';
+// The poster: sees only the pages assigned to them, marks videos posted, and
+// reads the analytics for those pages. Changes nothing else.
+export const isPoster = u => !!u && u.role === 'poster';
 
 // Extra permissions granted to one person on top of their role. The role is
 // the sensible default; a grant is how you say "this one also does X" without
@@ -110,7 +114,7 @@ export const can = {
   // daily builder
   editVideos: u => isAdmin(u) || granted(u, 'editVideos'),   // write the brief, assign editors
   logCompletion: u => isAdmin(u) || isEditor(u),             // main-script completion
-  markPosted: u => isAdmin(u) || granted(u, 'markPosted'),   // tick "posted" + platforms
+  markPosted: u => isAdmin(u) || isPoster(u) || granted(u, 'markPosted'),   // tick "posted" + platforms
   // The day's shared hooks: a marketing manager's job by default, and
   // grantable to anyone else who writes them.
   seeHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
@@ -123,9 +127,12 @@ export const can = {
   // sees a page that has not finished the pipeline — the account centre is
   // finished pages, and that is the whole point of having a pipeline.
   seeOnboarding: u => isAdmin(u) || isManager(u) || granted(u, 'onboarding'),
-  // The caption board is a posting tool: whoever posts (has markPosted) needs
-  // it, and the admin and manager who oversee posting see it too.
-  seeCaptions: u => isAdmin(u) || isManager(u) || granted(u, 'markPosted'),
+  // The caption board is a posting tool: whoever posts needs it, and the admin
+  // and manager who oversee posting see it too.
+  seeCaptions: u => can.markPosted(u) || isManager(u),
+  // Analytics is read-only for everyone who sees it. The admin and manager see
+  // the whole roster; a poster sees it too, but scoped to their own pages.
+  seeAnalytics: u => can.seesAllAccounts(u) || isPoster(u),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -155,6 +162,9 @@ export function assignableMembers(db) {
 export function visibleEntries(u, list, accounts) {
   if (can.seesAllAccounts(u)) return list;
   const mine = new Set((accounts || []).map(a => a.id));
+  // A poster posts whatever is on their pages, whoever made it — so they see
+  // by page, not by who a video was assigned to for editing.
+  if (isPoster(u)) return (list || []).filter(e => mine.has(e.accountId));
   return (list || []).filter(e => e.assignedEditorId ? e.assignedEditorId === u.id : mine.has(e.accountId));
 }
 
@@ -173,10 +183,12 @@ export function tabsFor(u) {
   const tabs = ['builder'];
   if (can.editAccounts(u) || can.seesAllAccounts(u)) tabs.push('accounts');
   if (can.seeOnboarding(u)) tabs.push('onboarding');
-  tabs.push('assets');
+  // Assets is for whoever cuts a video, not whoever posts one — a poster never
+  // needs the base images or bodies, so it stays off their (short) tab list.
+  if (!isPoster(u)) tabs.push('assets');
   if (can.seeCaptions(u)) tabs.push('captions');
   if (can.seeTasks(u)) tabs.push('tasks');
-  if (can.seesAllAccounts(u)) tabs.push('analytics');
+  if (can.seeAnalytics(u)) tabs.push('analytics');
   if (can.manageTeam(u)) tabs.push('team');
   if (can.manageSettings(u)) tabs.push('settings');
   return tabs;

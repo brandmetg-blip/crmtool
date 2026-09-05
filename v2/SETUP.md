@@ -111,7 +111,8 @@ created from the UI.
 1. Supabase → **Authentication → Users → Add user**. Their real email, an
    initial password, tick *Auto Confirm User*. (Do this for the admin too.)
 2. In the app → **Team → + Add member**. The **same email**, then pick
-   Marketing Manager or Video Editor, and for editors tick their avatars.
+   Marketing Manager, Video Editor or Poster, and for editors and posters tick
+   their avatars.
 
 The two are matched on email. Someone who exists in Auth but not in Team is
 told so at sign-in rather than landing in a broken session.
@@ -127,28 +128,31 @@ ever written to the database.**
 
 **Only the admin changes anything.** A marketing manager sees the whole
 workspace and can change none of it; a video editor sees only what is assigned
-to them, and the one thing they may change is marking their own video made.
+to them, and the one thing they may change is marking their own video made; a
+poster sees only the pages assigned to them, posts their finished videos (the
+one thing they change) and reads the analytics for those pages.
 
-| | Admin | Marketing Manager | Video Editor |
-|---|---|---|---|
-| See the Daily Builder | ✅ everything | ✅ everything | only what's assigned to them |
-| Add / mass add scripts and videos | ✅ | ❌ | ❌ |
-| Write the brief (concept, hook, body, notes, type, production) | ✅ | ❌ view only | ❌ view only |
-| Assign a video to an editor | ✅ | ❌ view only | ❌ |
-| Copy the script | ✅ | ✅ | ✅ |
-| Be assigned a video | — | ✅ | ✅ |
-| Tick "video made" + paste the finished link | ✅ any | ✅ only videos assigned to them | ✅ |
-| Mark posted + platforms | ✅ | ❌ view only | sees it once posted |
-| Filter by video editor | ✅ | ✅ | ❌ |
-| "Still to finish" panel | ✅ | ❌ | ❌ |
-| Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see |
-| Main Scripts (frames, prompts) | ✅ | ❌ view + copy | ❌ view + copy |
-| Avatars | ✅ | ❌ view only | ❌ |
-| Onboarding (new pages, before they join Avatars) | ✅ | ✅ **sets them up** | ❌ cannot see |
-| Assets | ✅ | ✅ all | ✅ theirs only |
-| Analytics | ✅ | ✅ | ❌ |
-| Team | ✅ | ❌ | ❌ |
-| Settings | ✅ | ❌ | ❌ |
+| | Admin | Marketing Manager | Video Editor | Poster |
+|---|---|---|---|---|
+| See the Daily Builder | ✅ everything | ✅ everything | only what's assigned to them | posting queue only, their pages |
+| Add / mass add scripts and videos | ✅ | ❌ | ❌ | ❌ |
+| Write the brief (concept, hook, body, notes, type, production) | ✅ | ❌ view only | ❌ view only | ❌ |
+| Assign a video to an editor | ✅ | ❌ view only | ❌ | ❌ |
+| Copy the script | ✅ | ✅ | ✅ | ❌ |
+| Be assigned a video | — | ✅ | ✅ | — |
+| Be assigned pages (to post for) | — | — | — | ✅ |
+| Tick "video made" + paste the finished link | ✅ any | ✅ only videos assigned to them | ✅ | ❌ |
+| See the finished video's link | ✅ | ✅ | ✅ | ✅ on their pages |
+| Mark posted + platforms | ✅ | ❌ view only | sees it once posted | ✅ their pages |
+| Captions board | ✅ | ✅ | ❌ | ✅ their pages |
+| Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see | ❌ |
+| Main Scripts (frames, prompts) | ✅ | ❌ view + copy | ❌ view + copy | ❌ |
+| Avatars | ✅ | ❌ view only | ❌ | ❌ |
+| Onboarding (new pages, before they join Avatars) | ✅ | ✅ **sets them up** | ❌ cannot see | ❌ |
+| Assets | ✅ | ✅ all | ✅ theirs only | ❌ |
+| Analytics | ✅ | ✅ | ❌ | ✅ read-only, their pages |
+| Team | ✅ | ❌ | ❌ | ❌ |
+| Settings | ✅ | ❌ | ❌ | ❌ |
 
 **Extra permissions.** The table above is what each role does by default. Under
 **Team**, any member can be granted extra abilities on top of their role —

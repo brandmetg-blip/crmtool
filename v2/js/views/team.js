@@ -12,8 +12,9 @@ const ROLE_NOTE = {
   admin: 'Everything — scripts, avatars, the team.',
   manager: 'Sees everything — every avatar, every video, the analytics — and can change none of it.',
   editor: 'Read-only. Copies the script and logs their finished video link. Sees only what is assigned to them.',
+  poster: 'Posts the finished videos for their assigned pages and reads their analytics. Changes nothing else.',
 };
-const ROLE_CHIP = { admin: 'green', manager: 'violet', editor: 'blue' };
+const ROLE_CHIP = { admin: 'green', manager: 'violet', editor: 'blue', poster: 'amber' };
 
 export function renderTeam(root) {
   if (!can.manageTeam(state.user)) {
@@ -130,7 +131,8 @@ function openMember(existing, draft) {
   // assigned to one is surfaced separately rather than left invisible.
   function renderAssignments() {
     assignWrap.innerHTML = '';
-    if (m.role !== 'editor' && m.role !== 'manager') return;
+    // editors, managers and posters all work off a set of assigned pages
+    if (!['editor', 'manager', 'poster'].includes(m.role)) return;
     assignWrap.appendChild(el('span', { class: 'label' }, 'ASSIGNED AVATARS'));
 
     const accounts = state.db.accounts.filter(inRoster)
@@ -298,7 +300,7 @@ function openMember(existing, draft) {
         m.name = m.name.trim(); m.email = m.email.trim().toLowerCase();
         if (m._newPassword) m.password = m._newPassword;
         delete m._newPassword;
-        if (m.role !== 'editor' && m.role !== 'manager') m.assignments = [];
+        if (!['editor', 'manager', 'poster'].includes(m.role)) m.assignments = [];
         // drop grants the role already covers, so a role change cannot leave a
         // permission silently attached
         PERMISSIONS.forEach(([key]) => { if (roleGrants(m.role, key)) delete m.perms[key]; });
@@ -316,6 +318,8 @@ function openMember(existing, draft) {
 // rather than as something you could take away here.
 function roleGrants(role, key) {
   if (role === 'manager') return ['seesAllAccounts', 'editHooks'].includes(key);
+  // a poster posts by definition, so "Mark videos posted" is already theirs
+  if (role === 'poster') return key === 'markPosted';
   return false;
 }
 

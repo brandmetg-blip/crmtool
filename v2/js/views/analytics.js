@@ -5,7 +5,7 @@
 // never set we fall back to the day it was planned for, so an older entry that
 // predates the posted-date field still lands somewhere sensible.
 
-import { state, forceEmit, todayStr, shiftDate, fmtDate, byId, can } from '../state.js';
+import { state, forceEmit, todayStr, shiftDate, fmtDate, byId, can, builderAccounts } from '../state.js';
 import { el, avatar } from '../ui.js';
 
 const GROUPS = [['day', 'Day'], ['week', 'Week'], ['month', 'Month']];
@@ -13,20 +13,22 @@ const PLATFORMS = [['facebook', 'Facebook', 'var(--blue)'], ['instagram', 'Insta
 
 export function renderAnalytics(root) {
   const u = state.user;
-  if (!can.seesAllAccounts(u)) {
+  if (!can.seeAnalytics(u)) {
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
-      'Analytics is for admins and marketing managers.'));
+      'Analytics is for admins, marketing managers and posters.'));
     return;
   }
 
   if (!state.anFrom) { state.anFrom = shiftDate(todayStr(), -29); state.anTo = todayStr(); }
   const from = state.anFrom, to = state.anTo, group = state.anGroup || 'day';
 
-  // A post on an avatar that no longer exists is dropped here rather than in
-  // each chart, so the totals and the per-avatar breakdown are always counting
-  // the same posts — otherwise the tiles claim four avatars posted and the
-  // list underneath can only name three.
-  const live = new Set(state.db.accounts.map(a => a.id));
+  // Which pages this person's analytics covers: the whole roster for the admin
+  // and manager, only their assigned pages for a poster. A post on an avatar
+  // outside that set — or one that no longer exists — is dropped here rather
+  // than in each chart, so the totals and the per-avatar breakdown always count
+  // the same posts.
+  const scope = can.seesAllAccounts(u) ? state.db.accounts : builderAccounts(u, state.db);
+  const live = new Set(scope.map(a => a.id));
   const posts = state.db.dailyEntries
     .filter(e => e.posted && live.has(e.accountId))
     .map(e => ({ ...e, on: e.postedDate || e.date }))
@@ -43,7 +45,7 @@ export function renderAnalytics(root) {
   }
 
   root.appendChild(timeChart(posts, from, to, group));
-  root.appendChild(byAccount(posts));
+  root.appendChild(byAccount(posts, scope.length));
 }
 
 function head() {
@@ -197,7 +199,7 @@ function buildBuckets(from, to, group) {
 }
 
 // ---- posts per avatar ------------------------------------------------------
-function byAccount(posts) {
+function byAccount(posts, totalAvatars) {
   const counts = {};
   posts.forEach(p => counts[p.accountId] = (counts[p.accountId] || 0) + 1);
 
@@ -214,7 +216,7 @@ function byAccount(posts) {
     el('div', { class: 'row' },
       el('span', { class: 'label' }, 'POSTS PER AVATAR'),
       el('span', { class: 'spacer' }),
-      el('span', { class: 'hint' }, rows.length + ' of ' + state.db.accounts.length + ' avatars posted')),
+      el('span', { class: 'hint' }, rows.length + ' of ' + totalAvatars + ' avatars posted')),
     rows.map(r => el('div', { class: 'row', style: 'gap:11px' },
       avatar(r.acct, 28),
       el('div', { style: 'min-width:120px;flex:0 0 auto' },
