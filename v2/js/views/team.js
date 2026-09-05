@@ -133,7 +133,15 @@ function openMember(existing, draft) {
     assignWrap.innerHTML = '';
     // editors, managers and posters all work off a set of assigned pages
     if (!['editor', 'manager', 'poster'].includes(m.role)) return;
-    assignWrap.appendChild(el('span', { class: 'label' }, 'ASSIGNED AVATARS'));
+    // A page's editor and its poster are two different assignments: one says who
+    // cuts the video, the other who posts it. So the heading, and the "who else
+    // has this" below, speak in the right terms for the role being edited.
+    const posting = m.role === 'poster';
+    assignWrap.appendChild(el('div', { class: 'col', style: 'gap:3px' },
+      el('span', { class: 'label' }, posting ? 'PAGES TO POST' : 'ASSIGNED AVATARS'),
+      el('span', { class: 'hint' }, posting
+        ? 'The pages this poster posts the finished videos for. Separate from who edits them.'
+        : 'The pages this person edits videos for. Separate from who posts them.')));
 
     const accounts = state.db.accounts.filter(inRoster)
       .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -194,8 +202,11 @@ function openMember(existing, draft) {
       onclick: () => {
         if (!on && others.length) {
           const who = others.map(t => t.name || 'someone').join(', ');
-          if (!confirm((a.name || 'This avatar') + ' is already assigned to ' + who
-            + '.\n\nAssign ' + (m.name.trim() || 'this person') + ' as well?')) return;
+          const verb = m.role === 'poster' ? 'posted by' : 'assigned to';
+          const also = m.role === 'poster' ? 'Also let ' : 'Assign ';
+          const tail = m.role === 'poster' ? ' post it as well?' : ' as well?';
+          if (!confirm((a.name || 'This avatar') + ' is already ' + verb + ' ' + who
+            + '.\n\n' + also + (m.name.trim() || 'this person') + tail)) return;
         }
         m.assignments = on ? m.assignments.filter(x => x !== a.id) : m.assignments.concat([a.id]);
         renderAssignments();
@@ -214,14 +225,27 @@ function openMember(existing, draft) {
 
   function whoHasIt(on, others) {
     const names = others.map(t => t.name || 'Unnamed').join(', ');
-    if (on) return others.length ? 'Shared with ' + names : 'Assigned to them only';
-    return others.length ? 'Assigned to ' + names : 'Nobody assigned';
+    const posting = m.role === 'poster';
+    if (on) return others.length
+      ? (posting ? 'Also posted by ' : 'Shared with ') + names
+      : (posting ? 'Only this poster' : 'Assigned to them only');
+    return others.length
+      ? (posting ? 'Posted by ' : 'Assigned to ') + names
+      : (posting ? 'No poster yet' : 'Nobody assigned');
   }
 
-  // Everyone else this page is already assigned to.
+  // The role's assignment KIND: posting is its own thing, editing (editor) and
+  // managing (manager, who can also be handed videos) are the same "works on
+  // it" side. Editor and poster on one page do not collide — they are two
+  // different jobs — so "who else has this" only counts the same kind.
+  const kindOf = role => (role === 'poster' ? 'post' : 'work');
+
+  // Everyone of the SAME kind this page is already assigned to.
   function othersOn(a) {
+    const kind = kindOf(m.role);
     return state.db.team.filter(t =>
-      t.id !== m.id && Array.isArray(t.assignments) && t.assignments.includes(a.id));
+      t.id !== m.id && kindOf(t.role) === kind
+      && Array.isArray(t.assignments) && t.assignments.includes(a.id));
   }
 
   // Assignments left pointing at archived or deleted pages. They do nothing,
