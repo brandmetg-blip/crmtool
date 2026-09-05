@@ -24,7 +24,7 @@ import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
 import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaForAccount } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
-import { renderPosting, outstandingCount } from './posting.js';
+import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
@@ -37,9 +37,18 @@ const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
 // ---------------------------------------------------------------------------
 export function renderBuilder(root) {
   const u = state.user;
-  // A poster only posts: their Daily Builder is the posting queue and nothing
-  // else, so the other modes never open for them.
-  if (isPoster(u)) state.builderMode = 'posting';
+
+  // A poster's Daily Builder is its own thing: the month calendar on top, then
+  // either the per-page cards (like an editor's) or the flat posting list —
+  // their choice, kept in posterView so it never tangles with the editor modes.
+  if (isPoster(u)) {
+    root.appendChild(head(u));
+    root.appendChild(postingCalendar(u));
+    if (state.posterView === 'cards') videosMode(root, u);
+    else renderPosting(root, u);
+    return;
+  }
+
   // some modes are gated; if the role changed under one, fall back
   if (state.builderMode === 'posting' && !can.markPosted(u)) state.builderMode = 'videos';
   if (state.builderMode === 'hooks' && !can.seeHooks(u)) state.builderMode = 'videos';
@@ -84,8 +93,19 @@ function head(u) {
 // that is the whole reason it is easy to forget.
 function modeSeg(u) {
   const mode = state.builderMode;
-  // A poster has one mode — posting — so there is nothing to switch between.
-  if (isPoster(u)) return el('span');
+  // A poster switches between the per-page cards and the flat posting list.
+  if (isPoster(u)) {
+    const v = state.posterView === 'cards' ? 'cards' : 'list';
+    return el('div', { class: 'seg blue' },
+      el('button', {
+        class: v === 'cards' ? 'on' : '',
+        onclick: () => { state.posterView = 'cards'; state.builderAvatar = null; forceEmit(); }
+      }, 'Cards'),
+      el('button', {
+        class: v === 'list' ? 'on' : '',
+        onclick: () => { state.posterView = 'list'; state.builderAvatar = null; forceEmit(); }
+      }, 'To post'));
+  }
 
   const seg = el('div', { class: 'seg blue' },
     el('button', {

@@ -10,7 +10,7 @@
 // are no longer on today's screen.
 
 import {
-  state, emit, forceEmit, todayStr, shiftDate, fmtDate, byId, can, builderAccounts, visibleEntries, isPoster,
+  state, emit, forceEmit, todayStr, shiftDate, fmtDate, byId, can, builderAccounts, visibleEntries,
 } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { conceptLabel } from '../concepts.js';
@@ -43,10 +43,6 @@ export function renderPosting(root, u) {
     .filter(e => showPosted || !e.posted)
     .sort((a, b) => (b.date || '').localeCompare(a.date || '')
       || (nameOf(a) || '').localeCompare(nameOf(b) || ''));
-
-  // A poster works date by date, so give them the month at a glance: which days
-  // are cleared, which still have videos waiting, which had nothing to post.
-  if (isPoster(state.user)) root.appendChild(postingCalendar(all));
 
   const repair = misdated(all);
   if (repair.length) root.appendChild(repairBanner(repair));
@@ -98,7 +94,9 @@ function shiftMonth(ym, by) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 
-function postingCalendar(allDone) {
+export function postingCalendar(u) {
+  const accounts = builderAccounts(u, state.db);
+  const allDone = visibleEntries(u, state.db.dailyEntries, accounts).filter(e => e.done);
   const T = todayStr();
   const month = state.postMonth || T.slice(0, 7);
 

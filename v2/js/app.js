@@ -223,6 +223,7 @@ function signOutState() {
   state.postScope = 'day';
   state.postShowPosted = false;
   state.postMonth = null;
+  state.posterView = 'list';
   state.anFrom = null; state.anTo = null; state.anGroup = 'day';
   state.date = todayStr();
 }
