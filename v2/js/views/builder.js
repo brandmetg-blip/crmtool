@@ -181,7 +181,13 @@ function videosMode(root, u) {
 
   if (state.builderAvatar) {
     const acct = byId(all, state.builderAvatar);
-    if (acct) { root.appendChild(sheet(acct, day.filter(e => e.accountId === acct.id), u)); return; }
+    if (acct) {
+      // a poster only handles finished videos, so their page sheet shows the
+      // made ones — there is nothing for them to do with a video not cut yet
+      const rows = day.filter(e => e.accountId === acct.id && (!isPoster(u) || e.done));
+      root.appendChild(sheet(acct, rows, u));
+      return;
+    }
     state.builderAvatar = null;   // avatar vanished (deleted, or access changed)
   }
 
@@ -363,10 +369,26 @@ function outstandingPanel(dayAll, all) {
 }
 
 function summary(day, u) {
+  const bar = el('div', { class: 'row wrap', style: 'margin-bottom:16px;gap:10px' });
+
+  // A poster's day is about posting the finished videos, so the summary counts
+  // posted against made — the same figures their cards show.
+  if (isPoster(u)) {
+    const ready = day.filter(e => e.done);
+    const posted = ready.filter(e => e.posted).length;
+    const left = ready.length - posted;
+    if (!ready.length) bar.appendChild(el('span', { class: 'chip gray' }, 'Nothing to post this day'));
+    else if (left === 0) bar.appendChild(el('span', { class: 'chip green' }, 'All ' + ready.length + ' posted'));
+    else {
+      bar.appendChild(el('span', { class: 'chip amber' }, left + (left === 1 ? ' video' : ' videos') + ' still to post'));
+      bar.appendChild(el('span', { class: 'chip gray' }, posted + ' / ' + ready.length + ' posted'));
+    }
+    return bar;
+  }
+
   const done = day.filter(e => e.done).length;
   const left = day.length - done;
   const posted = day.filter(e => e.posted).length;
-  const bar = el('div', { class: 'row wrap', style: 'margin-bottom:16px;gap:10px' });
 
   if (!day.length) {
     bar.appendChild(el('span', { class: 'chip gray' }, 'No videos planned for this day'));
@@ -393,9 +415,14 @@ function avatarGroups(accounts, day, u) {
   const worthGrouping = groups.some(g => g.product);
   if (!worthGrouping) return grid(groups.flatMap(g => g.accounts));
 
+  const poster = isPoster(u);
   return el('div', { class: 'col', style: 'gap:22px' }, groups.map(g => {
     const entries = day.filter(e => g.accounts.some(a => a.id === e.accountId));
-    const done = entries.filter(e => e.done).length;
+    // the group's progress reads in the viewer's terms — posted/made for a
+    // poster, made/total for everyone else
+    const tally = poster
+      ? (() => { const r = entries.filter(e => e.done); return { n: r.filter(e => e.posted).length, d: r.length, word: 'posted' }; })()
+      : { n: entries.filter(e => e.done).length, d: entries.length, word: 'made' };
     const c = g.product ? productColor(g.product) : 'var(--dim)';
     const n = g.accounts.length;
 
@@ -405,9 +432,9 @@ function avatarGroups(accounts, day, u) {
         el('b', { style: 'font-size:13.5px;color:' + c }, g.product ? g.product.name : 'No product'),
         el('span', { class: 'hint' }, n + (n === 1 ? ' avatar' : ' avatars')),
         el('span', { class: 'spacer' }),
-        entries.length
-          ? el('span', { class: 'chip ' + (done === entries.length ? 'green' : 'gray') }, done + ' / ' + entries.length + ' made')
-          : el('span', { class: 'hint' }, 'nothing planned')),
+        tally.d
+          ? el('span', { class: 'chip ' + (tally.n === tally.d ? 'green' : 'gray') }, tally.n + ' / ' + tally.d + ' ' + tally.word)
+          : el('span', { class: 'hint' }, poster ? 'nothing to post' : 'nothing planned')),
       grid(g.accounts));
   }));
 }
@@ -440,6 +467,11 @@ function quotaLine(a, entries, u) {
 }
 
 function avatarCard(a, entries, u) {
+  // A poster's card measures the same shape, but on POSTED, not made: a page is
+  // "all done" for them when every finished video has gone out, not when it was
+  // cut. Its own progress, the way editors have theirs.
+  if (isPoster(u)) return posterCard(a, entries);
+
   const done = entries.filter(e => e.done).length;
   const posted = entries.filter(e => e.posted).length;
   const paused = (a.status || 'Active') === 'Paused';
@@ -477,10 +509,52 @@ function avatarCard(a, entries, u) {
   return card;
 }
 
+// The poster's version of the avatar card. "To post" is a finished video, so
+// the denominator is the made ones — a video not yet cut is not theirs to post
+// yet — and the card goes green when every one of those has been posted.
+function posterCard(a, entries) {
+  const ready = entries.filter(e => e.done);
+  const total = ready.length;
+  const posted = ready.filter(e => e.posted).length;
+  const left = total - posted;
+  const paused = (a.status || 'Active') === 'Paused';
+  const allDone = total > 0 && left === 0;
+  const pct = total ? Math.round(posted / total * 100) : 0;
+  const col = allDone ? 'var(--green)' : (total ? 'var(--amber)' : 'var(--dim)');
+
+  const status = !total ? 'Nothing to post yet'
+    : allDone ? 'All posted'
+      : left + (left === 1 ? ' video to post' : ' videos to post');
+
+  const card = el('div', {
+    class: 'card col av-card' + (allDone ? ' done' : '') + (paused ? ' paused' : ' click'), style: 'gap:12px',
+    onclick: paused ? null : () => { state.builderAvatar = a.id; forceEmit(); },
+  },
+    el('div', { class: 'row' },
+      avatar(a, 42),
+      el('div', { class: 'row', style: 'gap:6px;flex:1;min-width:0' },
+        el('b', { style: 'min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+        qualityBadge(a)),
+      el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, posted + '/' + total)),
+    el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
+    el('div', { class: 'row wrap', style: 'gap:8px' },
+      stageChip(a),
+      el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status)));
+
+  if (paused) card.appendChild(el('span', { class: 'chip gray', style: 'align-self:flex-start' }, 'Paused'));
+  return card;
+}
+
 // ---------------------------------------------------------------------------
 function sheet(a, entries, u) {
   const canEdit = can.editVideos(u);
-  const done = entries.filter(e => e.done).length;
+  const poster = isPoster(u);
+  // the header count reads in the viewer's terms: posted/made for a poster,
+  // made/total for everyone else
+  const ready = entries.filter(e => e.done);
+  const tally = poster
+    ? { n: ready.filter(e => e.posted).length, d: ready.length, word: 'posted' }
+    : { n: entries.filter(e => e.done).length, d: entries.length, word: 'made' };
   const wrap = el('div', { class: 'col', style: 'gap:14px' });
 
   wrap.appendChild(el('div', { class: 'row wrap' },
@@ -490,8 +564,8 @@ function sheet(a, entries, u) {
     stageChip(a),
     productChip(a),
     el('span', { class: 'spacer' }),
-    el('span', { class: 'chip ' + (entries.length && done === entries.length ? 'green' : 'gray') },
-      done + ' / ' + entries.length + ' made'),
+    el('span', { class: 'chip ' + (tally.d && tally.n === tally.d ? 'green' : 'gray') },
+      tally.n + ' / ' + tally.d + ' ' + tally.word),
     canEdit && el('button', { class: 'btn primary', onclick: () => addEntry(a) }, '+ Add video')));
 
   // what this page is meant to be doing right now, in front of whoever opened it
