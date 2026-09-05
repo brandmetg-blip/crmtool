@@ -222,6 +222,7 @@ function signOutState() {
   state.capSearch = '';
   state.postScope = 'day';
   state.postShowPosted = false;
+  state.postMonth = null;
   state.anFrom = null; state.anTo = null; state.anGroup = 'day';
   state.date = todayStr();
 }

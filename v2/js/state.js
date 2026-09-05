@@ -14,6 +14,7 @@ export const state = {
   builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts
   postScope: 'day',           // posting queue range: day | week | all
   postShowPosted: false,      // include already-posted rows
+  postMonth: null,            // posting calendar: YYYY-MM shown (poster)
   builderAvatar: null,        // account id whose video sheet is open
   builderEditor: 'all',       // filter the avatar cards to one editor's avatars
   builderProduct: 'all',      // ...and/or to one product ('none' = no product set)

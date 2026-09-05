@@ -10,7 +10,7 @@
 // are no longer on today's screen.
 
 import {
-  state, emit, forceEmit, todayStr, shiftDate, fmtDate, byId, can, builderAccounts, visibleEntries,
+  state, emit, forceEmit, todayStr, shiftDate, fmtDate, byId, can, builderAccounts, visibleEntries, isPoster,
 } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { conceptLabel } from '../concepts.js';
@@ -43,6 +43,10 @@ export function renderPosting(root, u) {
     .filter(e => showPosted || !e.posted)
     .sort((a, b) => (b.date || '').localeCompare(a.date || '')
       || (nameOf(a) || '').localeCompare(nameOf(b) || ''));
+
+  // A poster works date by date, so give them the month at a glance: which days
+  // are cleared, which still have videos waiting, which had nothing to post.
+  if (isPoster(state.user)) root.appendChild(postingCalendar(all));
 
   const repair = misdated(all);
   if (repair.length) root.appendChild(repairBanner(repair));
@@ -78,6 +82,109 @@ export function renderPosting(root, u) {
         : el('span', { class: 'chip green' }, 'all posted')));
     d.rows.forEach(e => root.appendChild(row(e)));
   });
+}
+
+// ---------------------------------------------------------------------------
+// the posting calendar (poster only)
+// ---------------------------------------------------------------------------
+// A month grid over the poster's own pages: each day coloured by whether its
+// finished videos have all gone out, some are still waiting, or there was
+// nothing to post. Clicking a day drops the list below onto it. Above the grid,
+// the numbers that actually matter to a poster: what is still owed, and the
+// oldest day still behind.
+function shiftMonth(ym, by) {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, (m - 1) + by, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function postingCalendar(allDone) {
+  const T = todayStr();
+  const month = state.postMonth || T.slice(0, 7);
+
+  // made / posted per day, from this poster's finished videos
+  const byDate = {};
+  allDone.forEach(e => {
+    const d = e.date; if (!d) return;
+    const s = byDate[d] || (byDate[d] = { made: 0, posted: 0 });
+    s.made++; if (e.posted) s.posted++;
+  });
+
+  // days up to today that still have something unposted — the real backlog
+  const behind = Object.keys(byDate)
+    .filter(d => d <= T && byDate[d].made > byDate[d].posted)
+    .sort();
+  const outstanding = behind.reduce((n, d) => n + (byDate[d].made - byDate[d].posted), 0);
+
+  // ---- header: the numbers a poster acts on
+  const wrap = el('div', { class: 'card col', style: 'gap:12px;margin-bottom:16px' });
+  const header = el('div', { class: 'row wrap', style: 'gap:10px' },
+    el('b', { style: 'font-size:13px' }, monthLabel(month)),
+    el('div', { class: 'seg' },
+      el('button', { onclick: () => { state.postMonth = shiftMonth(month, -1); forceEmit(); } }, '‹'),
+      el('button', { onclick: () => { state.postMonth = T.slice(0, 7); forceEmit(); } }, 'This month'),
+      el('button', { onclick: () => { state.postMonth = shiftMonth(month, 1); forceEmit(); } }, '›')),
+    el('span', { class: 'spacer' }),
+    el('span', { class: 'chip ' + (outstanding ? 'amber' : 'green') },
+      outstanding ? outstanding + ' still to post' : 'all caught up'),
+    behind.length
+      ? el('button', {
+        class: 'btn small', onclick: () => { state.date = behind[0]; state.postScope = 'day'; state.postMonth = behind[0].slice(0, 7); forceEmit(); }
+      }, 'Oldest behind: ' + fmtDate(behind[0]).replace(/,.*/, ''))
+      : null);
+  wrap.appendChild(header);
+
+  // ---- grid
+  const [y, m] = month.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const lead = first.getDay();                 // Sun..Sat blanks before day 1
+  const days = new Date(y, m, 0).getDate();
+
+  const grid = el('div', { class: 'cal' });
+  ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => grid.appendChild(el('div', { class: 'cal-dow' }, d)));
+  for (let i = 0; i < lead; i++) grid.appendChild(el('div'));
+
+  for (let day = 1; day <= days; day++) {
+    const date = month + '-' + String(day).padStart(2, '0');
+    const s = byDate[date];
+    const future = date > T;
+    let cls = 'cal-day';
+    if (date === T) cls += ' today';
+    if (date === state.date) cls += ' sel';
+    if (future) cls += ' future';
+    if (s && s.made) cls += s.posted >= s.made ? ' done' : ' behind';
+
+    const cell = el('div', {
+      class: cls,
+      title: s ? s.posted + ' of ' + s.made + ' posted' : (future ? '' : 'nothing to post'),
+      onclick: () => { state.date = date; state.postScope = 'day'; forceEmit(); },
+    },
+      el('span', { class: 'cal-num' }, String(day)),
+      s && s.made
+        ? el('span', { class: 'cal-count' }, s.posted + '/' + s.made)
+        : null);
+    grid.appendChild(cell);
+  }
+  wrap.appendChild(grid);
+
+  // ---- legend
+  wrap.appendChild(el('div', { class: 'row wrap', style: 'gap:14px' },
+    legendDot('done', 'All posted'),
+    legendDot('behind', 'Still to post'),
+    legendDot('', 'Nothing to post'),
+    el('span', { class: 'hint' }, 'Tap a day to see its videos below.')));
+
+  return wrap;
+}
+
+function monthLabel(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function legendDot(cls, label) {
+  return el('span', { class: 'row', style: 'gap:6px' },
+    el('span', { class: 'cal-key ' + cls }), el('span', { class: 'hint' }, label));
 }
 
 // Videos dated as posted on the day they were TICKED rather than the day they
