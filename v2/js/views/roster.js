@@ -1,18 +1,17 @@
 // roster.js — the state of the roster, and what to do about it.
 //
-// Three questions, answered in order, above the avatar list:
+// Two questions, answered in order, above the avatar list:
 //   1. Are the slots full?           how many live vs the target
 //   2. Which pages need a decision?  runway spent, nothing landed
-//   3. What is owed a replacement?   dropped, nothing standing in yet
 //
 // Each answer comes with the action next to it, because a dashboard nobody can
 // act on just becomes another thing to ignore.
 
-import { state, forceEmit, byId } from '../state.js';
+import { state, forceEmit } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { getPref } from '../prefs.js';
 import {
-  roster, pageStats, needsReview, unreplaced, lifecycleOf, isLive, replacementFor, replacedPage,
+  roster, pageStats, needsReview, replacementFor, replacedPage,
 } from '../lifecycle.js';
 
 // `pipeline` is the pages still in onboarding. They are not shown on this tab,
@@ -20,7 +19,7 @@ import {
 // being built is already one of the ones you run. Counting them here and
 // naming where they are keeps the number honest without putting half-built
 // pages in the account centre.
-export function renderRoster(root, accounts, canEdit, onReplace, pipeline) {
+export function renderRoster(root, accounts, canEdit, pipeline) {
   const target = getPref('rosterTarget');
   const inPipeline = pipeline || [];
   const r = roster(accounts.concat(inPipeline), target);
@@ -31,9 +30,6 @@ export function renderRoster(root, accounts, canEdit, onReplace, pipeline) {
   if (canEdit) {
     const due = accounts.filter(a => needsReview(a, reviewDays));
     if (due.length) root.appendChild(reviewQueue(due, reviewDays));
-
-    const owed = unreplaced(accounts);
-    if (owed.length) root.appendChild(replaceQueue(owed, onReplace));
   }
 }
 
@@ -115,29 +111,6 @@ async function setLifecycle(a, status, resetClock) {
   else { a.droppedAt = Date.now(); a.dropKind = status; }
   save('accounts', a);
   forceEmit();
-}
-
-// ---- 3. what is owed a replacement? ----------------------------------------
-function replaceQueue(owed, onReplace) {
-  const col = el('div', { class: 'card col', style: 'gap:10px;margin-bottom:16px' },
-    el('div', { class: 'row wrap' },
-      el('b', { style: 'font-size:13px' },
-        owed.length + ' dropped page' + (owed.length === 1 ? '' : 's') + ' with no replacement'),
-      el('span', { class: 'spacer' }),
-      el('span', { class: 'hint' }, 'starting one links the two, so the history stays readable')));
-
-  owed.forEach(a => {
-    const s = pageStats(a);
-    col.appendChild(el('div', { class: 'pick-row', style: 'cursor:default' },
-      avatar(a, 26),
-      el('div', { style: 'min-width:0;flex:1' },
-        el('b', { style: 'font-size:12.5px;display:block' }, a.name || 'Untitled'),
-        el('span', { class: 'hint' },
-          lifecycleOf(a) + (s.posted ? ' · ' + s.posted + ' posted' : '')
-          + (s.wins ? ' · ' + s.wins + ' winner' + (s.wins === 1 ? '' : 's') : ''))),
-      el('button', { class: 'btn small primary', onclick: () => onReplace(a) }, 'Start a replacement')));
-  });
-  return col;
 }
 
 // A short line for an avatar card: what it replaced, or what replaced it.

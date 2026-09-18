@@ -124,8 +124,3 @@ export function replacementFor(a) {
   if (!a) return null;
   return (state.db.accounts || []).find(x => x.replacesId === a.id) || null;
 }
-
-// Dropped pages with nothing standing in for them yet — the actual backlog.
-export function unreplaced(accounts) {
-  return (accounts || []).filter(a => isDropped(a) && !replacementFor(a));
-}

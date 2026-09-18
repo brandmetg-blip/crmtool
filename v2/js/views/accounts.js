@@ -211,7 +211,7 @@ export function renderAccounts(root) {
   const liveCount = buckets.roster.filter(isLive).length;
   root.appendChild(head(canEdit, liveCount, buckets.roster.length - liveCount));
   if (view === 'roster' && !asSheet) {
-    renderRoster(root, all, canEdit, startReplacement, onboardingPages(state.db));
+    renderRoster(root, all, canEdit, onboardingPages(state.db));
   }
   root.appendChild(filters(all, buckets, view, asSheet, canEdit));
 
@@ -560,21 +560,6 @@ function handleChip(platform, handle, profile) {
 // account editor
 // ---------------------------------------------------------------------------
 function closeModal() { state.modal = null; forceEmit(); }
-
-// Starting a replacement carries over what the new page inherits from the old —
-// the product it promotes and the stage it starts at — and records the link, so
-// the roster reads as a chain rather than a pile of unrelated pages.
-function startReplacement(old) {
-  const seed = {
-    replacesId: old.id,
-    productId: old.productId || '',
-    stageId: (sortedStages()[0] || {}).id || '',
-    status: 'Building',
-  };
-  // a replacement is a new page like any other: it goes through the pipeline
-  if (can.seeOnboarding(state.user)) startNewPage(seed);
-  else openAccount(null, seed);
-}
 
 export function openAccount(existing, seed) {
   // Edit a COPY. Nothing is written until Save, so an abandoned modal can't
