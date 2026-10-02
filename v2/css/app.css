@@ -413,7 +413,7 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
 
 /* ---- analytics dashboard ---- */
-.an { --an-accent: #4f8cff; --an-made: #8b8b93; --an-win: var(--amber); }
+.an { --an-accent: #34e08a; --an-made: #8b8b93; --an-win: var(--amber); }
 .an .an-card { background: linear-gradient(180deg, #121517 0%, #0c0f0e 100%); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; position: relative; min-width: 0; }
 .an-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
 .an-controls .seg button.on { background: rgba(255,255,255,0.1); color: var(--text); }

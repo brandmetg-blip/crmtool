@@ -239,12 +239,12 @@ function areaChart(buckets, group) {
   box.appendChild(el('div', {
     html: '<svg viewBox="0 0 ' + W + ' ' + CH + '" preserveAspectRatio="none" style="height:' + CH + 'px">'
       + '<defs><linearGradient id="anFill" x1="0" y1="0" x2="0" y2="1">'
-      + '<stop offset="0%" stop-color="#4f8cff" stop-opacity="0.32"/>'
-      + '<stop offset="100%" stop-color="#4f8cff" stop-opacity="0"/></linearGradient></defs>'
+      + '<stop offset="0%" stop-color="#34e08a" stop-opacity="0.32"/>'
+      + '<stop offset="100%" stop-color="#34e08a" stop-opacity="0"/></linearGradient></defs>'
       + grid
       + '<path d="' + area + '" fill="url(#anFill)"/>'
       + '<path d="' + line(ptsMade) + '" fill="none" stroke="#8b8b93" stroke-opacity="0.6" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke"/>'
-      + '<path d="' + postedLine + '" fill="none" stroke="#4f8cff" stroke-width="2.5" vector-effect="non-scaling-stroke"/>'
+      + '<path d="' + postedLine + '" fill="none" stroke="#34e08a" stroke-width="2.5" vector-effect="non-scaling-stroke"/>'
       + '<line class="an-cross" x1="0" x2="0" y1="0" y2="' + CH + '" stroke="rgba(255,255,255,0.35)" vector-effect="non-scaling-stroke" style="display:none"/>'
       + '</svg>',
   }));
@@ -252,7 +252,7 @@ function areaChart(buckets, group) {
   // y-axis max, quietly, top left
   box.appendChild(el('div', { style: 'position:absolute;top:-2px;left:0;font-size:10px;color:var(--dim)' }, String(max)));
 
-  const dot = el('div', { style: 'position:absolute;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #4f8cff;transform:translate(-50%,-50%);display:none;pointer-events:none' });
+  const dot = el('div', { style: 'position:absolute;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #34e08a;transform:translate(-50%,-50%);display:none;pointer-events:none' });
   const tip = el('div', { class: 'an-tip' });
   box.appendChild(dot);
   box.appendChild(tip);
@@ -284,7 +284,7 @@ function areaChart(buckets, group) {
     dot.style.left = px + 'px'; dot.style.top = py + 'px'; dot.style.display = 'block';
     tip.innerHTML = '';
     tip.appendChild(el('b', null, b.full));
-    tip.appendChild(el('span', { style: 'color:#7fb0ff' }, 'Posted: ' + b.posted));
+    tip.appendChild(el('span', { style: 'color:#34e08a' }, 'Posted: ' + b.posted));
     tip.appendChild(el('span', { style: 'color:var(--mut)' }, 'Made: ' + b.made));
     if (b.won) tip.appendChild(el('span', { style: 'color:var(--amber)' }, '★ Winners: ' + b.won));
     tip.style.display = 'block';
@@ -347,7 +347,7 @@ function sparkline(series, colour) {
 // SVG stop-color can't read the card's custom properties in every browser,
 // so resolve the two we use to literals.
 function cssColour(c) {
-  if (c === 'var(--an-accent)') return '#4f8cff';
+  if (c === 'var(--an-accent)') return '#34e08a';
   if (c === 'var(--an-win)') return '#f0b341';
   return c;
 }
@@ -367,7 +367,7 @@ function funnel(planned) {
   const steps = [
     ['Planned', ICONS.plan, planned.length, null],
     ['Made', ICONS.film, made.length, 'var(--text)'],
-    ['Posted', ICONS.send, posted.length, '#7fb0ff'],
+    ['Posted', ICONS.send, posted.length, '#34e08a'],
     ['Winners', ICONS.star, won.length, 'var(--amber)'],
   ];
   const row = el('div', { class: 'an-funnel' });
@@ -521,7 +521,7 @@ function editorCard(made) {
       r.m ? (r.m.name || 'Unnamed') : 'Unassigned'),
     el('span', { class: 'spacer' }),
     el('span', { class: 'meter', style: 'width:70px;height:5px;border-radius:999px;background:rgba(255,255,255,0.06);overflow:hidden;display:inline-block' },
-      el('i', { style: 'display:block;height:100%;background:#4f8cff;width:' + Math.round(r.n / max * 100) + '%' })),
+      el('i', { style: 'display:block;height:100%;background:#34e08a;width:' + Math.round(r.n / max * 100) + '%' })),
     el('span', { style: 'font-weight:800;min-width:32px;text-align:right;font-variant-numeric:tabular-nums' }, fmtNum(r.n)))));
   return card;
 }
