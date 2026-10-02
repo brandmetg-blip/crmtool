@@ -21,7 +21,7 @@
 
 import { state, forceEmit, uid, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { sortedStages, stageOf, quotaSummaryFor } from '../stages.js';
+import { sortedStages, stageOf } from '../stages.js';
 import { captionsReady, linktwinComplete } from '../captions.js';
 import {
   conceptsForAccount, bodyLinkFor, scriptLinkFor, setConceptLink, setConceptScript,
@@ -74,8 +74,8 @@ const STEPS = {
   targeting: { label: 'Targeting', hint: 'Who it is set to reach.', done: a => !!a.targeting },
   quality: { label: 'Video quality', hint: 'Whether its videos are built from scratch or assembled.', done: a => !!a.quality },
   stage: {
-    label: 'Stage', hint: 'Which decides how many videos a day it gets.',
-    done: a => !!stageOf(a) || !!a.quotaOverride,
+    label: 'Stage', hint: 'Where it is in its life, and what to do there.',
+    done: a => !!stageOf(a),
   },
   base: { label: 'Base images', hint: 'The folder an editor cuts from.', done: a => !!(a.baseImageLink || '').trim() },
   bodies: { label: 'Bodies', hint: 'The concepts it starts with, and a folder of bodies for each.', done: a => bodiesReady(a) },
@@ -143,7 +143,7 @@ export async function startNewPage(seed) {
     id: uid('a'), name: '', status: 'Building', phase: 'P1',
     productId: '', platforms: { facebook: '', instagram: '' },
     facebookProfileId: '', instagramProfileId: '',
-    stageId: '', quality: '', quotaOverride: null, targeting: '', targetingNote: '',
+    stageId: '', quality: '', targeting: '', targetingNote: '',
     replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
     metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '',
     pageCreated: false, linkCreated: false, linkAdded: false, amazonAdded: false,
@@ -517,8 +517,9 @@ function buildControl(a, key, box, set, paint, hooks) {
     const stages = sortedStages();
     const note = el('span', { class: 'hint' });
     const paintNote = () => {
-      note.textContent = (stageOf(a) || a.quotaOverride)
-        ? quotaSummaryFor(a) + '.'
+      const s = stageOf(a);
+      note.textContent = s
+        ? (s.goal || '').trim()
         : (stages.length ? '' : 'No stages defined yet — add them under Settings.');
     };
     // built here rather than through pick(), so the summary below updates in
@@ -528,9 +529,6 @@ function buildControl(a, key, box, set, paint, hooks) {
       onchange: async e => {
         await set(x => x.stageId = e.target.value);
         paintNote();
-        // the stage decides which kinds of video this page makes, and so which
-        // captions it needs at all
-        if (hooks && hooks.repaintCaptions) hooks.repaintCaptions();
       },
     }, [['', 'No stage set']].concat(stages.map(s => [s.id, s.name]))
       .map(([v, label]) => el('option', { value: v }, label)));

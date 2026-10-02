@@ -30,6 +30,7 @@ export const state = {
   loginError: null,
   authEmail: null,            // cloud mode: the signed-in Supabase Auth email
   anFrom: null, anTo: null,   // analytics date range (defaults to last 30 days)
+  anAll: false,               // analytics: "All time" — range follows the earliest video
   anGroup: 'day',             // day | week | month
 };
 

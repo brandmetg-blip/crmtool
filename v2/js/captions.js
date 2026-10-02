@@ -18,7 +18,7 @@
 // it.
 // ============================================================================
 
-import { VIDEO_TYPES, quotaForAccount } from './stages.js';
+import { VIDEO_TYPES } from './stages.js';
 import { productOf } from './concepts.js';
 
 // ---------------------------------------------------------------------------
@@ -107,12 +107,10 @@ export function clearCaption(account, type) {
 // ---------------------------------------------------------------------------
 // which captions a page needs, and whether it has them
 // ---------------------------------------------------------------------------
-// One for each kind of video it makes. A product-only page is not missing its
-// growth caption — it will never post a growth video. A page with no mix set
-// yet needs both, so "done" is never reached by having decided nothing.
+// One for each kind of video. Any page can be given either kind, so it needs
+// both before it is ready.
 export function captionsNeeded(account) {
-  const makes = VIDEO_TYPES.filter(t => quotaForAccount(account, t) > 0);
-  return makes.length ? makes : VIDEO_TYPES.slice();
+  return VIDEO_TYPES.slice();
 }
 
 // Ready when every needed caption resolves to something real — non-empty and

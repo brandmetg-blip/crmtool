@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
-import { liveAccounts, stageGoal, stageOf, stageAllows, defaultTypeFor, quotaProgress, quotaForAccount } from '../stages.js';
+import { liveAccounts, stageGoal, videosOn } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -439,33 +439,6 @@ function avatarGroups(accounts, day, u) {
   }));
 }
 
-// How this page is doing against its stage's daily target. Quiet text rather
-// than more outlined chips — the card already carries a stage chip, a progress
-// bar and a status line, and a fourth boxed thing just becomes noise.
-// Admin only: it is a planning figure, not something an editor acts on.
-function quotaLine(a, entries, u) {
-  if (!u || u.role !== 'admin') return null;
-  if (!stageOf(a) && !a.quotaOverride) return null;
-
-  const parts = TYPES.map(t => {
-    const need = quotaForAccount(a, t);
-    if (!need) return null;
-    const have = entries.filter(e => (e.type || 'Product') === t).length;
-    return { t, need, have, done: have >= need };
-  }).filter(Boolean);
-  if (!parts.length) return null;
-
-  const row = el('span', {
-    class: 'quota-line',
-    title: parts.map(p => p.have + ' of ' + p.need + ' ' + p.t.toLowerCase()).join(', ') + ' for this day',
-  });
-  parts.forEach((p, i) => {
-    if (i) row.appendChild(el('span', { class: 'sep' }, '·'));
-    row.appendChild(el('span', { class: p.done ? 'met' : '' }, p.t.slice(0, 1) + p.have + '/' + p.need));
-  });
-  return row;
-}
-
 function avatarCard(a, entries, u) {
   // A poster's card measures the same shape, but on POSTED, not made: a page is
   // "all done" for them when every finished video has gone out, not when it was
@@ -497,13 +470,12 @@ function avatarCard(a, entries, u) {
         qualityBadge(a)),
       el('span', { style: 'font-size:15px;font-weight:800;color:' + col }, done + '/' + entries.length)),
     el('div', { class: 'bar' }, el('i', { style: 'width:' + pct + '%;background:' + col })),
-    // one line: where the page is, how it's doing, and the day's target
+    // one line: where the page is and how it's doing
     el('div', { class: 'row wrap', style: 'gap:8px' },
       stageChip(a),
       el('span', { style: 'font-size:11.5px;font-weight:700;color:' + col }, status),
       el('span', { class: 'spacer' }),
-      can.seesAllAccounts(u) && posted ? el('span', { class: 'hint' }, posted + ' posted') : null,
-      quotaLine(a, entries, u)));
+      can.seesAllAccounts(u) && posted ? el('span', { class: 'hint' }, posted + ' posted') : null));
 
   if (paused) card.appendChild(el('span', { class: 'chip gray', style: 'align-self:flex-start' }, 'Paused'));
   return card;
@@ -591,7 +563,7 @@ async function addEntry(a) {
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
-    type: defaultTypeFor(a),         // start with a type this page's stage allows
+    type: 'Product',
     prod: 'Assembly', assignedEditorId: '',
     concept: '', hook: '', hookKind: 'text', hookLink: '',
     body: '', bodyKind: 'text', bodyLink: '',
@@ -621,20 +593,16 @@ function openMassAdd(u) {
 
   const editors = assignableMembers(state.db);
 
-  // Who still needs one of this type today, per their stage's daily target.
-  // This is the whole point: you never have to remember whether a page has had
-  // its product video — the target and the count answer it.
-  const stillNeeds = (a, type, date) => {
+  // Who this batch can go to: every page that is running and whose product
+  // takes the chosen concept.
+  const eligible = a => {
     if ((a.status || 'Active') === 'Paused') return false;
-    // a page whose product does not take the chosen concept is not "needed"
     if (draft.bodyKind === 'concept' && draft.conceptId && !accountAcceptsConcept(a, draft.conceptId)) return false;
-    const p = quotaProgress(a, type, date);
-    if (p.need == null) return true;          // no stage: no target to be done with
-    return p.remaining > 0;
+    return true;
   };
   const reselect = () => {
     picked.clear();
-    accounts.filter(a => stillNeeds(a, draft.type, draft.date)).forEach(a => picked.add(a.id));
+    accounts.filter(eligible).forEach(a => picked.add(a.id));
   };
 
   const picked = new Set();
@@ -680,7 +648,6 @@ function openMassAdd(u) {
     // does not make the other videos stop existing.
     const n = dayEntries(state.user, draft.date, allAccounts).length;
     dayCount.textContent = n ? n + (n === 1 ? ' video already on this day' : ' videos already on this day') : 'Nothing on this day yet';
-    // a different day has a different set of pages still short of their target
     reselect();
     autoRemoved = 0;
     if (typeof refresh === 'function') refresh();
@@ -693,11 +660,7 @@ function openMassAdd(u) {
         const b = el('button', {
           class: draft.type === t ? 'on' : '',
           onclick: () => {
-            const before = new Set(picked);
             draft.type = t;
-            // Choosing the type re-picks whoever still needs one of it today.
-            reselect();
-            autoRemoved = [...before].filter(id => !picked.has(id)).length;
             repaintSegs(); refresh();
           }
         }, t);
@@ -798,8 +761,7 @@ function openMassAdd(u) {
     }
 
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
-      // could be the stage or the product, so do not claim which
-      + (autoRemoved ? ' · ' + autoRemoved + ' dropped — this does not belong on them' : '');
+      + (autoRemoved ? ' · ' + autoRemoved + ' dropped — their product does not use this concept' : '');
 
     // each product heading shows all / some / none of its avatars selected
     pickWrap.querySelectorAll('[data-group]').forEach(head => {
@@ -814,20 +776,11 @@ function openMassAdd(u) {
       chk.textContent = on === mine.length && mine.length ? '✓' : (on ? '–' : '');
       head.querySelector('.group-count').textContent = on + ' of ' + mine.length;
     });
-    // already at target counts as an override too — it is not off-stage, but it
-    // is more than the stage asked for, so it should be a decision
-    const overCount = accounts.filter(a => {
-      if (!picked.has(a.id)) return false;
-      const p = quotaProgress(a, draft.type, draft.date);
-      return p.need != null && p.remaining === 0 && stageAllows(a, draft.type);
-    }).length;
-    const offCount = accounts.filter(a => picked.has(a.id) && !stageAllows(a, draft.type)).length;
-    const extra = [offCount ? offCount + ' off-stage' : '', overCount ? overCount + ' over target' : '']
-      .filter(Boolean).join(', ');
+    const offCount = useConcept ? accounts.filter(a => picked.has(a.id) && !accountAcceptsConcept(a, draft.conceptId)).length : 0;
     addBtn.textContent = picked.size
-      ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars') + (extra ? ' · ' + extra : '')
+      ? 'Add to ' + picked.size + (picked.size === 1 ? ' avatar' : ' avatars') + (offCount ? ' · ' + offCount + ' wrong product' : '')
       : 'Pick at least one avatar';
-    addBtn.classList.toggle('danger', !!(offCount || overCount));
+    addBtn.classList.toggle('danger', !!offCount);
     addBtn.disabled = !picked.size;
     addBtn.style.opacity = picked.size ? '' : '.5';
     pickWrap.querySelectorAll('[data-acct]').forEach(row => {
@@ -837,42 +790,22 @@ function openMassAdd(u) {
       const c = row.querySelector('.check');
       c.classList.toggle('on', on);
       c.textContent = on ? '✓' : '';
-      // how far this page is toward its daily target for THIS type
-      const acctFor = accounts.find(a => a.id === id);
+      // how many of this type the page already has that day — information only
+      const acct = accounts.find(a => a.id === id);
       const tag = row.querySelector('.quota-tag');
-      const p = acctFor ? quotaProgress(acctFor, draft.type, draft.date) : { need: null };
-      if (p.need == null) {
-        const n = state.db.dailyEntries.filter(e => e.date === draft.date && e.accountId === id).length;
-        tag.textContent = n ? n + ' already' : '';
-        tag.className = 'quota-tag hint';
-      } else {
-        tag.textContent = p.have + '/' + p.need + ' ' + draft.type.toLowerCase();
-        tag.className = 'quota-tag ' + (p.remaining ? 'hint' : 'chip green');
-      }
+      const n = acct ? videosOn(acct, draft.type, draft.date) : 0;
+      tag.textContent = n ? n + ' ' + draft.type.toLowerCase() + ' already' : '';
+      tag.className = 'quota-tag hint';
 
       // flag only the avatars MISSING bodies — a tick on all the rest is noise
       const cover = row.querySelector('.cover');
-      const acct = accounts.find(a => a.id === id);
       cover.textContent = (useConcept && acct && !has(acct)) ? 'no bodies' : '';
 
-      // and the ones this video does not belong on: wrong stage for the type,
-      // or a product that does not take the chosen concept
+      // and the ones whose product does not take the chosen concept
       const off = row.querySelector('.offstage');
-      const wrongStage = acct && !stageAllows(acct, draft.type);
       const wrongProduct = acct && useConcept && !accountAcceptsConcept(acct, draft.conceptId);
-      // both reasons when both apply: they need different fixes, so showing
-      // only the first hides work from whoever is about to add the video
-      const why = [];
-      if (wrongStage) {
-        // a page's own pin, not its stage, may be the thing excluding it —
-        // say whichever one is actually responsible
-        why.push(acct.quotaOverride
-          ? ['not for this page', 'This page’s own mix does not include ' + draft.type + ' videos']
-          : ['not for this stage', ((stageOf(acct) || {}).name || 'This stage') + ' does not take ' + draft.type + ' videos']);
-      }
-      if (wrongProduct) why.push(['not for this product', 'This concept is not used for what this page promotes']);
-      off.textContent = why.map(w => w[0]).join(' · ');
-      off.title = why.map(w => w[1]).join('\n');
+      off.textContent = wrongProduct ? 'not for this product' : '';
+      off.title = wrongProduct ? 'This concept is not used for what this page promotes' : '';
     });
   }
 
@@ -901,12 +834,12 @@ function openMassAdd(u) {
     el('span', { class: 'label' }, 'AVATARS'), countLabel,
     el('span', { class: 'spacer' }),
     qualitySeg,
-    // bulk selection never sweeps in a page whose stage rules out this type;
-    // those have to be chosen one at a time, on purpose
+    // bulk selection never sweeps in a paused page or one whose product does
+    // not take the concept; those have to be chosen one at a time, on purpose
     el('button', {
       class: 'btn small',
-      onclick: () => { accounts.filter(a => stillNeeds(a, draft.type, draft.date)).forEach(a => picked.add(a.id)); refresh(); }
-    }, 'Still needed'),
+      onclick: () => { accounts.filter(eligible).forEach(a => picked.add(a.id)); refresh(); }
+    }, 'Select all'),
     el('button', { class: 'btn small', onclick: () => { picked.clear(); refresh(); } }, 'Clear')));
 
   // A page with no quality set belongs to neither list, so say so rather than
@@ -939,8 +872,8 @@ function openMassAdd(u) {
       class: 'pick-group', 'data-group': (g.product ? g.product.id : '__none'),
       style: 'border-left:3px solid ' + c,
       onclick: () => {
-        const eligible = g.accounts.filter(a => stillNeeds(a, draft.type, draft.date)).map(a => a.id);
-        const pool = eligible.length ? eligible : ids;
+        const ok = g.accounts.filter(eligible).map(a => a.id);
+        const pool = ok.length ? ok : ids;
         const allOn = pool.every(id => picked.has(id));
         pool.forEach(id => allOn ? picked.delete(id) : picked.add(id));
         refresh();
@@ -981,35 +914,15 @@ function openMassAdd(u) {
   addBtn.onclick = async () => {
     const chosen = accounts.filter(a => picked.has(a.id));
 
-    // The deliberate confirmation: an off-stage video can be added, but only
-    // after being told exactly which pages it breaks the rule for.
+    // The deliberate confirmation: a video can go to a page whose product does
+    // not use the concept, but only after being told exactly which pages.
     const wrongProduct = draft.bodyKind === 'concept' && draft.conceptId
       ? chosen.filter(a => !accountAcceptsConcept(a, draft.conceptId)) : [];
-    const off = chosen.filter(a => !stageAllows(a, draft.type));
-    const over = chosen.filter(a => {
-      const p = quotaProgress(a, draft.type, draft.date);
-      return p.need != null && p.remaining === 0 && stageAllows(a, draft.type);
-    });
-    if (off.length || over.length || wrongProduct.length) {
-      const bits = [];
-      if (wrongProduct.length) {
-        const c = conceptById(draft.conceptId);
-        bits.push(wrongProduct.length + ' promote a product that does not use “' + ((c && c.name) || 'this concept') + '”:\n'
-          + wrongProduct.map(a => '  • ' + (a.name || 'Untitled')).join('\n'));
-      }
-      if (off.length) {
-        bits.push(off.length + ' should not get a ' + draft.type + ' video:\n'
-          + off.map(a => '  • ' + (a.name || 'Untitled') + ' ('
-            + (a.quotaOverride ? 'custom mix' : ((stageOf(a) || {}).name || 'no stage')) + ')').join('\n'));
-      }
-      if (over.length) {
-        bits.push(over.length + ' already have their ' + draft.type.toLowerCase() + ' videos for this day:\n'
-          + over.map(a => {
-            const p = quotaProgress(a, draft.type, draft.date);
-            return '  • ' + (a.name || 'Untitled') + ' (' + p.have + '/' + p.need + ')';
-          }).join('\n'));
-      }
-      if (!confirm(bits.join('\n\n') + '\n\nAdd to them anyway?')) return;
+    if (wrongProduct.length) {
+      const c = conceptById(draft.conceptId);
+      if (!confirm(wrongProduct.length + ' promote a product that does not use “' + ((c && c.name) || 'this concept') + '”:\n'
+        + wrongProduct.map(a => '  • ' + (a.name || 'Untitled')).join('\n')
+        + '\n\nAdd to them anyway?')) return;
     }
 
     const { save } = await import('../app.js');
@@ -1144,15 +1057,7 @@ function editorFor(account, mode, editors) {
   return owners.length === 1 ? owners[0].id : '';
 }
 
-// Switching a single video to a type its page's stage rules out asks first —
-// the same deliberate confirmation the bulk path uses.
 function setType(en, a, type) {
-  if (!stageAllows(a, type)) {
-    const where = a.quotaOverride ? 'has its own mix pinned' : 'is at ' + ((stageOf(a) || {}).name || 'no stage');
-    const ok = confirm((a.name || 'This page') + ' ' + where
-      + ', which does not take ' + type + ' videos.\n\nSet it to ' + type + ' anyway?');
-    if (!ok) return;
-  }
   eLoud(en.id, x => x.type = type);
 }
 
@@ -1173,13 +1078,6 @@ function entryRow(en, a, num, u) {
   const top = el('div', { class: 'row wrap' },
     el('span', { class: 'num' }, String(num)),
     seg(TYPES, en.type || 'Product', canEdit, v => setType(en, a, v), en.type === 'Growth' ? 'blue' : 'green'),
-    !stageAllows(a, en.type || 'Product')
-      ? el('span', {
-        class: 'chip red',
-        title: (a.quotaOverride ? 'This page’s own mix' : ((stageOf(a) || {}).name || 'This stage'))
-          + ' does not take ' + (en.type || 'Product') + ' videos',
-      }, 'off-stage')
-      : null,
     seg(PROD, en.prod || 'Assembly', canEdit, v => eLoud(en.id, x => x.prod = v), 'violet'),
     el('span', { class: 'spacer' }));
 

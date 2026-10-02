@@ -1,12 +1,12 @@
 // settings.js — the rules of the workspace, in one place.
 //
-// Admin only. Right now it holds the stages a page moves through and what kind
-// of video belongs at each; it is laid out to take more settings later without
-// turning into a wall.
+// Admin only. Right now it holds the stages a page moves through and what to
+// do at each; it is laid out to take more settings later without turning into
+// a wall.
 
 import { state, forceEmit, uid, can } from '../state.js';
 import { el } from '../ui.js';
-import { sortedStages, stageColor, quotaFor, VIDEO_TYPES } from '../stages.js';
+import { sortedStages, stageColor } from '../stages.js';
 import { getPref, setPref } from '../prefs.js';
 import { PRODUCT_COLORS } from './accounts.js';
 import { openColumns } from './sheet.js';
@@ -85,7 +85,7 @@ function stagesSection() {
     el('div', null,
       el('b', { style: 'font-size:14px' }, 'Stages'),
       el('div', { class: 'hint' },
-        'The life of a page, in order. What you write here is what editors read on Assets and on the avatar’s day, and the daily targets decide who still needs a video when you mass add — so nobody has to remember.')),
+        'The life of a page, in order. What you write here is what editors read on Assets and on the avatar’s day.')),
     el('span', { class: 'spacer' }),
     el('button', {
       class: 'btn primary', onclick: async () => {
@@ -93,7 +93,7 @@ function stagesSection() {
         if (!name || !name.trim()) return;
         const { save } = await import('../app.js');
         save('stages', {
-          id: uid('st'), name: name.trim(), goal: '', quota: { Growth: 1, Product: 1 },
+          id: uid('st'), name: name.trim(), goal: '',
           color: PRODUCT_COLORS[sortedStages().length % PRODUCT_COLORS.length],
           order: sortedStages().length, createdAt: Date.now(),
         });
@@ -153,30 +153,6 @@ function stageCard(s, i, total) {
         }
       }, s.goal || '')),
 
-    // the daily target per type — zero means this type does not belong here
-    el('div', { class: 'col', style: 'gap:6px' },
-      el('span', { class: 'label' }, 'VIDEOS PER DAY AT THIS STAGE'),
-      el('div', { class: 'row wrap', style: 'gap:14px' }, VIDEO_TYPES.map(t => {
-        const n = quotaFor(s, t);
-        return el('div', { class: 'row', style: 'gap:7px' },
-          el('span', {
-            style: 'font-size:12.5px;font-weight:700;min-width:62px;color:'
-              + (n ? (t === 'Growth' ? 'var(--blue)' : 'var(--green)') : 'var(--dim)')
-          }, t),
-          el('button', { class: 'iconbtn', title: 'One fewer', onclick: () => bump(s, t, -1) }, '−'),
-          el('input', {
-            class: 'input', type: 'number', min: '0', max: '20', value: String(n),
-            style: 'width:62px;height:30px;text-align:center;font-weight:800',
-            onchange: async e => {
-              const v = Math.max(0, Math.min(20, Math.round(+e.target.value || 0)));
-              const { mutate } = await import('../app.js');
-              mutate('stages', s.id, x => { x.quota = Object.assign({}, x.quota, { [t]: v }); });
-            }
-          }),
-          el('button', { class: 'iconbtn', title: 'One more', onclick: () => bump(s, t, 1) }, '+'));
-      })),
-      el('span', { class: 'hint' }, quotaSummary(s))),
-
     el('div', { class: 'col', style: 'gap:5px' },
       el('span', { class: 'label' }, 'COLOUR'),
       el('div', { class: 'row wrap', style: 'gap:6px' }, PRODUCT_COLORS.map(col => el('button', {
@@ -187,24 +163,6 @@ function stageCard(s, i, total) {
           mutate('stages', s.id, x => x.color = col);
         }
       })))));
-}
-
-async function bump(s, type, by) {
-  const { mutate } = await import('../app.js');
-  mutate('stages', s.id, x => {
-    const v = Math.max(0, Math.min(20, quotaFor(x, type) + by));
-    x.quota = Object.assign({}, x.quota, { [type]: v });
-  });
-}
-
-function quotaSummary(s) {
-  const parts = VIDEO_TYPES.map(t => [t, quotaFor(s, t)]).filter(p => p[1] > 0);
-  if (!parts.length) return 'Nothing set — pages at this stage get no videos.';
-  const total = parts.reduce((n, p) => n + p[1], 0);
-  const zero = VIDEO_TYPES.filter(t => !quotaFor(s, t));
-  return parts.map(p => p[1] + '× ' + p[0]).join(' + ')
-    + ' a day (' + total + ' total)'
-    + (zero.length ? '. A ' + zero.join(' or ') + ' video here is off-stage and takes a confirmation.' : '.');
 }
 
 async function move(s, dir, total) {
