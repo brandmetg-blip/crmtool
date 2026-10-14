@@ -415,7 +415,6 @@ function card(a, canEdit) {
   // legacy status ("Active") is not in this list and would fall through to the
   // first entry, labelling every live page as Building.
   const st = [lifecycleLabel(a), lifecycleDef(a).tone];
-  const fb = byId(state.db.profiles, a.facebookProfileId);
   const ig = byId(state.db.profiles, a.instagramProfileId);
 
   const c = el('div', {
@@ -432,7 +431,6 @@ function card(a, canEdit) {
       stageOnlyChip(a),
       qualityChip(a),
       targetingChip(a),
-      handleChip('facebook', a.platforms && a.platforms.facebook, fb),
       handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
 
   if ((a.notes || '').trim()) {
@@ -518,6 +516,8 @@ export function productChip(a) {
   }, p.imageUrl ? el('img', { class: 'prod-ico', src: p.imageUrl, alt: '' }) : null, p.name);
 }
 
+// The Facebook handle is deliberately not shown on the card: it is usually a
+// full page URL, which turned into a long blue bar next to the other chips.
 function handleChip(platform, handle, profile) {
   if (!handle && !profile) return null;
   const label = handle ? '@' + String(handle).replace(/^@/, '') : profile.name;

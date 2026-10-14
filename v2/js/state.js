@@ -8,7 +8,6 @@ export const state = {
   ready: false,
   user: null,                 // logged-in team member
   db: { team: [], accounts: [], profiles: [], products: [], concepts: [], stages: [], settings: [], tasks: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
-  taskMine: false,            // tasks board: only mine
   route: 'builder',           // builder | accounts | team | login | setup
   date: todayStr(),           // selected day in the builder
   builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts
@@ -26,6 +25,7 @@ export const state = {
   acctProduct: 'all',
   capSearch: '',              // caption board: filter text
   onboardAvatar: null,        // page id whose setup checklist is open
+  obEditForm: false,          // onboarding: the admin is editing the form
   modal: null,                // { type, ... } | null
   loginError: null,
   authEmail: null,            // cloud mode: the signed-in Supabase Auth email
@@ -87,6 +87,9 @@ const isEditor = u => !!u && u.role === 'editor';
 // The poster: sees only the pages assigned to them, marks videos posted, and
 // reads the analytics for those pages. Changes nothing else.
 export const isPoster = u => !!u && u.role === 'poster';
+// A paused member can still sign in, but sees only the "account paused" screen.
+// The admin comes from config.js and can never be paused.
+export const isPaused = u => !!u && u.role !== 'admin' && !!u.paused;
 
 // Extra permissions granted to one person on top of their role. The role is
 // the sensible default; a grant is how you say "this one also does X" without
@@ -102,7 +105,6 @@ export const PERMISSIONS = [
   ['editScripts', 'Write main scripts', 'Create and edit main scripts and their frames.'],
   ['editHooks', 'Write the day’s hooks', 'Add and edit the hooks shared across every page.'],
   ['seesAllAccounts', 'See every page', 'See all pages and the analytics, not only the ones assigned to them.'],
-  ['tasks', 'See and set tasks', 'Open the Tasks board, take work on it and hand work out.'],
   ['onboarding', 'Set up new pages', 'Open the onboarding pipeline and take new pages through it.'],
 ];
 
@@ -122,10 +124,6 @@ export const can = {
   // grantable to anyone else who writes them.
   seeHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
   editHooks: u => isAdmin(u) || isManager(u) || granted(u, 'editHooks'),
-  // The tasks board: work handed between the admin and whoever produces. Both
-  // sides need to add as well as finish, so seeing it and setting it are one
-  // permission.
-  seeTasks: u => isAdmin(u) || isManager(u) || granted(u, 'tasks'),
   // Setting a page up is the admin's and the manager's work. An editor never
   // sees a page that has not finished the pipeline — the account centre is
   // finished pages, and that is the whole point of having a pipeline.
@@ -190,7 +188,6 @@ export function tabsFor(u) {
   // needs the base images or bodies, so it stays off their (short) tab list.
   if (!isPoster(u)) tabs.push('assets');
   if (can.seeCaptions(u)) tabs.push('captions');
-  if (can.seeTasks(u)) tabs.push('tasks');
   if (can.seeAnalytics(u)) tabs.push('analytics');
   if (can.manageTeam(u)) tabs.push('team');
   if (can.manageSettings(u)) tabs.push('settings');

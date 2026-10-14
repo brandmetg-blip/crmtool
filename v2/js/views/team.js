@@ -50,13 +50,14 @@ export function renderTeam(root) {
 
   root.appendChild(el('div', { class: 'grid' }, members.map(m => {
     const assigned = (m.assignments || []).length;
-    return el('div', { class: 'card click col', style: 'gap:11px', onclick: () => openMember(m) },
+    return el('div', { class: 'card click col' + (m.paused ? ' paused-member' : ''), style: 'gap:11px', onclick: () => openMember(m) },
       el('div', { class: 'row' },
         avatar(m, 40),
         el('div', { style: 'min-width:0;flex:1' },
           el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' },
             m.name || 'Unnamed'),
           el('span', { class: 'hint', style: 'word-break:break-all' }, m.email || 'no email')),
+        m.paused ? el('span', { class: 'chip amber', title: 'Can sign in, but cannot use the app' }, 'Paused') : null,
         el('span', { class: 'chip ' + (ROLE_CHIP[m.role] || 'gray') }, roleLabel(m.role))),
       // The role's description only holds while the role is all they have.
       // Printing "sees only what is assigned to them" above a granted "See
@@ -115,6 +116,26 @@ function openMember(existing, draft) {
   }, ROLES.map(([v, label]) => el('option', { value: v }, label)));
   roleSel.value = m.role;
   body.appendChild(el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'ROLE'), roleSel, note));
+
+  // Access: a paused member keeps everything — role, assignments, history —
+  // and can still sign in, but sees only a "your account is paused" screen.
+  if (existing) {
+    const accessNote = el('div', { class: 'hint' });
+    const accessSeg = el('div', { class: 'seg mini' });
+    const paintAccess = () => {
+      accessSeg.innerHTML = '';
+      [[false, 'Active'], [true, 'Paused']].forEach(([v, label]) => accessSeg.appendChild(el('button', {
+        class: !!m.paused === v ? 'on' : '',
+        onclick: () => { m.paused = v; m.pausedAt = v ? Date.now() : null; paintAccess(); }
+      }, label)));
+      accessNote.textContent = m.paused
+        ? 'They can sign in but only see a message that their account is paused. Takes effect when you save, even if they are signed in right now.'
+        : 'Normal access.';
+    };
+    paintAccess();
+    body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+      el('span', { class: 'label' }, 'ACCOUNT ACCESS'), el('div', { class: 'row' }, accessSeg), accessNote));
+  }
 
   // local mode has no real auth, so the password lives on the record
   if (MODE !== 'supabase') {

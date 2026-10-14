@@ -181,16 +181,12 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .check.on { background: var(--green); border: none; }
 .check[disabled] { cursor: default; opacity: .7; }
 
-/* ---- tasks board ---- */
-.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
-.board-col { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
-.task { border-left: 3px solid var(--line2); }
+/* ---- nav badge ---- */
 .nav-count {
   margin-left: auto; padding: 1px 7px; border-radius: 999px;
   background: var(--amber); color: #241a02; font-size: 10px; font-weight: 800;
 }
 .nav-item.on .nav-count { background: rgba(0,0,0,0.28); color: inherit; }
-@media (max-width: 900px) { .board { grid-template-columns: 1fr; } }
 
 /* ---- the avatar sheet ----
    Wide by nature: the header row and the identifying columns stay put while
@@ -600,3 +596,9 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
   .brand-text { display: none; }
   .brand { padding: 5px; }
 }
+
+/* ---- paused account screen ---- */
+.paused-ico { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(240,179,65,0.12); color: var(--amber); }
+.paused-ico svg { width: 26px; height: 26px; }
+.card.paused-member { opacity: .55; }
+.ob-edit-step { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,0.015); }
