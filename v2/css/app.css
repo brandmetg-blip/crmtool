@@ -606,6 +606,6 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* ---- cover photo behind an avatar card ---- */
 .card.has-cover { position: relative; overflow: hidden; isolation: isolate; }
 .card.has-cover > :not(.av-cover) { position: relative; z-index: 1; }
-.av-cover { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: .28; pointer-events: none; }
+.av-cover { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: .14; pointer-events: none; }
 .av-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(13,17,16,0.25) 0%, rgba(13,17,16,0.75) 60%, rgba(13,17,16,0.95) 100%); }
-.card.has-cover.click:hover .av-cover { opacity: .36; }
+.card.has-cover.click:hover .av-cover { opacity: .2; }
