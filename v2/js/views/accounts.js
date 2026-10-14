@@ -418,9 +418,11 @@ function card(a, canEdit) {
   const ig = byId(state.db.profiles, a.instagramProfileId);
 
   const c = el('div', {
-    class: 'card col' + qualityClass(a) + (canEdit ? ' click' : ''), style: 'gap:12px',
+    class: 'card col' + qualityClass(a) + (canEdit ? ' click' : '') + (a.coverUrl ? ' has-cover' : ''), style: 'gap:12px',
     onclick: canEdit ? () => openAccount(a) : null,
   },
+    // the page's cover photo, faint, under a dark gradient so the text stays readable
+    a.coverUrl ? el('div', { class: 'av-cover', style: 'background-image:url(' + JSON.stringify(a.coverUrl) + ')' }) : null,
     el('div', { class: 'row' },
       avatar(a, 44),
       el('b', { style: 'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
