@@ -565,7 +565,7 @@ async function addEntry(a) {
     id: uid('de'), date: state.date, accountId: a.id,
     type: 'Product',
     prod: 'Assembly', assignedEditorId: '',
-    concept: '', hook: '', hookKind: 'text', hookLink: '',
+    concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
     refVideo: '', notes: '',
     done: false, doneAt: null, doneBy: '', videoLink: '',
@@ -610,7 +610,7 @@ function openMassAdd(u) {
 
   const draft = {
     date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
-    concept: '', hook: '', hookKind: 'text', hookLink: '',
+    concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
     conceptId: '', variationId: '', rotate: false,
     refVideo: '', notes: '',
@@ -696,10 +696,11 @@ function openMassAdd(u) {
 
   const conceptField = field('concept', 'CONCEPT', 'e.g. Transformation, Villain…');
   body.appendChild(conceptField);
-  body.appendChild(draftSource(draft, 'hook', 'HOOK', 'The hook / opening line…'));
 
+  // One script box: hook and body used to be two. It is stored as the body, so
+  // "From concept" (each avatar's own bodies folder) still works.
   const coverage = el('div');
-  const bodyField = draftSource(draft, 'body', 'BODY', 'The body / script…', {
+  const bodyField = draftSource(draft, 'body', 'SCRIPT', 'The whole script…', {
     concepts: true,
     coverage: () => coverage,
     onKind: () => refresh(),
@@ -938,7 +939,6 @@ function openMassAdd(u) {
         type: draft.type, prod: draft.prod,
         assignedEditorId: editorFor(a, draft.assign, editors),
         concept: draft.concept,
-        hook: draft.hook, hookKind: draft.hookKind, hookLink: draft.hookLink,
         body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
         conceptId: draft.conceptId, variationId,   // link resolved from the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
@@ -1120,8 +1120,12 @@ function entryRow(en, a, num, u) {
   }
   card.appendChild(conceptCol);
 
-  card.appendChild(sourceBlock(en, 'hook', 'HOOK', 'The hook / opening line…', canEdit, a));
-  card.appendChild(sourceBlock(en, 'body', 'BODY', 'The body / script…', canEdit, a));
+  // Hook and body are now one script box, stored as the body. A video written
+  // before that still shows its hook, so nothing already typed disappears.
+  if ((en.hook || '').trim() || (en.hookLink || '').trim()) {
+    card.appendChild(sourceBlock(en, 'hook', 'HOOK (OLDER VIDEO)', 'The hook / opening line…', canEdit, a));
+  }
+  card.appendChild(sourceBlock(en, 'body', 'SCRIPT', 'The whole script…', canEdit, a));
 
   card.appendChild(linkBlock(en, 'refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…', canEdit));
 
@@ -1243,7 +1247,7 @@ function conceptBody(en, acct, canEdit) {
   const c = conceptById(en.conceptId);
   const label = conceptLabel(en.conceptId, en.variationId, en.bodyConcept);
   const url = bodyLinkFor(acct, en.conceptId, en.variationId);
-  const head = el('div', { class: 'row' }, el('span', { class: 'label' }, 'BODY'));
+  const head = el('div', { class: 'row' }, el('span', { class: 'label' }, 'SCRIPT'));
 
   if (canEdit) {
     head.appendChild(el('div', { class: 'seg mini' }, [['text', 'Text'], ['link', 'Link'], ['concept', 'From concept']].map(([k, l]) =>
@@ -1370,7 +1374,7 @@ async function addScript() {
   const existing = state.db.scripts.filter(s => s.date === state.date);
   const s = {
     id: uid('s'), date: state.date, order: existing.length, title: 'Script ' + (existing.length + 1),
-    type: 'Product', concept: '', hook: '', body: '', notes: '', referenceVideo: '',
+    type: 'Product', concept: '', body: '', notes: '', referenceVideo: '',
     frames: [], createdBy: state.user.name, createdAt: Date.now(),
   };
   save('scripts', s);
@@ -1538,8 +1542,9 @@ function detailsBlock(s, canEdit) {
             () => el('span', { class: 'ro-text' }, (s.concept || '').trim() || '—'))
         : el('span', { class: 'ro-text' }, (s.concept || '').trim() || '—'))));
 
-  card.appendChild(textBlock(s, 'hook', 'HOOK', 'The hook / opening line…', canEdit, true));
-  card.appendChild(textBlock(s, 'body', 'BODY', 'The body / script…', canEdit, true));
+  // one script box (stored as the body); an older script keeps its hook visible
+  if ((s.hook || '').trim()) card.appendChild(textBlock(s, 'hook', 'HOOK (OLDER SCRIPT)', 'The hook / opening line…', canEdit, true));
+  card.appendChild(textBlock(s, 'body', 'SCRIPT', 'The whole script…', canEdit, true));
 
   const refHead = el('div', { class: 'row' }, el('span', { class: 'label' }, 'REFERENCE VIDEO'), el('span', { class: 'hint' }, 'the video the frames are based on'));
   let refBody;
