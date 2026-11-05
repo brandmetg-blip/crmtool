@@ -60,15 +60,15 @@ export function videosOn(account, type, date, entries) {
 // ---------------------------------------------------------------------------
 // the new-page rule
 // ---------------------------------------------------------------------------
-// A page created under this rule (it carries `ramp: true`) makes its first
-// growth videos, one a day, and then only CTA videos. Pages from before the
-// rule have no flag, so nothing changes for them.
+// Off unless switched on in Settings. While it is on, a page created under it
+// (it carries `ramp: true`) makes its first growth videos, one a day, and then
+// only CTA videos. Pages made before it have no flag, so nothing changes for them.
 //
 // The count is read off the page's videos rather than stored, so deleting a
 // video can never leave the number wrong.
 export function rampPhase(a) {
   const need = Math.max(0, Math.round(+getPref('rampCount') || 0));
-  if (!a || !a.ramp || !need) return null;
+  if (!getPref('rampOn') || !a || !a.ramp || !need) return null;
   const have = (state.db.dailyEntries || [])
     .filter(e => e.accountId === a.id && (e.type || 'Product') === 'Growth').length;
   return { have, need, growing: have < need };
@@ -98,6 +98,7 @@ export function syncRampStage(a) {
 
 // What a brand-new page starts with.
 export function rampSeed() {
+  if (!getPref('rampOn')) return { stageId: '' };
   return { ramp: true, stageId: byId(state.db.stages, getPref('rampGrowthStage')) ? getPref('rampGrowthStage') : '' };
 }
 

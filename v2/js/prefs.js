@@ -11,7 +11,8 @@ export const DEFAULTS = {
   sheetColumns: [],     // extra columns on the avatar sheet
   onboardingForm: null, // edited onboarding checklist; null = the built-in layout
   brands: null,         // the brand list once edited; null = the built-in five
-  rampCount: 5,         // growth videos a new page makes before it goes CTA only; 0 turns the rule off
+  rampOn: false,        // the new page rule only applies once it is switched on in Settings
+  rampCount: 5,         // growth videos a new page makes before it goes CTA only
   rampGrowthStage: '',  // the stage a new page starts in
   rampCtaStage: '',     // the stage it moves to once it has its growth videos
 };
