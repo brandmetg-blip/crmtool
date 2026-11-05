@@ -92,7 +92,8 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 30px; }
 
 /* ---- brands ---- */
-.brands { display: grid; grid-template-columns: repeat(5, 1fr); padding: 0; }
+.brands { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0; }
+.brands > *:nth-child(3n) { border-right: 0; }
 .brands > * { min-height: 124px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-decoration: none; }
 .brands > *:last-child { border-right: 0; }
 .brands .logo { width: auto; transition: transform .35s var(--ease); }
@@ -101,6 +102,7 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .brands .choice { height: 46px; }
 .brands .jiyu { height: 40px; }
 .brands .pura { height: 58px; }
+.brands .rosa { height: 42px; }
 .brands .logo { max-width: 100%; object-fit: contain; }
 .brands .you { color: var(--green-deep); font-weight: 600; transition: background-color .2s; }
 .brands .you:hover { background: var(--paper-2); }
@@ -180,6 +182,14 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .case-card img.jiyu { height: 40px; }
 .case-card img.pura { height: 66px; }
 #c3::before { display: none; }
+.case-card img.rosa { height: 44px; }
+#c4 { background: radial-gradient(46% 90% at 76% 46%, rgba(226,48,140,.55), transparent 72%), radial-gradient(40% 80% at 96% 90%, rgba(52,224,138,.4), transparent 75%), #0A2A1C; }
+#c4::before, #c4::after { display: none; }
+.case-card img.bottles { inset: auto; left: auto; right: 6%; top: 50%; width: auto; height: 122%; object-fit: contain; transform: translateY(-50%); filter: drop-shadow(0 24px 28px rgba(0,0,0,.45)); animation: bob 7s ease-in-out infinite; }
+.case-card:hover img.bottles { transform: translateY(-50%); }
+@keyframes bob { 50% { transform: translateY(calc(-50% - 10px)); } }
+#c4 .metrics { grid-template-columns: 1fr 1fr; max-width: 54%; }
+#c4 .metrics p { grid-column: 1 / -1; }
 .case-card::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: 150px; background: linear-gradient(rgba(5,16,11,.6), transparent); }
 .case-card .about { position: absolute; z-index: 1; top: 16px; right: 16px; background: #fff; color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: .875rem; font-weight: 600; }
 .metrics { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 24px; padding: 24px; align-items: end; }
@@ -279,12 +289,13 @@ footer { border-top: 1px solid var(--night-line); }
   .case-card { aspect-ratio: 4 / 3.4; }
   .metrics { grid-template-columns: 1fr 1fr; }
   .metrics p { grid-column: 1 / -1; }
+  .case-card img.bottles { height: 92%; top: 42%; right: 3%; }
 }
 @media (max-width: 600px) {
   .frame { border-inline: 0; }
   .brands { grid-template-columns: 1fr 1fr; }
+  .brands > * { border-right: 1px solid var(--line); }
   .brands > *:nth-child(2n) { border-right: 0; }
-  .brands > .you { grid-column: 1 / -1; }
   .brands > * { min-height: 76px; border-right: 0; }
   .promise, .stats { grid-template-columns: 1fr; }
   .vids { grid-template-columns: repeat(2, 1fr); }
@@ -294,6 +305,11 @@ footer { border-top: 1px solid var(--night-line); }
   .case-card { aspect-ratio: auto; min-height: 480px; }
   .case-card img.serene { height: 58px; }
   .case-card img.choice { height: 36px; }
+  .case-card img.rosa { height: 30px; }
+  #c4 { min-height: 600px; background: radial-gradient(90% 44% at 50% 32%, rgba(226,48,140,.55), transparent 72%), #0A2A1C; }
+  #c4 .metrics { max-width: none; }
+  .case-card img.bottles { height: 300px; top: 60px; right: auto; left: 50%; transform: translateX(-50%); animation: none; }
+  .case-card:hover img.bottles { transform: translateX(-50%); }
   .case-card::after { background: linear-gradient(transparent 22%, rgba(5,16,11,.95) 62%); }
   .pill { font-size: .8125rem; white-space: nowrap; }
 }
@@ -349,7 +365,8 @@ footer { border-top: 1px solid var(--night-line); }
     <div class="rv" style="--d:1"><img class="logo choice" src="assets/logo-physicians-choice-ink.png" width="162" height="56" alt="Physician’s Choice"></div>
     <div class="rv" style="--d:2"><img class="logo jiyu" src="assets/logo-jiyu-ink.svg" width="738" height="268" alt="JIYU"></div>
     <div class="rv" style="--d:3"><img class="logo pura" src="assets/logo-pura-vida-ink.png" width="489" height="192" alt="Pura Vida"></div>
-    <a class="you rv" style="--d:4" href="#apply"><span>Your brand next <span class="arrow" aria-hidden="true">↗</span></span></a>
+    <div class="rv" style="--d:4"><img class="logo rosa" src="assets/logo-rosabella-ink.png" width="1121" height="276" alt="Rosabella"></div>
+    <a class="you rv" style="--d:5" href="#apply"><span>Your brand next <span class="arrow" aria-hidden="true">↗</span></span></a>
   </div>
 </section>
 
@@ -513,6 +530,19 @@ footer { border-top: 1px solid var(--night-line); }
           <div><b>100%</b><span>Organic traffic</span></div>
           <div><b>$0</b><span>Ad spend</span></div>
           <p>We drive organic traffic to Pura Vida through content and distribution, with no paid media behind it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="case rv" style="--d:5">
+      <h3><button type="button" aria-expanded="false" aria-controls="c4">How Rosabella grows with 100% organic traffic and $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
+      <div class="case-card" id="c4" hidden>
+        <img class="bottles" src="assets/case-rosabella.webp" width="765" height="788" loading="lazy" alt="Rosabella Beetroot, Moringa, Moringa Gummies and Fast Hydration supplements">
+        <img class="case-logo rosa" src="assets/logo-rosabella-white.png" width="1121" height="276" loading="lazy" alt="Rosabella">
+        <div class="metrics">
+          <div><b>100%</b><span>Organic traffic</span></div>
+          <div><b>$0</b><span>Ad spend</span></div>
+          <p>We drive organic traffic to Rosabella through content and distribution, with no paid media behind it.</p>
         </div>
       </div>
     </div>
