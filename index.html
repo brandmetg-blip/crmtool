@@ -169,12 +169,12 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 @keyframes open { from { opacity: 0; transform: translateY(12px); } }
 .case-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1.4s var(--ease); }
 .case-card:hover img { transform: scale(1.03); }
-.case-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(5,16,11,.05) 15%, rgba(5,16,11,.93) 82%); }
+.case-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 44%, rgba(5,16,11,.94) 84%); }
 .case-card img.case-logo { position: absolute; z-index: 1; inset: auto auto auto auto; left: 24px; top: 20px; width: auto; object-fit: contain; }
 .case-card:hover img.case-logo { transform: none; }
 .case-card img.serene { height: 74px; }
 .case-card img.choice { height: 44px; }
-.case-card::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: 170px; background: linear-gradient(rgba(5,16,11,.92) 35%, transparent); }
+.case-card::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: 150px; background: linear-gradient(rgba(5,16,11,.6), transparent); }
 .case-card .about { position: absolute; z-index: 1; top: 16px; right: 16px; background: #fff; color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: .875rem; font-weight: 600; }
 .metrics { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 24px; padding: 24px; align-items: end; }
 .metrics b { display: block; font-size: clamp(1.5rem, 1rem + 1.8vw, 2.25rem); font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: var(--green); }
@@ -284,7 +284,9 @@ footer { border-top: 1px solid var(--night-line); }
   form { grid-template-columns: 1fr; }
   .hero-cta .btn { flex: 1 1 100%; }
   .case-card { aspect-ratio: auto; min-height: 480px; }
-  .case-card::after { background: linear-gradient(rgba(5,16,11,.05) 5%, rgba(5,16,11,.95) 52%); }
+  .case-card img.serene { height: 58px; }
+  .case-card img.choice { height: 36px; }
+  .case-card::after { background: linear-gradient(transparent 22%, rgba(5,16,11,.95) 62%); }
   .pill { font-size: .8125rem; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -454,7 +456,7 @@ footer { border-top: 1px solid var(--night-line); }
     <div class="case rv" style="--d:1">
       <h3><button type="button" aria-expanded="true" aria-controls="c0">How Serene Herbs added six figures in revenue with $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
       <div class="case-card" id="c0">
-        <img src="assets/medicinal-plants-1.jpg" width="1400" height="1894" loading="lazy" alt="Vintage botanical plate of medicinal plants" style="object-position:50% 38%">
+        <img class="photo" src="assets/case-serene-herbs.webp" width="2000" height="1185" loading="lazy" alt="Serene Herbs Soursop Bitters, digestive drops and a wellness shot cup on a wooden table" style="object-position:82% 62%">
         <img class="case-logo serene" src="assets/logo-serene-herbs-white.png" width="757" height="429" loading="lazy" alt="Serene Herbs">
         <span class="about">Nutra</span>
         <div class="metrics">
@@ -468,7 +470,7 @@ footer { border-top: 1px solid var(--night-line); }
     <div class="case rv" style="--d:2">
       <h3><button type="button" aria-expanded="false" aria-controls="c1">How Physician’s Choice gets consistent daily sales from 100% organic traffic<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
       <div class="case-card" id="c1" hidden>
-        <img src="assets/phone-in-hand.jpg" width="1600" height="1068" loading="lazy" alt="A hand holding up a phone" style="object-position:50% 40%;filter:grayscale(1)">
+        <img class="photo" src="assets/case-physicians-choice.webp" width="2000" height="848" loading="lazy" alt="A Physician’s Choice probiotic capsule being poured from the bottle into a hand" style="object-position:60% 40%">
         <img class="case-logo choice" src="assets/logo-physicians-choice-white.png" width="162" height="56" loading="lazy" alt="Physician’s Choice">
         <span class="about">Nutra</span>
         <div class="metrics">
