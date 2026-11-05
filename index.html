@@ -92,7 +92,7 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 30px; }
 
 /* ---- brands ---- */
-.brands { display: grid; grid-template-columns: repeat(4, 1fr); padding: 0; }
+.brands { display: grid; grid-template-columns: repeat(5, 1fr); padding: 0; }
 .brands > * { min-height: 124px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-decoration: none; }
 .brands > *:last-child { border-right: 0; }
 .brands .logo { width: auto; transition: transform .35s var(--ease); }
@@ -100,6 +100,8 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .brands .serene { height: 72px; }
 .brands .choice { height: 46px; }
 .brands .jiyu { height: 40px; }
+.brands .pura { height: 58px; }
+.brands .logo { max-width: 100%; object-fit: contain; }
 .brands .you { color: var(--green-deep); font-weight: 600; transition: background-color .2s; }
 .brands .you:hover { background: var(--paper-2); }
 .brands-note { padding-block: clamp(40px, 5vw, 64px) 28px; text-align: center; border-bottom: 1px solid var(--line); }
@@ -176,7 +178,8 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .case-card img.serene { height: 74px; }
 .case-card img.choice { height: 44px; }
 .case-card img.jiyu { height: 40px; }
-#c2::before { display: none; }
+.case-card img.pura { height: 66px; }
+#c3::before { display: none; }
 .case-card::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: 150px; background: linear-gradient(rgba(5,16,11,.6), transparent); }
 .case-card .about { position: absolute; z-index: 1; top: 16px; right: 16px; background: #fff; color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: .875rem; font-weight: 600; }
 .metrics { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 24px; padding: 24px; align-items: end; }
@@ -281,6 +284,7 @@ footer { border-top: 1px solid var(--night-line); }
   .frame { border-inline: 0; }
   .brands { grid-template-columns: 1fr 1fr; }
   .brands > *:nth-child(2n) { border-right: 0; }
+  .brands > .you { grid-column: 1 / -1; }
   .brands > * { min-height: 76px; border-right: 0; }
   .promise, .stats { grid-template-columns: 1fr; }
   .vids { grid-template-columns: repeat(2, 1fr); }
@@ -344,7 +348,8 @@ footer { border-top: 1px solid var(--night-line); }
     <div class="rv"><img class="logo serene" src="assets/logo-serene-herbs-ink.png" width="757" height="429" alt="Serene Herbs"></div>
     <div class="rv" style="--d:1"><img class="logo choice" src="assets/logo-physicians-choice-ink.png" width="162" height="56" alt="Physician’s Choice"></div>
     <div class="rv" style="--d:2"><img class="logo jiyu" src="assets/logo-jiyu-ink.svg" width="738" height="268" alt="JIYU"></div>
-    <a class="you rv" style="--d:3" href="#apply"><span>Your brand next <span class="arrow" aria-hidden="true">↗</span></span></a>
+    <div class="rv" style="--d:3"><img class="logo pura" src="assets/logo-pura-vida-ink.png" width="489" height="192" alt="Pura Vida"></div>
+    <a class="you rv" style="--d:4" href="#apply"><span>Your brand next <span class="arrow" aria-hidden="true">↗</span></span></a>
   </div>
 </section>
 
@@ -490,11 +495,24 @@ footer { border-top: 1px solid var(--night-line); }
       <h3><button type="button" aria-expanded="false" aria-controls="c2">How JIYU runs on 100% organic traffic with $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
       <div class="case-card" id="c2" hidden>
         <img class="photo" src="assets/case-jiyu.webp" width="1800" height="1005" loading="lazy" alt="Three JIYU jars on a round stand against a pink and yellow backdrop" style="object-position:70% 62%">
-        <img class="case-logo jiyu" src="assets/logo-jiyu-ink.svg" width="738" height="268" loading="lazy" alt="JIYU">
+        <img class="case-logo jiyu" src="assets/logo-jiyu-white.svg" width="738" height="268" loading="lazy" alt="JIYU">
         <div class="metrics">
           <div><b>100%</b><span>Organic traffic</span></div>
           <div><b>$0</b><span>Ad spend</span></div>
           <p>We drive organic traffic to JIYU through content and distribution, with no paid media behind it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="case rv" style="--d:4">
+      <h3><button type="button" aria-expanded="false" aria-controls="c3">How Pura Vida grows with 100% organic traffic and $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
+      <div class="case-card" id="c3" hidden>
+        <img class="photo" src="assets/case-pura-vida.webp" width="800" height="582" loading="lazy" alt="A hand reaching for Pura Vida organic moringa powder, capsules and liquid extract" style="object-position:50% 58%">
+        <img class="case-logo pura" src="assets/logo-pura-vida-color.png" width="489" height="192" loading="lazy" alt="Pura Vida">
+        <div class="metrics">
+          <div><b>100%</b><span>Organic traffic</span></div>
+          <div><b>$0</b><span>Ad spend</span></div>
+          <p>We drive organic traffic to Pura Vida through content and distribution, with no paid media behind it.</p>
         </div>
       </div>
     </div>
