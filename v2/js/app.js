@@ -7,7 +7,8 @@
 
 import { createStore } from './store.js';
 import { presence } from './presence.js';
-import { state, onChange, emit, forceEmit, uid, roleLabel, tabsFor, can, todayStr, isPaused } from './state.js';
+import { state, onChange, emit, forceEmit, uid, roleLabel, tabsFor, can, todayStr, isPaused, byId } from './state.js';
+import { syncRampStage } from './stages.js';
 import { el, avatar } from './ui.js';
 import { renderLogin } from './views/login.js';
 import { renderBuilder } from './views/builder.js';
@@ -27,13 +28,21 @@ export function save(table, item) {
   const i = list.findIndex(x => x.id === item.id);
   if (i >= 0) list[i] = item; else list.push(item);
   store.upsert(table, item);
+  if (table === 'dailyEntries') rampCheck(item.accountId);
+}
+// a video was added, changed or deleted: the page may have crossed the new-page line
+function rampCheck(accountId) {
+  const a = byId(state.db.accounts, accountId);
+  if (a && syncRampStage(a)) save('accounts', a);
 }
 export function saveQuiet(table, item) { // same, but no re-render (text typing)
   save(table, item);
 }
 export function removeItem(table, id) {
+  const gone = table === 'dailyEntries' ? byId(state.db[table], id) : null;
   state.db[table] = state.db[table].filter(x => x.id !== id);
   store.remove(table, id);
+  if (gone) rampCheck(gone.accountId);
 }
 export function mutate(table, id, fn) { // load→change→save→re-render
   const item = state.db[table].find(x => x.id === id); if (!item) return;

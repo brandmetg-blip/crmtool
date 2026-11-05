@@ -11,7 +11,7 @@ import {
   sortedConcepts, conceptsForAccount, discoverLegacyConcepts, productOf,
   bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
-import { sortedStages, stageOf, stageColor, VIDEO_TYPES } from '../stages.js';
+import { sortedStages, stageOf, stageColor, VIDEO_TYPES, rampPhase, rampSeed } from '../stages.js';
 import {
   captionFor, captionOverride, hasOwnCaption, setCaption, clearCaption,
   captionsNeeded, legacyCaption, captionTemplate, hasPlaceholder,
@@ -467,12 +467,15 @@ export function lifecycleChip(a) {
 // lifecycle chip sits beside it.
 export function stageOnlyChip(a) {
   const s = stageOf(a);
-  if (!s) return el('span', { class: 'chip gray' }, 'No stage');
+  // a new page still making its first growth videos shows how far along it is
+  const r = rampPhase(a);
+  const progress = r && r.growing ? ' · ' + r.have + '/' + r.need : '';
+  if (!s) return el('span', { class: 'chip gray' }, 'No stage' + progress);
   const c = stageColor(s);
   return el('span', {
     class: 'chip', title: (s.goal || '').trim() || s.name,
     style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
-  }, s.name);
+  }, s.name + progress);
 }
 
 // The stage a page is at, in the stage's own colour. Where a page is not
@@ -547,10 +550,10 @@ export function openAccount(existing, seed) {
       productId: '',
       platforms: { facebook: '', instagram: '' },
       facebookProfileId: '', instagramProfileId: '',
-      stageId: '', quality: '', targeting: '', targetingNote: '',
+      quality: '', targeting: '', targetingNote: '',
       replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
       metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '', bodyLinks: [],
-      linktwin: {}, captions: {}, notes: '', createdAt: Date.now(),
+      linktwin: {}, captions: {}, notes: '', createdAt: Date.now(), ...rampSeed(),
     };
   if (seed) Object.assign(a, seed);
   if (!a.platforms) a.platforms = { facebook: '', instagram: '' };

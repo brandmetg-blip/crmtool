@@ -12,6 +12,9 @@ export const DEFAULTS = {
   reviewAfterDays: 30,  // runway before a page with no winners is worth a decision
   sheetColumns: [],     // extra columns on the avatar sheet
   onboardingForm: null, // edited onboarding checklist; null = the built-in layout
+  rampCount: 5,         // growth videos a new page makes before it goes CTA only; 0 turns the rule off
+  rampGrowthStage: '',  // the stage a new page starts in
+  rampCtaStage: '',     // the stage it moves to once it has its growth videos
 };
 
 export function prefs() {

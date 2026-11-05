@@ -26,6 +26,7 @@ export function renderSettings(root, u) {
 
   root.appendChild(rosterSection());
   root.appendChild(sheetSection());
+  root.appendChild(rampSection());
   root.appendChild(stagesSection());
 }
 
@@ -75,6 +76,47 @@ function rosterSection() {
     el('div', { class: 'row wrap', style: 'gap:20px' },
       num('rosterTarget', 'PAGES YOU RUN', 'Live and setting up together are measured against this.', 1, 100),
       num('reviewAfterDays', 'REVIEW AFTER (DAYS)', 'A live page with no winning video by then comes up for review.', 3, 365)));
+}
+
+// New pages make their growth videos first, then go CTA only. Pages that existed
+// before this rule are not affected.
+function rampSection() {
+  const need = getPref('rampCount');
+  const stagePick = (key, label, hint) => el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
+    el('span', { class: 'label' }, label),
+    (() => {
+      const sel = el('select', {
+        class: 'input', style: 'height:34px',
+        onchange: async e => { await setPref(key, e.target.value); forceEmit(); }
+      }, [el('option', { value: '' }, 'Not set')].concat(sortedStages().map(s => el('option', { value: s.id }, s.name || 'Untitled'))));
+      sel.value = getPref(key) || '';
+      return sel;
+    })(),
+    el('span', { class: 'hint' }, hint));
+
+  return el('div', { class: 'card col', style: 'gap:12px;margin-bottom:22px' },
+    el('div', null,
+      el('b', { style: 'font-size:14px' }, 'New page rule'),
+      el('div', { class: 'hint' },
+        need
+          ? 'A new page gets ' + need + ' growth videos first, at most one a day, and then only CTA videos. Mass add skips any page the video does not belong on. Pages made before this rule are not affected.'
+          : 'Off. New pages can take any video from the start.')),
+    el('div', { class: 'row wrap', style: 'gap:20px;align-items:flex-start' },
+      el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
+        el('span', { class: 'label' }, 'GROWTH VIDEOS FIRST'),
+        el('input', {
+          class: 'input', type: 'number', min: '0', max: '100', value: String(need),
+          style: 'width:110px;height:34px;font-size:15px;font-weight:800;text-align:center',
+          onchange: async e => {
+            const v = Math.max(0, Math.min(100, Math.round(+e.target.value || 0)));
+            e.target.value = String(v);
+            await setPref('rampCount', v);
+            forceEmit();
+          }
+        }),
+        el('span', { class: 'hint' }, '0 turns the rule off.')),
+      stagePick('rampGrowthStage', 'STARTS IN STAGE', 'Where a new page begins.'),
+      stagePick('rampCtaStage', 'MOVES TO STAGE', 'Where it goes after its growth videos.')));
 }
 
 // ---------------------------------------------------------------------------

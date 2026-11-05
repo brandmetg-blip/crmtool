@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
-import { liveAccounts, stageGoal, videosOn } from '../stages.js';
+import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -563,7 +563,8 @@ async function addEntry(a) {
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
-    type: 'Product',
+    // a page still making its first growth videos starts on growth
+    type: (rampPhase(a) || {}).growing ? 'Growth' : 'Product',
     prod: 'Assembly', assignedEditorId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
@@ -593,9 +594,11 @@ function openMassAdd(u) {
 
   const editors = assignableMembers(state.db);
 
-  // Who this batch can go to: every page that is running and whose product
-  // takes the chosen concept.
+  // Who this batch can go to: every page that is running, whose product takes
+  // the chosen concept, and that the new-page rule allows this type on.
+  const blocked = a => rampBlock(a, draft.type, draft.date);
   const eligible = a => {
+    if (blocked(a)) return false;
     if ((a.status || 'Active') === 'Paused') return false;
     if (draft.bodyKind === 'concept' && draft.conceptId && !accountAcceptsConcept(a, draft.conceptId)) return false;
     return true;
@@ -661,6 +664,9 @@ function openMassAdd(u) {
           class: draft.type === t ? 'on' : '',
           onclick: () => {
             draft.type = t;
+            // the new-page rule depends on the type, so the selection does too
+            reselect();
+            autoRemoved = 0;
             repaintSegs(); refresh();
           }
         }, t);
@@ -761,7 +767,9 @@ function openMassAdd(u) {
       }
     }
 
+    const ruled = accounts.filter(blocked).length;
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
+      + (ruled ? ' · ' + ruled + ' skipped by the new-page rule' : '')
       + (autoRemoved ? ' · ' + autoRemoved + ' dropped — their product does not use this concept' : '');
 
     // each product heading shows all / some / none of its avatars selected
@@ -793,6 +801,9 @@ function openMassAdd(u) {
       c.textContent = on ? '✓' : '';
       // how many of this type the page already has that day — information only
       const acct = accounts.find(a => a.id === id);
+      const rule = acct ? blocked(acct) : '';
+      row.classList.toggle('blocked', !!rule);
+      row.querySelector('.rule').textContent = rule;
       const tag = row.querySelector('.quota-tag');
       const n = acct ? videosOn(acct, draft.type, draft.date) : 0;
       tag.textContent = n ? n + ' ' + draft.type.toLowerCase() + ' already' : '';
@@ -867,14 +878,14 @@ function openMassAdd(u) {
   // and the per-row product chip goes too, since the heading above says it.
   byProduct(accounts).forEach(g => {
     const c = g.product ? productColor(g.product) : 'var(--dim)';
-    const ids = g.accounts.map(a => a.id);
 
     const head = el('div', {
       class: 'pick-group', 'data-group': (g.product ? g.product.id : '__none'),
       style: 'border-left:3px solid ' + c,
       onclick: () => {
         const ok = g.accounts.filter(eligible).map(a => a.id);
-        const pool = ok.length ? ok : ids;
+        const pool = ok.length ? ok : g.accounts.filter(a => !blocked(a)).map(a => a.id);
+        if (!pool.length) return;
         const allOn = pool.every(id => picked.has(id));
         pool.forEach(id => allOn ? picked.delete(id) : picked.add(id));
         refresh();
@@ -890,7 +901,7 @@ function openMassAdd(u) {
       const paused = (a.status || 'Active') === 'Paused';
       pickWrap.appendChild(el('div', {
         class: 'pick-row', 'data-acct': a.id,
-        onclick: () => { picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
+        onclick: () => { if (blocked(a)) return; picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
       },
         el('span', { class: 'check' }),
         avatar(a, 26),
@@ -900,6 +911,7 @@ function openMassAdd(u) {
         el('span', { class: 'spacer' }),
         paused && el('span', { class: 'chip gray' }, 'Paused'),
         // both only flag exceptions — a badge on every healthy row is noise
+        el('span', { class: 'chip gray rule' }),
         el('span', { class: 'chip red offstage' }),
         el('span', { class: 'chip amber cover' }),
         el('span', { class: 'quota-tag' }),
@@ -913,7 +925,7 @@ function openMassAdd(u) {
 
   // ---- footer
   addBtn.onclick = async () => {
-    const chosen = accounts.filter(a => picked.has(a.id));
+    const chosen = accounts.filter(a => picked.has(a.id) && !blocked(a));
 
     // The deliberate confirmation: a video can go to a page whose product does
     // not use the concept, but only after being told exactly which pages.

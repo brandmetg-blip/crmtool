@@ -21,7 +21,7 @@
 
 import { state, forceEmit, uid, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { sortedStages, stageOf } from '../stages.js';
+import { sortedStages, stageOf, rampSeed } from '../stages.js';
 import { captionsReady, linktwinComplete } from '../captions.js';
 import {
   conceptsForAccount, bodyLinkFor, scriptLinkFor, setConceptLink, setConceptScript,
@@ -197,7 +197,7 @@ export async function startNewPage(seed) {
     id: uid('a'), name: '', status: 'Building', phase: 'P1',
     productId: '', platforms: { facebook: '', instagram: '' },
     facebookProfileId: '', instagramProfileId: '',
-    stageId: '', quality: '', targeting: '', targetingNote: '',
+    quality: '', targeting: '', targetingNote: '', ...rampSeed(),
     replacesId: '', wentLiveAt: null, droppedAt: null, dropReason: '',
     metaBusinessSuiteUrl: '', avatarUrl: '', coverUrl: '', baseImageLink: '',
     pageCreated: false, linkCreated: false, linkAdded: false, amazonAdded: false,

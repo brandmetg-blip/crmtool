@@ -609,3 +609,7 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .av-cover { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center; opacity: .14; pointer-events: none; }
 .av-cover::after { content: ''; position: absolute; inset: 0; background: linear-gradient(160deg, rgba(13,17,16,0.25) 0%, rgba(13,17,16,0.75) 60%, rgba(13,17,16,0.95) 100%); }
 .card.has-cover.click:hover .av-cover { opacity: .2; }
+
+/* a page the new-page rule keeps out of this batch */
+.pick-row.blocked { opacity: .5; cursor: not-allowed; }
+.chip.rule:empty, .pick-row .offstage:empty, .pick-row .cover:empty { display: none; }
