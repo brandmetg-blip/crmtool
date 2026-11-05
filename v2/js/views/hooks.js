@@ -144,7 +144,7 @@ function labelPicker(h, canEdit) {
       : el('span', { class: 'hint' }, 'Unlabelled hook');
   }
   if (!concepts.length) {
-    return el('span', { class: 'hint' }, 'No concepts yet — add them under Avatars → Concepts to label hooks.');
+    return el('span', { class: 'hint' }, 'No concepts yet — add them under Settings → Concepts to label hooks.');
   }
 
   const row = el('div', { class: 'row wrap', style: 'gap:7px' });

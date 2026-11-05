@@ -12,6 +12,7 @@ import {
   bodyRow, setConceptLink, setVariationLink, pruneBodyLinks,
 } from '../concepts.js';
 import { sortedStages, stageOf, stageColor, VIDEO_TYPES, rampPhase, rampSeed } from '../stages.js';
+import { brands, brandOf, productOptions } from '../brands.js';
 import {
   captionFor, captionOverride, hasOwnCaption, setCaption, clearCaption,
   captionsNeeded, legacyCaption, captionTemplate, hasPlaceholder,
@@ -123,7 +124,7 @@ export function captionFieldsInto(container, account, onMutate) {
         el('span', { class: 'hint', style: 'flex:1;min-width:150px' },
           pending
             ? 'Add the caption link above and this fills itself.'
-            : 'From the ' + (product ? product.name : 'product') + ' template — edit it under Products to change every page.'),
+            : 'From the ' + (product ? product.name : 'product') + ' template — edit it under Settings → Brands to change every page.'),
         el('button', {
           class: 'btn small',
           onclick: () => { onMutate(x => setCaption(x, t, resolved)); rebuild(); }
@@ -325,9 +326,6 @@ function head(canEdit, liveCount, buildingCount) {
   // spacer so the pill sits to their left either way
   import('../app.js').then(({ statusPill }) => wrap.insertBefore(statusPill(), spacer.nextSibling));
   if (canEdit) {
-    wrap.appendChild(el('button', { class: 'btn', onclick: openConcepts }, 'Concepts'));
-    wrap.appendChild(el('button', { class: 'btn', onclick: openProducts }, 'Products'));
-    wrap.appendChild(el('button', { class: 'btn', onclick: openProfiles }, 'Profiles'));
     // A new page starts in the pipeline, not here — this tab is the finished
     // ones. For anyone without the onboarding tab, the old direct-add stands.
     wrap.appendChild(can.seeOnboarding(state.user)
@@ -787,8 +785,8 @@ export function openAccount(existing, seed) {
     if (!concepts.length) {
       bodies.appendChild(el('div', { class: 'hint' },
         sortedConcepts().length
-          ? 'No concepts are accepted for this product — set them under Avatars → Products.'
-          : 'No concepts defined yet. Add them under Avatars → Concepts, then set this avatar’s folders for each.'));
+          ? 'No concepts are accepted for this product — set them under Settings → Brands.'
+          : 'No concepts defined yet. Add them under Settings → Concepts, then set this avatar’s folders for each.'));
       return;
     }
     // Name the avatar explicitly: these folders belong to this one avatar and
@@ -903,8 +901,8 @@ export function openAccount(existing, seed) {
 // ---------------------------------------------------------------------------
 // profiles
 // ---------------------------------------------------------------------------
-function openProfiles() {
-  const body = el('div', { class: 'modal-body' });
+export function profilesPanel() {
+  const body = el('div', { class: 'col catalog-cols' });
   body.appendChild(el('div', { class: 'hint' },
     'The identities your avatars post from. One Facebook profile usually creates many pages; an Instagram profile is one account.'));
 
@@ -932,7 +930,7 @@ function openProfiles() {
             const key = platform === 'facebook' ? 'facebookProfileId' : 'instagramProfileId';
             state.db.accounts.filter(a => a[key] === p.id).forEach(a => { a[key] = ''; save('accounts', a); });
             removeItem('profiles', p.id);
-            openProfiles();
+            forceEmit();
           }
         }, '✕')));
     });
@@ -944,25 +942,19 @@ function openProfiles() {
         if (!name || !name.trim()) return;
         const { save } = await import('../app.js');
         save('profiles', { id: uid('p'), name: name.trim(), platform, createdAt: Date.now() });
-        openProfiles();
+        forceEmit();
       }
-    }, '+ Add ' + platform + ' profile'));
+    }, '+ Add ' + (platform === 'facebook' ? 'Facebook' : 'Instagram') + ' profile'));
 
     body.appendChild(col);
   });
 
-  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
-    el('span', { class: 'spacer' }),
-    el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
-
-  state.modal = overlay('Profiles', body);
-  forceEmit();
+  return body;
 }
 
 // Products are a shared list, so several avatars promoting the same thing stay
 // in step and a rename updates everywhere. New ones can be created inline.
 function productSelect(current, onset) {
-  const list = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   const sel = el('select', {
     class: 'input',
     onchange: async e => {
@@ -980,7 +972,7 @@ function productSelect(current, onset) {
     }
   },
     [el('option', { value: '' }, 'No product')]
-      .concat(list.map(p => el('option', { value: p.id }, p.name)))
+      .concat(productOptions())
       .concat([el('option', { value: '__new' }, '+ New product…')]));
   sel.value = current || '';
   return sel;
@@ -989,8 +981,8 @@ function productSelect(current, onset) {
 // ---------------------------------------------------------------------------
 // concepts + their variations
 // ---------------------------------------------------------------------------
-function openConcepts() {
-  const body = el('div', { class: 'modal-body' });
+export function conceptsPanel() {
+  const body = el('div', { class: 'col', style: 'gap:15px' });
   body.appendChild(el('div', { class: 'hint' },
     'Concepts are defined once here and picked everywhere else. Variations are the different angles you target — they live inside a concept, so a new angle never means a new concept.'));
 
@@ -1008,7 +1000,7 @@ function openConcepts() {
   }
 
   const list = sortedConcepts();
-  const col = el('div', { class: 'col', style: 'gap:9px' });
+  const col = el('div', { class: 'catalog-grid' });
 
   list.forEach(c => {
     const used = state.db.accounts.filter(a => (a.bodyLinks || []).some(r => r.conceptId === c.id)).length;
@@ -1039,7 +1031,7 @@ function openConcepts() {
               save('products', p);
             });
             removeItem('concepts', c.id);
-            openConcepts();
+            forceEmit();
           }
         }, '✕')));
 
@@ -1060,7 +1052,7 @@ function openConcepts() {
           class: 'iconbtn danger', title: 'Remove variation', onclick: async () => {
             const { mutate } = await import('../app.js');
             mutate('concepts', c.id, x => { x.variations = (x.variations || []).filter(y => y.id !== v.id); });
-            openConcepts();
+            forceEmit();
           }
         }, '✕')));
     });
@@ -1072,7 +1064,7 @@ function openConcepts() {
           if (!Array.isArray(x.variations)) x.variations = [];
           x.variations.push({ id: uid('cv'), label: '', note: '' });
         });
-        openConcepts();
+        forceEmit();
       }
     }, '+ Add variation'));
 
@@ -1087,17 +1079,12 @@ function openConcepts() {
       if (!name || !name.trim()) return;
       const { save } = await import('../app.js');
       save('concepts', { id: uid('c'), name: name.trim(), variations: [], createdAt: Date.now() });
-      openConcepts();
+      forceEmit();
     }
   }, '+ Add concept'));
 
   body.appendChild(col);
-  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
-    el('span', { class: 'spacer' }),
-    el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
-
-  state.modal = overlay('Concepts', body);
-  forceEmit();
+  return body;
 }
 
 // Turn the free-text names into real concepts and repoint everything at them.
@@ -1129,42 +1116,15 @@ async function runImport(legacy) {
     if (c) { e.conceptId = c.id; save('dailyEntries', e); }
   });
 
-  openConcepts();
+  forceEmit();
 }
 
-function openProducts() {
-  const body = el('div', { class: 'modal-body' });
-  body.appendChild(el('div', { class: 'hint' },
-    'What your avatars promote. A product carries its picture, its colour and the concepts it takes — ' +
-    'change it here and every avatar on it follows.'));
-
-  const list = state.db.products.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const col = el('div', { class: 'col', style: 'gap:10px' });
-  const concepts = sortedConcepts();
-
-  list.forEach(p => col.appendChild(productCard(p, concepts)));
-
-  if (!list.length) {
-    col.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:26px;font-size:12px' },
-      'No products yet. Add the first one below.'));
-  }
-
-  col.appendChild(el('button', {
-    class: 'add-row', onclick: async () => {
-      const name = prompt('Name of the new product:');
-      if (!name || !name.trim()) return;
-      const { save } = await import('../app.js');
-      save('products', { id: uid('pr'), name: name.trim(), createdAt: Date.now() });
-      openProducts();
-    }
-  }, '+  Add product'));
-
-  body.appendChild(col);
-  body.appendChild(el('div', { class: 'row', style: 'padding-top:4px' },
-    el('span', { class: 'spacer' }),
-    el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
-
-  state.modal = overlay('Products', body, { wide: true });
+export function openProductEditor(p) {
+  const body = el('div', { class: 'modal-body' }, productCard(p, sortedConcepts()),
+    el('div', { class: 'row', style: 'padding-top:4px' },
+      el('span', { class: 'spacer' }),
+      el('button', { class: 'btn primary', onclick: closeModal }, 'Done')));
+  state.modal = overlay(p.name || 'Product', body, { wide: true });
   forceEmit();
 }
 
@@ -1235,7 +1195,7 @@ function productCard(p, concepts) {
   const paintConcepts = () => {
     boxes.innerHTML = '';
     if (!concepts.length) {
-      boxes.appendChild(el('span', { class: 'hint' }, 'No concepts defined yet — add them under Avatars → Concepts.'));
+      boxes.appendChild(el('span', { class: 'hint' }, 'No concepts defined yet — add them under Settings → Concepts.'));
       summary.textContent = '';
       return;
     }
@@ -1296,9 +1256,19 @@ function productCard(p, concepts) {
         const { removeItem, save } = await import('../app.js');
         state.db.accounts.filter(a => a.productId === p.id).forEach(a => { a.productId = ''; save('accounts', a); });
         removeItem('products', p.id);
-        openProducts();
+        closeModal();
       }
     }, '✕')));
+
+  const brandSel = el('select', {
+    class: 'input', style: 'height:32px', onchange: async e => {
+      const { mutate } = await import('../app.js');
+      mutate('products', p.id, x => x.brandId = e.target.value);
+    }
+  }, [el('option', { value: '' }, 'No brand')].concat(brands().map(b => el('option', { value: b.id }, b.name))));
+  brandSel.value = (brandOf(p) || {}).id || '';
+  card.appendChild(el('div', { class: 'prod-sec' },
+    el('span', { class: 'label' }, 'BRAND'), brandSel));
 
   card.appendChild(el('div', { class: 'prod-sec' },
     el('span', { class: 'label' }, 'COLOUR'), swatches));
@@ -1389,11 +1359,12 @@ function select(pairs, current, onset) {
 }
 
 export function overlay(title, body, opts) {
+  const size = opts && opts.xl ? ' xl' : (opts && opts.wide ? ' wide' : '');
   const ov = el('div', {
     class: 'overlay',
     onclick: e => { if (e.target === ov) closeModal(); }
   },
-    el('div', { class: 'modal' + (opts && opts.wide ? ' wide' : '') },
+    el('div', { class: 'modal' + size },
       el('div', { class: 'modal-head' }, title,
         el('button', { class: 'iconbtn', onclick: closeModal }, '✕')),
       body));

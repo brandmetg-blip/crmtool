@@ -1,8 +1,7 @@
 // settings.js — the rules of the workspace, in one place.
 //
-// Admin only. Right now it holds the stages a page moves through and what to
-// do at each; it is laid out to take more settings later without turning into
-// a wall.
+// Brands, concepts and profiles are what the rest of the tool picks from. The
+// workspace tab holds the rules, and stays admin only.
 
 import { state, forceEmit, uid, can } from '../state.js';
 import { el } from '../ui.js';
@@ -10,24 +9,37 @@ import { sortedStages, stageColor } from '../stages.js';
 import { getPref, setPref } from '../prefs.js';
 import { PRODUCT_COLORS } from './accounts.js';
 import { openColumns } from './sheet.js';
+import { conceptsPanel, profilesPanel } from './accounts.js';
+import { brandsPanel } from './brandsettings.js';
 
 export function renderSettings(root, u) {
-  if (!can.manageSettings(u)) {
+  if (!can.manageSettings(u) && !can.editAccounts(u)) {
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
       'Only an admin can change settings.'));
     return;
   }
 
   const head = el('div', { class: 'page-head' },
-    el('div', null, el('h1', null, 'Settings'), el('div', { class: 'sub' }, 'How the workspace behaves')),
+    el('div', null, el('h1', null, 'Settings'), el('div', { class: 'sub' }, 'Brands, concepts, profiles and workspace rules')),
     el('span', { class: 'spacer' }));
   import('../app.js').then(({ statusPill }) => head.appendChild(statusPill()));
   root.appendChild(head);
 
-  root.appendChild(rosterSection());
-  root.appendChild(sheetSection());
-  root.appendChild(rampSection());
-  root.appendChild(stagesSection());
+  const tabs = [['brands', 'Brands'], ['concepts', 'Concepts'], ['profiles', 'Profiles']];
+  if (can.manageSettings(u)) tabs.push(['workspace', 'Workspace']);
+  const tab = tabs.some(t => t[0] === state.settingsTab) ? state.settingsTab : 'brands';
+  root.appendChild(el('div', { class: 'seg settings-tabs' }, tabs.map(([k, label]) =>
+    el('button', { class: tab === k ? 'on' : '', onclick: () => { state.settingsTab = k; state.settingsBrand = null; forceEmit(); } }, label))));
+
+  if (tab === 'brands') root.appendChild(brandsPanel());
+  else if (tab === 'concepts') root.appendChild(conceptsPanel());
+  else if (tab === 'profiles') root.appendChild(profilesPanel());
+  else {
+    root.appendChild(rosterSection());
+    root.appendChild(sheetSection());
+    root.appendChild(rampSection());
+    root.appendChild(stagesSection());
+  }
 }
 
 // Extra columns on the avatar sheet, for anything the built-in ones miss.

@@ -85,7 +85,7 @@ export function renderSheet(root, accounts, canEdit) {
   root.appendChild(el('div', { class: 'hint', style: 'margin-top:10px' },
     concepts.length
       ? 'One column per concept, showing this avatar’s body script for it. Filled in here or on the avatar — it is the same field.'
-      : 'Add concepts under Avatars → Concepts and each one gets a column here.'));
+      : 'Add concepts under Settings → Concepts and each one gets a column here.'));
 }
 
 // ---------------------------------------------------------------------------

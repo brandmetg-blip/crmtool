@@ -613,3 +613,72 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 /* a page the new-page rule keeps out of this batch */
 .pick-row.blocked { opacity: .5; cursor: not-allowed; }
 .chip.rule:empty, .pick-row .offstage:empty, .pick-row .cover:empty { display: none; }
+
+/* ---- settings: brands, concepts, profiles ---- */
+.settings-tabs { align-self: flex-start; width: fit-content; margin-bottom: 20px; }
+.brand-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.brand-tile { display: flex; flex-direction: column; padding: 0; text-align: left; overflow: hidden; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); color: var(--text); transition: transform .25s cubic-bezier(.16,1,.3,1), border-color .2s; }
+.brand-tile:hover { transform: translateY(-3px); border-color: rgba(52,224,138,.45); }
+.brand-art { position: relative; display: flex; align-items: center; justify-content: center; height: 150px; overflow: hidden; background: #0d2a1d; }
+.ba-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ba-cover.fit { object-fit: contain; padding: 8px; opacity: .55; }
+.ba-wash { position: absolute; inset: 0; background: rgba(5,12,9,.5); }
+.ba-logo { position: relative; max-width: 58%; max-height: 58%; object-fit: contain; }
+.ba-name { position: relative; font-weight: 800; font-size: 1.125rem; color: #fff; text-align: center; }
+.brand-meta { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
+.brand-meta b { font-size: 14px; }
+.brand-meta span { font-size: 12px; color: var(--mut); }
+.brand-tile.add, .product-tile.add { align-items: center; justify-content: center; gap: 8px; min-height: 200px; border-style: dashed; color: var(--mut); font-weight: 700; background: transparent; }
+.brand-tile.add:hover, .product-tile.add:hover { color: var(--green); }
+.brand-tile .plus, .product-tile .plus { font-size: 26px; line-height: 1; }
+.brand-hero { position: relative; border-radius: 16px; overflow: hidden; }
+.brand-hero .brand-art { height: 190px; }
+.brand-back { position: absolute; top: 12px; left: 12px; background: rgba(5,12,9,.75); }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.product-tile { display: flex; flex-direction: column; gap: 3px; padding: 10px; text-align: left; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); color: var(--text); transition: transform .25s cubic-bezier(.16,1,.3,1), border-color .2s; }
+.product-tile:hover { transform: translateY(-3px); border-color: rgba(52,224,138,.45); }
+.product-tile b { font-size: 13px; margin-top: 7px; }
+.product-pic { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 10px; overflow: hidden; background: #0d2a1d; }
+.product-pic img { width: 100%; height: 100%; object-fit: cover; }
+.product-pic img.fallback { width: 62%; height: 62%; object-fit: contain; opacity: .8; }
+.product-tile.add { min-height: 0; aspect-ratio: auto; }
+.catalog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; align-items: start; }
+.catalog-grid > .btn { justify-self: start; align-self: start; width: auto; }
+.catalog-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.catalog-cols > .hint { grid-column: 1 / -1; }
+@media (max-width: 760px) { .catalog-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- mass add ---- */
+.modal.xl { max-width: 1160px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+.ma { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); min-height: 0; flex: 1; }
+.ma-left { padding: 18px 20px 24px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
+.ma-right { display: flex; flex-direction: column; min-height: 0; background: var(--panel2); border-left: 1px solid var(--line); }
+.ma-pick { flex: 1; overflow-y: auto; padding: 16px; min-height: 0; }
+.ma-foot { display: flex; justify-content: flex-end; gap: 9px; padding: 12px 16px; border-top: 1px solid var(--line); background: var(--panel2); }
+.ma-foot .btn.primary { flex: 1; text-align: center; justify-content: center; }
+.ma-section { display: flex; flex-direction: column; gap: 8px; }
+.ma-brands { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 8px; }
+.ma-brand { position: relative; height: 74px; padding: 0; border-radius: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #0d2a1d; border: 2px solid transparent; transition: transform .2s cubic-bezier(.16,1,.3,1), border-color .15s; }
+.ma-brand:hover { transform: translateY(-2px); }
+.ma-brand.on { border-color: var(--green); }
+.ma-brand.all { background: var(--panel); border-color: var(--line2); }
+.ma-brand.all.on { border-color: var(--green); }
+.ma-brand .ba-name { font-size: 12.5px; }
+.ma-brand .ba-logo { max-height: 56%; }
+.ma-products { display: flex; flex-direction: column; gap: 8px; }
+.ma-products:empty { display: none; }
+.ma-product-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.ma-product { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 5px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line2); color: var(--text); font-size: 12.5px; font-weight: 600; transition: border-color .15s, background-color .15s; }
+.ma-product:hover { border-color: rgba(52,224,138,.45); }
+.ma-product.on { border-color: var(--green); background: rgba(52,224,138,.1); }
+.ma-product-pic { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; background: #0d2a1d; display: flex; align-items: center; justify-content: center; flex: none; }
+.ma-product-pic img { width: 100%; height: 100%; object-fit: cover; }
+.ma-product-pic img.fallback { width: 74%; height: 74%; object-fit: contain; }
+@media (max-width: 860px) {
+  .modal.xl { overflow-y: auto; display: block; }
+  .ma { display: block; }
+  .ma-left { overflow: visible; }
+  .ma-right { border-left: 0; border-top: 1px solid var(--line); }
+  .ma-pick { overflow: visible; }
+  .ma-foot { position: sticky; bottom: 0; }
+}

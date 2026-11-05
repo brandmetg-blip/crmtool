@@ -28,6 +28,7 @@ import {
 } from '../concepts.js';
 import { QUALITY, TARGETING, openAccount, captionFieldsInto, linktwinFieldsInto, overlay } from './accounts.js';
 import { getPref, setPref } from '../prefs.js';
+import { productOptions } from '../brands.js';
 
 // Pages still in the pipeline. Anything without the flag has already
 // graduated, which is what makes this safe for avatars that existed before
@@ -598,14 +599,13 @@ function buildControl(a, key, box, set, paint, hooks) {
         // the concepts on offer below follow the product
         if (hooks && hooks.repaintBodies) hooks.repaintBodies();
       },
-    }, [['', 'No product']].concat(products.map(p => [p.id, p.name]))
-      .map(([v, label]) => el('option', { value: v }, label)));
+    }, [el('option', { value: '' }, 'No product')].concat(productOptions()));
     sel.value = a.productId || '';
     box.appendChild(sel);
     box.appendChild(el('span', { class: 'hint' },
       products.length
         ? 'Also decides which concepts this page can take.'
-        : 'No products yet — add one under Avatars → Products.'));
+        : 'No products yet — add one under Settings → Brands.'));
     return;
   }
 
@@ -672,7 +672,7 @@ function bodiesControl(a, box, set, paint) {
     box.appendChild(el('span', { class: 'hint' },
       state.db.concepts.length
         ? 'This page’s product takes none of the concepts in the library.'
-        : 'No concepts yet — add them under Avatars → Concepts.'));
+        : 'No concepts yet — add them under Settings → Concepts.'));
     return;
   }
 

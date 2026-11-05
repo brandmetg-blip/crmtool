@@ -254,6 +254,8 @@ function signOutState() {
   state.acctProduct = 'all';
   state.onboardAvatar = null;
   state.obEditForm = false;
+  state.settingsTab = 'brands';
+  state.settingsBrand = null;
   state.capSearch = '';
   state.postScope = 'day';
   state.postShowPosted = false;

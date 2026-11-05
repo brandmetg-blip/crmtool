@@ -25,6 +25,8 @@ export const state = {
   acctProduct: 'all',
   capSearch: '',              // caption board: filter text
   onboardAvatar: null,        // page id whose setup checklist is open
+  settingsTab: 'brands',      // settings: brands | concepts | profiles | workspace
+  settingsBrand: null,        // settings: the brand open in the Brands tab
   obEditForm: false,          // onboarding: the admin is editing the form
   modal: null,                // { type, ... } | null
   loginError: null,
@@ -190,7 +192,9 @@ export function tabsFor(u) {
   if (can.seeCaptions(u)) tabs.push('captions');
   if (can.seeAnalytics(u)) tabs.push('analytics');
   if (can.manageTeam(u)) tabs.push('team');
-  if (can.manageSettings(u)) tabs.push('settings');
+  // Brands, concepts and profiles live in Settings, so anyone allowed to manage
+  // pages keeps reaching them; the workspace rules stay with the admin.
+  if (can.manageSettings(u) || can.editAccounts(u)) tabs.push('settings');
   return tabs;
 }
 export function myAccounts(u, db) {

@@ -28,6 +28,7 @@ import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
+import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
 
 const TOOLS = [['grok', 'Grok'], ['veo', 'Veo'], ['omniflash', 'Omni Flash']];
 const TYPES = ['Growth', 'Product'];
@@ -588,8 +589,14 @@ function openMassAdd(u) {
     .slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   let quality = 'all';
   let accounts = allAccounts;
+  // the slice this batch is aimed at: by brand, then product, then quality
   const applyQuality = () => {
-    accounts = quality === 'all' ? allAccounts : allAccounts.filter(a => (a.quality || '') === quality);
+    accounts = allAccounts.filter(a => {
+      if (quality !== 'all' && (a.quality || '') !== quality) return false;
+      if (draft.productId) return a.productId === draft.productId;
+      if (draft.brandId) { const b = pageBrand(a); return !!b && b.id === draft.brandId; }
+      return true;
+    });
   };
 
   const editors = assignableMembers(state.db);
@@ -613,19 +620,59 @@ function openMassAdd(u) {
 
   const draft = {
     date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
+    brandId: '', productId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
     conceptId: '', variationId: '', rotate: false,
     refVideo: '', notes: '',
   };
 
-  const body = el('div', { class: 'modal-body' });
-  const blurb = el('div', { class: 'hint' });
-  body.appendChild(blurb);
+  const body = el('div', { class: 'ma-left' });
+  const side = el('div', { class: 'ma-right' });
+
+  // ---- who it's for: brand, then product, with their pictures
+  const brandBox = el('div', { class: 'ma-brands' });
+  const productBox = el('div', { class: 'ma-products' });
+  const aim = () => { applyQuality(); reselect(); autoRemoved = 0; paintBrands(); buildPicker(); refresh(); };
+  function paintBrands() {
+    brandBox.innerHTML = '';
+    brandBox.appendChild(el('button', {
+      type: 'button', class: 'ma-brand all' + (draft.brandId ? '' : ' on'),
+      onclick: () => { draft.brandId = ''; draft.productId = ''; aim(); }
+    }, el('span', { class: 'ba-name' }, 'All brands')));
+    brands().forEach(b => brandBox.appendChild(el('button', {
+      type: 'button', class: 'ma-brand' + (draft.brandId === b.id ? ' on' : ''), title: b.name,
+      onclick: () => { draft.brandId = b.id; draft.productId = ''; aim(); }
+    }, brandArt(b))));
+
+    productBox.innerHTML = '';
+    if (!draft.brandId) return;
+    const brand = brandById(draft.brandId);
+    const list = productsOf(draft.brandId);
+    productBox.appendChild(el('span', { class: 'label' }, 'PRODUCT'));
+    if (!list.length) {
+      productBox.appendChild(el('span', { class: 'hint' }, 'No products for ' + (brand ? brand.name : 'this brand') + ' yet. Add them under Settings → Brands.'));
+      return;
+    }
+    productBox.appendChild(el('div', { class: 'ma-product-row' },
+      el('button', {
+        type: 'button', class: 'ma-product' + (draft.productId ? '' : ' on'),
+        onclick: () => { draft.productId = ''; aim(); }
+      }, el('span', { class: 'ma-product-pic' }, brand && brand.logoUrl ? el('img', { class: 'fallback', src: brand.logoUrl, alt: '' }) : null), 'All products'),
+      list.map(p => el('button', {
+        type: 'button', class: 'ma-product' + (draft.productId === p.id ? ' on' : ''),
+        onclick: () => { draft.productId = p.id; aim(); }
+      },
+        el('span', { class: 'ma-product-pic' }, p.imageUrl
+          ? el('img', { src: p.imageUrl, alt: '' })
+          : (brand && brand.logoUrl ? el('img', { class: 'fallback', src: brand.logoUrl, alt: '' }) : null)),
+        p.name || 'Untitled'))));
+  }
+  body.appendChild(el('div', { class: 'ma-section' }, el('span', { class: 'label' }, 'BRAND'), brandBox, productBox));
 
   // ---- which day these land on (defaults to the day you're looking at)
   const dayCount = el('span', { class: 'hint' });
-  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+  body.appendChild(el('div', { class: 'ma-section' },
     el('span', { class: 'label' }, 'DATE'),
     el('div', { class: 'row wrap', style: 'gap:9px' },
       el('input', {
@@ -643,8 +690,6 @@ function openMassAdd(u) {
     refreshDate();
   }
   function refreshDate() {
-    blurb.textContent = 'Fill this in once. Every avatar you tick gets its own copy in their Daily Builder for '
-      + fmtDate(draft.date) + ', which they can then complete independently.';
     // count what the day's grid will actually show, not every row on the date —
     // videos stranded on a page that has since been dropped are in neither.
     // The whole day, not just the slice being aimed at: narrowing the picker
@@ -657,7 +702,7 @@ function openMassAdd(u) {
   }
 
   // ---- the brief
-  body.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
+  body.appendChild(el('div', { class: 'ma-section row wrap', style: 'gap:18px;align-items:flex-end;flex-direction:row' },
     el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'TYPE'),
       el('div', { class: 'seg mini' }, TYPES.map(t => {
         const b = el('button', {
@@ -739,7 +784,7 @@ function openMassAdd(u) {
     el('span', { class: 'hint' }, 'Editors and managers can both be picked. “Whoever the avatar belongs to” uses the assignments set under Team; an avatar with nobody, or more than one, is left unassigned.')));
 
   // ---- avatar picker
-  const pickWrap = el('div', { class: 'col', style: 'gap:7px' });
+  const pickWrap = el('div', { class: 'col ma-pick', style: 'gap:7px' });
   const countLabel = el('span', { class: 'hint' });
   const addBtn = el('button', { class: 'btn primary' });
 
@@ -843,7 +888,7 @@ function openMassAdd(u) {
       }, label)));
 
   pickWrap.appendChild(el('div', { class: 'row wrap', style: 'gap:7px' },
-    el('span', { class: 'label' }, 'AVATARS'), countLabel,
+    el('span', { class: 'label' }, 'GOES TO'), countLabel,
     el('span', { class: 'spacer' }),
     qualitySeg,
     // bulk selection never sweeps in a paused page or one whose product does
@@ -920,8 +965,9 @@ function openMassAdd(u) {
   });
   }
 
+  paintBrands();
   buildPicker();
-  body.appendChild(pickWrap);
+  side.appendChild(pickWrap);
 
   // ---- footer
   addBtn.onclick = async () => {
@@ -965,13 +1011,12 @@ function openMassAdd(u) {
     forceEmit();
   };
 
-  body.appendChild(el('div', { class: 'row', style: 'gap:9px;padding-top:4px' },
-    el('span', { class: 'spacer' }),
+  side.appendChild(el('div', { class: 'ma-foot' },
     el('button', { class: 'btn', onclick: () => { state.modal = null; forceEmit(); } }, 'Cancel'),
     addBtn));
 
-  refreshDate();   // fills the blurb, the day count and the per-avatar counts
-  state.modal = overlay('Mass add script', body);
+  refreshDate();   // fills the day count and the per-avatar counts
+  state.modal = overlay('Mass add script', el('div', { class: 'ma' }, body, side), { xl: true });
   forceEmit();
 }
 
@@ -1001,7 +1046,7 @@ function draftSource(draft, key, label, ph, opts) {
       const list = sortedConcepts();
       if (!list.length) {
         slot.appendChild(el('div', { class: 'hint' },
-          'No concepts defined yet. Add them under Avatars → Concepts.'));
+          'No concepts defined yet. Add them under Settings → Concepts.'));
         return;
       }
 
