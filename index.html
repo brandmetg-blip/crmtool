@@ -12,278 +12,236 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script>document.documentElement.classList.add('js')</script>
 <style>
 :root {
   --green: #34E08A;
-  --green-deep: #0B7F4A;
+  --green-hi: #62EDA8;
   --green-ink: #04140C;
   --night: #05100B;
-  --night-2: #0B1A13;
-  --night-line: rgba(255,255,255,.09);
+  --night-2: #0C1B14;
+  --night-3: #14281E;
   --on-night: #F2F7F4;
-  --on-night-soft: #A6B6AD;
-  --paper: #FFFFFF;
-  --paper-2: #F4F8F5;
-  --line: #E3EAE5;
+  --soft: #A9BAB1;
   --ink: #0B1A13;
-  --ink-soft: #55655C;
-  --frame: 1180px;
+  --ink-soft: #2C4A3A;
+  --r: 26px;
+  --gut: clamp(16px, 2.6vw, 36px);
   --ease: cubic-bezier(.16, 1, .3, 1);
+  --head: 'Bricolage Grotesque', 'Manrope', system-ui, sans-serif;
 }
 * { box-sizing: border-box; margin: 0; }
-html { scroll-behavior: smooth; scroll-padding-top: 76px; -webkit-text-size-adjust: 100%; }
-body { background: var(--night); color: var(--ink); font: 400 1.0625rem/1.55 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; overflow-x: clip; }
-img, svg, canvas { display: block; max-width: 100%; }
+html { scroll-behavior: smooth; scroll-padding-top: 96px; -webkit-text-size-adjust: 100%; }
+body { background: var(--night); color: var(--on-night); font: 400 1.0625rem/1.6 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; overflow-x: clip; }
+img, canvas { display: block; max-width: 100%; }
 a { color: inherit; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; border: 0; background: none; }
 [hidden] { display: none !important; }
 ::selection { background: var(--green); color: var(--green-ink); }
-:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
-h1, h2, h3 { font-weight: 600; letter-spacing: -.03em; line-height: 1.12; }
-h2 { font-size: clamp(1.75rem, 1.2rem + 1.9vw, 2.625rem); }
-.soft { color: var(--ink-soft); }
-.night .soft { color: var(--on-night-soft); }
-.plain { font: inherit; letter-spacing: inherit; }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 6px; }
+h1, h2, h3 { font-family: var(--head); font-weight: 600; letter-spacing: -.028em; line-height: 1.04; }
+h2 { font-size: clamp(2.25rem, 1.3rem + 3.6vw, 4.5rem); }
+.wrap { width: min(100%, 1400px); margin-inline: auto; padding-inline: var(--gut); }
+.gap { padding-block: clamp(72px, 9vw, 140px); }
 
-/* one frame, marked by the vertical lines of every section */
-.frame { width: min(100%, var(--frame)); margin-inline: auto; padding-inline: clamp(20px, 4vw, 56px); border-inline: 1px solid var(--line); }
-.night .frame { border-color: var(--night-line); }
-.band { background: var(--paper); }
-.band.tint { background: var(--paper-2); }
-.night { background: var(--night); color: var(--on-night); }
-
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: 9px; font-weight: 600; font-size: 1rem; text-decoration: none; white-space: nowrap; transition: transform .18s var(--ease), background-color .2s, border-color .2s, color .2s; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 0 26px; border-radius: 999px; font-weight: 700; text-decoration: none; white-space: nowrap; transition: transform .2s var(--ease), background-color .2s, color .2s; }
 .btn:active { transform: scale(.97); }
 .btn.fill { background: var(--green); color: var(--green-ink); }
-.btn.fill:hover { background: #5BEBA3; }
-.btn.line { border: 1px solid rgba(255,255,255,.2); color: var(--on-night); }
-.btn.line:hover { border-color: var(--green); color: var(--green); }
-.btn.small { min-height: 38px; padding: 0 14px; font-size: .9375rem; border-radius: 8px; }
-.arrow { display: inline-block; transition: transform .25s var(--ease); }
-a:hover > .arrow { transform: translate(2px, -2px); }
+.btn.fill:hover { background: var(--green-hi); }
+.btn.ghost { background: rgba(255,255,255,.08); color: var(--on-night); }
+.btn.ghost:hover { background: rgba(255,255,255,.16); }
+.btn .go { display: inline-block; transition: transform .3s var(--ease); }
+.btn:hover .go { transform: translateX(4px); }
 
-/* ---- nav ---- */
-.nav { position: fixed; z-index: 30; inset: 0 0 auto; background: rgba(5,16,11,.94); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--night-line); color: var(--on-night); }
-.nav-in { width: min(100%, var(--frame)); margin-inline: auto; padding: 12px clamp(20px, 4vw, 56px); display: flex; align-items: center; gap: 28px; }
-.brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.02em; text-decoration: none; white-space: nowrap; }
-.brand img { width: 30px; height: 30px; border-radius: 7px; }
-.links { display: flex; gap: 26px; margin-inline: auto; font-weight: 500; font-size: .9375rem; }
-.links a { text-decoration: none; color: var(--on-night); opacity: .85; transition: opacity .2s, color .2s; }
-.links a:hover { opacity: 1; color: var(--green); }
-.menu-btn { display: none; width: 42px; height: 42px; border-radius: 8px; border: 1px solid rgba(255,255,255,.18); align-items: center; justify-content: center; margin-left: auto; }
+/* ---- floating nav ---- */
+.nav { position: fixed; z-index: 30; top: 14px; left: 0; right: 0; padding-inline: var(--gut); pointer-events: none; }
+.nav-in { pointer-events: auto; position: relative; width: min(100%, 1040px); margin-inline: auto; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 999px; background: rgba(12,27,20,.86); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.brand { display: inline-flex; align-items: center; gap: 10px; font-family: var(--head); font-weight: 600; font-size: 1.125rem; letter-spacing: -.02em; text-decoration: none; white-space: nowrap; }
+.brand img { width: 30px; height: 30px; border-radius: 9px; }
+.links { display: flex; gap: 4px; margin-inline: auto; font-weight: 600; font-size: .9375rem; }
+.links a { text-decoration: none; padding: 7px 14px; border-radius: 999px; transition: background-color .2s, color .2s; }
+.links a:hover { background: rgba(255,255,255,.09); }
+.nav .btn { min-height: 42px; padding: 0 18px; font-size: .9375rem; }
+.menu-btn { display: none; width: 42px; height: 42px; border-radius: 50%; background: rgba(255,255,255,.08); align-items: center; justify-content: center; margin-left: auto; }
 .menu-btn svg { width: 18px; height: 18px; }
 
-/* ---- hero ---- */
-.hero { position: relative; min-height: min(100svh, 900px); overflow: hidden; background: var(--night); color: var(--on-night); display: flex; flex-direction: column; justify-content: flex-end; }
+/* ---- hero: the glow is a rising line ---- */
+.hero { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
 .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-#aurora { filter: blur(22px) saturate(1.2); transform: scale(1.08); }
-.hero::after { content: ''; position: absolute; inset: auto 0 0; height: 22%; background: linear-gradient(transparent, var(--night)); }
-.hero-frame { position: absolute; z-index: 1; top: 0; bottom: 0; left: 50%; width: min(100%, var(--frame)); transform: translateX(-50%); border-inline: 1px solid var(--night-line); pointer-events: none; }
-.hero-in { position: relative; z-index: 2; padding: 150px 20px clamp(64px, 11svh, 110px); text-align: center; }
-.pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 8px; border-radius: 999px; background: rgba(5,16,11,.6); border: 1px solid rgba(255,255,255,.14); font-size: .875rem; font-weight: 500; margin-bottom: 22px; }
-.pill img { width: 20px; height: 20px; border-radius: 5px; }
-.pill b { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--green); }
-.hero h1 { font-size: clamp(2.125rem, 1.3rem + 3.1vw, 3.5rem); line-height: 1.1; text-wrap: balance; }
-.hero h1 span { display: block; color: var(--on-night-soft); }
-.hero p { max-width: 54ch; margin: 18px auto 0; color: #C4D2CA; }
-.hero-cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 30px; }
+#rise { filter: blur(20px) saturate(1.15); transform: scale(1.06); }
+.hero-in { position: relative; z-index: 2; padding-top: 130px; }
+.hero h1 { font-size: clamp(3rem, 1.4rem + 6.4vw, 7.25rem); line-height: .98; letter-spacing: -.03em; max-width: 12ch; }
+.hero h1 span { color: var(--green); }
+.hero p { max-width: 44ch; margin-top: 24px; font-size: clamp(1.0625rem, 1rem + .3vw, 1.25rem); line-height: 1.5; color: #D5E0DA; }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+.worked { position: relative; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 18px clamp(28px, 5vw, 72px); margin-top: clamp(36px, 7svh, 76px); padding-block: 22px 26px; }
+.worked h2 { font: 600 .9375rem/1.3 'Manrope', sans-serif; letter-spacing: 0; color: var(--soft); max-width: 11ch; }
+.worked img { width: auto; opacity: .92; transition: opacity .2s, transform .35s var(--ease); }
+.worked img:hover { opacity: 1; transform: translateY(-2px); }
+.worked .serene { height: 58px; }
+.worked .choice { height: 40px; }
+.worked .next { margin-left: auto; font-weight: 700; color: var(--green); text-decoration: none; }
+.worked .next span { display: inline-block; transition: transform .3s var(--ease); }
+.worked .next:hover span { transform: translateX(4px); }
 
-/* ---- brands ---- */
-.brands { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0; }
-.brands > * { min-height: 124px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-decoration: none; }
-.brands > *:last-child { border-right: 0; }
-.brands .name { font-size: clamp(1.25rem, 1rem + 1vw, 1.75rem); font-weight: 700; letter-spacing: -.03em; color: var(--ink); }
-.brands .you { color: var(--green-deep); font-weight: 600; transition: background-color .2s; }
-.brands .you:hover { background: var(--paper-2); }
-.brands-note { padding-block: clamp(40px, 5vw, 64px) 28px; text-align: center; border-bottom: 1px solid var(--line); }
-.brands-note h2 { font-size: clamp(1.5rem, 1.1rem + 1.3vw, 2.125rem); }
-.brands-wrap { border-top: 1px solid var(--line); }
+/* ---- the numbers ---- */
+.tiles { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; }
+.num { border-radius: var(--r); padding: clamp(24px, 3vw, 40px); min-height: clamp(220px, 24vw, 340px); display: flex; flex-direction: column; justify-content: space-between; gap: 24px; background: var(--night-2); }
+.num b { font-family: var(--head); font-weight: 600; font-size: clamp(3.5rem, 2rem + 6vw, 7.5rem); line-height: .9; letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.num span { font-weight: 600; max-width: 24ch; line-height: 1.35; }
+.num.hot { background: var(--green); color: var(--green-ink); }
+.num:not(.hot) span { color: var(--soft); }
 
-/* ---- split with the stack ---- */
-.split { display: grid; grid-template-columns: 1fr 1fr; padding: 0; }
-.split > div { padding: clamp(56px, 8vw, 110px) clamp(20px, 4vw, 56px); min-width: 0; }
-.split > div:first-child { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border-right: 1px solid var(--line); }
-.split p { margin: 16px 0 26px; max-width: 46ch; }
-.stack { width: 100%; max-width: 460px; margin-inline: auto; overflow: visible; }
-.stack .plate { transition: transform 1.1s var(--ease); transition-delay: calc(var(--i) * 90ms); }
-.js .stack:not(.open) .plate { transform: translateY(calc((var(--i) - 1.5) * 50px)); }
-.stack { --face: #fff; --edge: #B8C6BE; --in: #D3DDD7; --cube: #fff; --cube-edge: #93A59B; }
-.stack .on { --face: #EFFCF5; --edge: var(--green-deep); --in: var(--green); --cube: var(--green); --cube-edge: var(--green-deep); }
-.stack text { font-family: inherit; font-size: 15px; font-weight: 600; fill: var(--ink); letter-spacing: -.01em; }
-.stack text.sub { font-size: 13px; font-weight: 400; fill: var(--ink-soft); }
-.stack .lead { stroke: #B8C6BE; stroke-width: 1; stroke-dasharray: 2 3; }
-.stack .label { transition: opacity .9s var(--ease); transition-delay: calc(var(--i) * 90ms + 300ms); }
-.js .stack:not(.open) .label { opacity: 0; }
+/* ---- paid vs organic ---- */
+.versus { display: grid; grid-template-columns: 1fr 1.25fr; gap: clamp(32px, 5vw, 80px); align-items: center; }
+.versus p { margin-top: 20px; max-width: 42ch; color: var(--soft); }
+.versus .btn { margin-top: 28px; }
+.vs { width: 100%; border-collapse: separate; border-spacing: 0 8px; font-size: 1rem; }
+.vs th, .vs td { padding: 16px clamp(12px, 1.8vw, 22px); text-align: left; vertical-align: top; }
+.vs thead th { font-family: var(--head); font-size: clamp(1.0625rem, 1rem + .4vw, 1.375rem); letter-spacing: -.02em; font-weight: 600; padding-block: 6px; }
+.vs thead th.us { color: var(--green); }
+.vs tbody th { font-weight: 600; color: var(--soft); background: var(--night-2); border-radius: 14px 0 0 14px; width: 26%; }
+.vs tbody td { background: var(--night-2); color: var(--soft); }
+.vs tbody td.us { background: var(--night-3); color: var(--on-night); font-weight: 700; border-radius: 0 14px 14px 0; }
 
-/* ---- what we do: bento ---- */
-.what { padding-block: clamp(64px, 8vw, 100px); }
-.bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 36px; }
-.tile { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, #E4FAEF 0, #fff 160px); min-height: 430px; padding: 26px 26px 0; display: flex; flex-direction: column; min-width: 0; transition: transform .35s var(--ease), border-color .25s; }
-.tile:hover { border-color: #A6E9C6; }
-.tile.wide { grid-column: span 4; }
-.tile.mid, .tile.third { grid-column: span 2; }
-.tile h3 { font-size: 1.375rem; letter-spacing: -.025em; max-width: 18ch; }
-.tile p { font-size: .9375rem; color: var(--ink-soft); margin-top: 8px; max-width: 42ch; }
-.tile .shot { margin-top: auto; padding-top: 22px; }
-.win { background: #fff; border: 1px solid var(--line); border-bottom: 0; border-radius: 12px 12px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,.06); font-size: .875rem; overflow: hidden; }
-.win-bar { display: flex; align-items: center; gap: 5px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-weight: 600; }
-.win-bar i { width: 8px; height: 8px; border-radius: 50%; background: #D5DED9; flex: none; }
-.win-bar i:first-child { background: var(--green); }
-.win-bar span { margin-left: 8px; }
-.vids { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 12px; }
-.vid { position: relative; aspect-ratio: 9 / 13; border-radius: 9px; overflow: hidden; background: var(--night); }
-.vid img { width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ease); }
-.tile:hover .vid img { transform: scale(1.05); }
-.vid em { position: absolute; top: 7px; left: 7px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.9); display: flex; align-items: center; justify-content: center; }
-.vid em::after { content: ''; border-left: 7px solid var(--ink); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; margin-left: 2px; }
-.rows { padding: 10px 12px 14px; display: grid; gap: 7px; }
-.r { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-weight: 500; min-width: 0; }
-.r span { min-width: 0; }
-.r small { margin-left: auto; color: var(--ink-soft); font-size: .8125rem; white-space: nowrap; }
-.dot { width: 22px; height: 22px; flex: none; border-radius: 6px; background: var(--paper-2); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; }
-.dot.g { background: var(--green); color: var(--green-ink); }
-.r small.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #E3F9EE; color: #0A6B3F; font-size: .8125rem; font-weight: 600; }
-.r small.tag.off { background: var(--paper-2); color: var(--ink-soft); }
-.big { font-size: 1.5rem; letter-spacing: -.03em; font-weight: 700; padding: 12px 12px 2px; }
-.flow { padding: 12px; display: grid; }
-.flow .join { width: 1px; height: 12px; background: #B8C6BE; margin-left: 21px; }
+/* ---- services: open one, see it ---- */
+.svc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: clamp(32px, 4vw, 56px); }
+.svc-head h2 { max-width: 15ch; }
+.svcs { position: relative; min-height: 560px; }
+.svc > h3 { width: 44%; font: inherit; letter-spacing: 0; }
+.svc-btn { width: 100%; text-align: left; padding: clamp(18px, 2vw, 26px) 0; color: var(--soft); transition: color .25s; display: block; }
+.svc-btn b { display: block; font-family: var(--head); font-weight: 600; font-size: clamp(1.625rem, 1.1rem + 1.9vw, 2.75rem); line-height: 1.05; letter-spacing: -.035em; transition: transform .4s var(--ease); }
+.svc-btn:hover { color: var(--on-night); }
+.svc-btn[aria-expanded="true"] { color: var(--on-night); }
+.svc-btn[aria-expanded="true"] b { color: var(--green); transform: translateX(10px); }
+.svc-copy { display: block; font-size: 1rem; line-height: 1.5; max-width: 40ch; margin-top: 10px; color: var(--soft); }
+.svc-btn[aria-expanded="false"] .svc-copy { display: none; }
+.svc-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 52%; border-radius: var(--r); background: var(--night-2); padding: clamp(18px, 2.4vw, 32px); overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 10px; animation: swap .55s var(--ease); }
+@keyframes swap { from { opacity: 0; transform: translateY(14px) scale(.985); } }
+.panel-t { font-family: var(--head); font-weight: 600; font-size: 1.25rem; letter-spacing: -.02em; margin-bottom: 6px; }
+.vids { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.vid { position: relative; aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; background: var(--night-3); }
+.vid:nth-child(even) { transform: translateY(18px); }
+.vid img { width: 100%; height: 100%; object-fit: cover; transition: transform .9s var(--ease); }
+.svc-panel:hover .vid img { transform: scale(1.05); }
+.vid em { position: absolute; left: 9px; top: 9px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center; }
+.vid em::after { content: ''; border-left: 8px solid var(--ink); border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+.row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 14px; background: var(--night-3); font-weight: 600; animation: swap .6s var(--ease) both; animation-delay: calc(var(--n, 0) * 70ms); }
+.row small { margin-left: auto; font-size: .875rem; font-weight: 600; color: var(--soft); white-space: nowrap; }
+.row small.win { color: var(--green); }
+.row.hot { background: var(--green); color: var(--green-ink); }
+.bub { width: 30px; height: 30px; flex: none; border-radius: 50%; background: rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; font-size: .8125rem; font-weight: 700; }
+.row.hot .bub { background: var(--green-ink); color: var(--green); }
 
-/* ---- results ---- */
-.results { padding-block: clamp(64px, 8vw, 100px) 0; }
-.results-head { margin-bottom: 22px; max-width: 26ch; }
-.results-sub { color: var(--ink-soft); margin: -8px 0 22px; max-width: 54ch; }
-.case { border-bottom: 1px solid var(--line); }
-.case > h3 { font: inherit; letter-spacing: 0; }
-.case button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0; text-align: left; font-weight: 500; transition: color .2s; }
-.case button:hover { color: var(--green-deep); }
-.case button svg { width: 16px; height: 16px; flex: none; transition: transform .35s var(--ease); }
-.case button[aria-expanded="true"] svg { transform: rotate(180deg); }
-.case-card { position: relative; overflow: hidden; border-radius: 14px; aspect-ratio: 16 / 7.4; background: var(--night); margin-bottom: 22px; color: #fff; animation: open .6s var(--ease); }
-@keyframes open { from { opacity: 0; transform: translateY(12px); } }
-.case-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1.4s var(--ease); }
-.case-card:hover img { transform: scale(1.03); }
-.case-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(5,16,11,.05) 15%, rgba(5,16,11,.93) 82%); }
-.case-card .about { position: absolute; z-index: 1; top: 16px; right: 16px; background: #fff; color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: .875rem; font-weight: 600; }
-.metrics { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 24px; padding: 24px; align-items: end; }
-.metrics b { display: block; font-size: clamp(1.5rem, 1rem + 1.8vw, 2.25rem); font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: var(--green); }
-.metrics span { font-size: .875rem; color: #D4E0D9; }
-.metrics p { font-size: .9375rem; color: #E6EEE9; line-height: 1.45; }
-
-.promise { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(24px, 4vw, 48px); padding-block: 56px clamp(64px, 8vw, 100px); }
-.promise svg { width: 112px; height: 76px; margin-bottom: 14px; overflow: visible; }
-.promise h3 { font-size: 1.0625rem; letter-spacing: -.015em; margin-bottom: 6px; }
-.promise p { font-size: .9375rem; color: var(--ink-soft); }
-.mini .t { fill: #fff; stroke: #93A59B; stroke-width: 1; }
-.mini .s { fill: #F1F5F2; stroke: #93A59B; stroke-width: 1; }
-.mini .i { fill: none; stroke: #C4D1CA; stroke-width: 1; }
-.mini .k { fill: var(--green); stroke: var(--green-deep); stroke-width: 1; }
-
-/* ---- numbers over the globe ---- */
-.nums { overflow: hidden; }
-.nums .frame { padding-block: clamp(72px, 9vw, 110px) 0; }
-.nums h2 { font-size: clamp(1.75rem, 1.2rem + 1.9vw, 2.625rem); }
-.nums .sub { color: var(--on-night-soft); margin-top: 12px; max-width: 48ch; }
-.nums .btn { margin-top: 22px; }
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 52px; }
-.stat b { display: block; font-size: clamp(2.5rem, 1.6rem + 3vw, 3.75rem); font-weight: 500; letter-spacing: -.04em; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.stat span { display: block; margin-top: 8px; font-size: .9375rem; color: var(--on-night-soft); max-width: 22ch; }
-.ticks { display: flex; gap: 2px; margin-top: 12px; max-width: 150px; }
-.ticks i { flex: 1; height: 14px; background: var(--green); border-radius: 1px; }
-.js .stat:not(.in) .ticks i { transform: scaleY(0); }
-.ticks i { transform-origin: 50% 100%; transition: transform .5s var(--ease); transition-delay: calc(var(--n) * 14ms); }
-#globe { width: min(100%, 860px); aspect-ratio: 2 / 1; margin: 34px auto 0; }
+/* ---- results: the loud band ---- */
+.results { background: var(--green); color: var(--green-ink); border-radius: clamp(26px, 4vw, 48px); }
+.results h2 { max-width: 13ch; }
+.results .lead { margin-top: 18px; font-weight: 600; max-width: 40ch; color: var(--ink-soft); }
+.cases { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: clamp(32px, 4vw, 56px); }
+.case { background: #fff; color: var(--ink); border-radius: var(--r); padding: clamp(24px, 3vw, 40px); display: flex; flex-direction: column; min-height: 500px; transition: transform .45s var(--ease); }
+.case:hover { transform: translateY(-6px); }
+.case-logo { height: 104px; display: flex; align-items: center; }
+.case-logo .serene { height: 96px; width: auto; }
+.case-logo .choice { height: 56px; width: auto; }
+.case h3 { font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2.125rem); margin-top: 26px; max-width: 20ch; line-height: 1.08; }
+.case p { margin-top: 12px; color: var(--ink-soft); max-width: 46ch; }
+.case dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; padding-top: 28px; }
+.case dl div { background: #EAFBF2; border-radius: 16px; padding: 16px 18px; }
+.case dd { margin: 0; font-family: var(--head); font-weight: 600; font-size: clamp(1.75rem, 1.2rem + 1.5vw, 2.75rem); line-height: 1; letter-spacing: -.04em; }
+.case dt { margin-top: 6px; font-size: .9375rem; font-weight: 600; color: var(--ink-soft); }
+.case dl div { display: flex; flex-direction: column-reverse; justify-content: flex-end; }
+.case dt { margin-top: 6px; }
 
 /* ---- questions ---- */
-.faq { padding-block: clamp(64px, 8vw, 100px); display: grid; grid-template-columns: 1fr 2fr; gap: 40px; }
-.faq h2 { position: sticky; top: 96px; align-self: start; }
-.q { border-bottom: 1px solid var(--night-line); }
+.faq { display: grid; grid-template-columns: 1fr 1.6fr; gap: clamp(24px, 5vw, 80px); }
+.faq h2 { position: sticky; top: 104px; align-self: start; }
+.qs { display: grid; gap: 8px; }
+.q { background: var(--night-2); border-radius: 18px; transition: background-color .25s; }
+.q:hover { background: var(--night-3); }
 .q h3 { font: inherit; letter-spacing: 0; }
-.q button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 0; text-align: left; font-weight: 500; transition: color .2s; }
-.q button:hover { color: var(--green); }
-.q svg { width: 16px; height: 16px; flex: none; transition: transform .35s var(--ease); }
-.q button[aria-expanded="true"] svg { transform: rotate(180deg); }
-.q p { padding-bottom: 22px; max-width: 62ch; color: var(--on-night-soft); animation: open .4s var(--ease); }
+.q button { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 22px; text-align: left; font-weight: 700; }
+.plus { position: relative; width: 16px; height: 16px; flex: none; transition: transform .35s var(--ease); }
+.plus::before, .plus::after { content: ''; position: absolute; background: var(--green); border-radius: 2px; }
+.plus::before { left: 0; right: 0; top: 7px; height: 2px; }
+.plus::after { top: 0; bottom: 0; left: 7px; width: 2px; }
+[aria-expanded="true"] .plus { transform: rotate(45deg); }
+.q p { padding: 0 22px 22px; max-width: 60ch; color: var(--soft); animation: swap .45s var(--ease); }
 
 /* ---- apply ---- */
-.apply-glow { position: relative; overflow: hidden; }
-.apply-glow::before { content: ''; position: absolute; left: 50%; top: -260px; width: 1100px; height: 520px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(closest-side, rgba(52,224,138,.3), transparent); pointer-events: none; }
-.apply { position: relative; padding-block: clamp(72px, 9vw, 120px); display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 64px); align-items: start; }
-.apply h2 { font-size: clamp(2rem, 1.3rem + 2.6vw, 3.25rem); margin-bottom: 16px; }
-.apply ul { list-style: none; padding: 0; margin-top: 24px; display: grid; gap: 10px; }
+.apply { position: relative; overflow: hidden; border-radius: clamp(26px, 4vw, 48px); background: var(--night-2); padding: clamp(28px, 5vw, 72px); display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 72px); }
+.apply::before { content: ''; position: absolute; left: -12%; bottom: -46%; width: 70%; height: 90%; border-radius: 50%; background: radial-gradient(closest-side, rgba(52,224,138,.34), transparent); pointer-events: none; }
+.apply > * { position: relative; }
+.apply p { margin-top: 18px; max-width: 42ch; color: #C7D4CD; }
+.apply ul { list-style: none; padding: 0; margin-top: 24px; display: grid; gap: 10px; font-weight: 600; }
 .apply li { display: flex; gap: 10px; align-items: flex-start; }
-.apply li::before { content: ''; flex: none; width: 18px; height: 18px; margin-top: 4px; background: var(--green); clip-path: polygon(20% 50%, 40% 70%, 80% 25%, 90% 35%, 40% 88%, 10% 60%); }
-.apply .mail { display: inline-block; margin-top: 24px; font-weight: 600; color: var(--green); text-decoration: none; word-break: break-word; }
+.apply li::before { content: ''; flex: none; width: 18px; height: 18px; margin-top: 5px; background: var(--green); clip-path: polygon(20% 50%, 40% 70%, 80% 25%, 90% 35%, 40% 88%, 10% 60%); }
+.apply .mail { display: inline-block; margin-top: 26px; font-weight: 700; color: var(--green); text-decoration: none; word-break: break-word; }
 .apply .mail:hover { text-decoration: underline; }
-form { background: var(--night-2); border: 1px solid var(--night-line); border-radius: 16px; padding: clamp(18px, 3vw, 28px); display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.fld { display: grid; gap: 6px; font-size: .875rem; font-weight: 500; color: #C4D2CA; min-width: 0; }
+form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-content: start; }
+.fld { display: grid; gap: 7px; font-size: .9375rem; font-weight: 600; color: #C7D4CD; min-width: 0; }
 .fld.full { grid-column: 1 / -1; }
-.fld input, .fld select, .fld textarea { background: var(--night); border: 1px solid rgba(255,255,255,.14); border-radius: 9px; padding: 12px 14px; font-size: 1rem; color: var(--on-night); width: 100%; transition: border-color .2s; }
-.fld input:focus, .fld select:focus, .fld textarea:focus { outline: 0; border-color: var(--green); }
-.fld textarea { resize: vertical; min-height: 104px; }
+.fld input, .fld select, .fld textarea { background: var(--night); border: 0; border-radius: 14px; padding: 15px 16px; color: var(--on-night); width: 100%; font-weight: 500; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); transition: box-shadow .2s; }
+.fld input:focus, .fld select:focus, .fld textarea:focus { outline: 0; box-shadow: inset 0 0 0 2px var(--green); }
+.fld textarea { resize: vertical; min-height: 120px; }
 .fld select option { background: var(--night); }
-form .btn { grid-column: 1 / -1; min-height: 50px; }
-.form-note { grid-column: 1 / -1; font-size: .875rem; color: var(--on-night-soft); text-align: center; }
+form .btn { grid-column: 1 / -1; }
+.form-note { grid-column: 1 / -1; font-size: .9375rem; text-align: center; color: var(--on-night); margin: 0; }
 .form-note:empty { display: none; }
 
-/* ---- footer ---- */
-footer { border-top: 1px solid var(--night-line); }
-.foot { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; padding-block: 44px 32px; }
-.foot p { max-width: 30ch; margin-top: 12px; font-size: .9375rem; color: var(--on-night-soft); }
-.foot h3 { font-size: .9375rem; letter-spacing: -.01em; margin-bottom: 12px; }
-.foot nav { display: grid; gap: 8px; font-size: .9375rem; }
-.foot nav a { text-decoration: none; color: var(--on-night-soft); transition: color .2s; word-break: break-word; }
-.foot nav a:hover { color: var(--green); }
-.legal { padding-block: 0 28px; font-size: .8125rem; color: #8FA096; }
+/* ---- close: the name, large ---- */
+footer { padding-top: clamp(56px, 7vw, 96px); overflow: hidden; }
+.foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px 40px; align-items: center; }
+.foot nav { display: flex; flex-wrap: wrap; gap: 6px 22px; font-weight: 600; }
+.foot a { text-decoration: none; transition: color .2s; }
+.foot a:hover { color: var(--green); }
+.legal { margin-top: 26px; font-size: .8125rem; line-height: 1.55; color: #8FA096; max-width: 90ch; }
 .legal a { color: inherit; }
+.bigname { font-family: var(--head); font-weight: 700; letter-spacing: -.055em; line-height: .8; font-size: 12.6vw; white-space: nowrap; color: #17301F; text-align: center; margin-top: 32px; padding-bottom: .04em; user-select: none; }
 
 /* ---- entrances ---- */
-.js .rv { opacity: 0; transform: translateY(22px); transition: opacity .7s var(--ease), transform .9s var(--ease); transition-delay: calc(var(--d, 0) * 75ms); }
+.js .rv { opacity: 0; transform: translateY(26px); transition: opacity .75s var(--ease), transform .95s var(--ease); transition-delay: calc(var(--d, 0) * 80ms); }
 .js .rv.in { opacity: 1; transform: none; }
-.js .tile.rv.in:hover { transform: translateY(-4px); transition-delay: 0s; }
-.load { animation: open .9s var(--ease) both; animation-delay: calc(var(--d, 0) * 90ms + 100ms); }
+.js .case.rv.in:hover { transform: translateY(-6px); transition-delay: 0s; }
+.load { animation: up 1s var(--ease) both; animation-delay: calc(var(--d, 0) * 90ms + 80ms); }
+@keyframes up { from { opacity: 0; transform: translateY(24px); } }
 
-@media (max-width: 920px) {
-  .links { display: none; position: absolute; top: 100%; left: 0; right: 0; margin: 0; flex-direction: column; gap: 0; background: var(--night); border-bottom: 1px solid var(--night-line); padding: 8px 20px 16px; font-size: 1.0625rem; }
+@media (max-width: 960px) {
+  .links { display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0; margin: 0; flex-direction: column; gap: 2px; background: var(--night-2); border-radius: 20px; padding: 10px; font-size: 1.0625rem; }
   .links.open { display: flex; }
-  .links a { padding: 11px 0; }
+  .links a { padding: 11px 14px; }
   .menu-btn { display: flex; }
-  .nav-in { gap: 10px; }
   .nav-in > .btn { display: none; }
-  .split { grid-template-columns: 1fr; }
-  .split > div:first-child { border-right: 0; border-bottom: 1px solid var(--line); }
-  .tile.wide, .tile.mid, .tile.third { grid-column: 1 / -1; min-height: 0; }
-  .tile .shot { margin-top: 12px; }
-  .faq, .apply { grid-template-columns: 1fr; }
+  .tiles { grid-template-columns: 1fr 1fr; }
+  .tiles .hot { grid-column: 1 / -1; }
+  .versus, .faq, .apply { grid-template-columns: 1fr; }
   .faq h2 { position: static; }
-  .foot { grid-template-columns: 1fr 1fr; }
-  .foot > div:first-child { grid-column: 1 / -1; }
-  .case-card { aspect-ratio: 4 / 3.4; }
-  .metrics { grid-template-columns: 1fr 1fr; }
-  .metrics p { grid-column: 1 / -1; }
+  .cases { grid-template-columns: 1fr; }
+  .case { min-height: 0; }
+  .svcs { min-height: 0; display: grid; gap: 4px; }
+  .svc > h3 { width: 100%; }
+  .svc-panel { position: static; width: 100%; margin-bottom: 16px; }
 }
 @media (max-width: 600px) {
-  .frame { border-inline: 0; }
-  .brands { grid-template-columns: 1fr; }
-  .brands > * { min-height: 76px; border-right: 0; }
-  .promise, .stats { grid-template-columns: 1fr; }
-  .vids { grid-template-columns: repeat(2, 1fr); }
-  .vid:nth-child(n+3) { display: none; }
-  form { grid-template-columns: 1fr; }
+  .tiles { grid-template-columns: 1fr; }
+  .num { min-height: 176px; }
+  .worked h2 { max-width: none; width: 100%; }
+  .worked .next { margin-left: 0; width: 100%; }
   .hero-cta .btn { flex: 1 1 100%; }
-  .case-card { aspect-ratio: auto; min-height: 480px; }
-  .case-card::after { background: linear-gradient(rgba(5,16,11,.05) 5%, rgba(5,16,11,.95) 52%); }
-  .pill { font-size: .8125rem; white-space: nowrap; }
+  form { grid-template-columns: 1fr; }
+  .vs { font-size: .9375rem; }
+  .vs tbody th { width: 28%; }
+  .vids { grid-template-columns: repeat(2, 1fr); }
+  .vid { aspect-ratio: 3 / 4; }
+  .vid:nth-child(n+3) { display: none; }
+  .brand { font-size: 1rem; }
+  .case dd { font-size: 1.625rem; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .js .rv { opacity: 1; transform: none; }
-  .js .stack:not(.open) .plate { transform: none; }
-  .js .stack:not(.open) .label { opacity: 1; }
-  .js .stat:not(.in) .ticks i { transform: none; }
 }
 </style>
 </head>
@@ -293,232 +251,159 @@ footer { border-top: 1px solid var(--night-line); }
   <div class="nav-in">
     <a class="brand" href="#top"><img src="logo.png" width="30" height="30" alt="">Remote Commerce</a>
     <nav class="links" id="links" aria-label="Main">
-      <a href="#brands">Brands</a>
-      <a href="#what">What we do</a>
       <a href="#results">Results</a>
+      <a href="#what">What we do</a>
+      <a href="#why">Why organic</a>
       <a href="#faq">FAQ</a>
     </nav>
-    <a class="btn fill small" href="#apply">Apply to work with us</a>
+    <a class="btn fill" href="#apply">Apply to work with us</a>
     <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="links">
       <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M2 5h14M2 13h14"/></svg>
     </button>
   </div>
 </header>
 
-<section class="hero night" id="top">
-  <canvas id="stars" aria-hidden="true"></canvas>
-  <canvas id="aurora" aria-hidden="true"></canvas>
-  <div class="hero-frame" aria-hidden="true"></div>
-  <div class="hero-in">
-    <div class="pill load"><img src="logo.png" width="20" height="20" alt="">Revenue for partner brands <b>$1M+</b></div>
-    <h1 class="load" style="--d:1">We scale brands with organic traffic. <span>No ad spend.</span></h1>
-    <p class="load" style="--d:2">Remote Commerce grows your revenue with content and distribution that convert, and we work on a performance basis.</p>
-    <div class="hero-cta load" style="--d:3">
-      <a class="btn fill" href="#apply">Apply to work with us</a>
-      <a class="btn line" href="#results">See our results</a>
+<section class="hero" id="top">
+  <canvas id="rise" aria-hidden="true"></canvas>
+  <div class="wrap hero-in">
+    <h1 class="load">Organic revenue. <span>Zero ad spend.</span></h1>
+    <p class="load" style="--d:1">We scale brands with organic traffic that converts, and we work on a performance basis.</p>
+    <div class="hero-cta load" style="--d:2">
+      <a class="btn fill" href="#apply">Apply to work with us <span class="go" aria-hidden="true">→</span></a>
+      <a class="btn ghost" href="#results">See our results</a>
     </div>
+  </div>
+  <div class="wrap worked load" style="--d:4" id="brands">
+    <h2>Brands we’ve worked with</h2>
+    <img class="serene" src="assets/logo-serene-herbs-white.png" width="757" height="429" alt="Serene Herbs">
+    <img class="choice" src="assets/logo-physicians-choice-white.png" width="162" height="56" alt="Physician’s Choice">
+    <a class="next" href="#apply">Your brand next <span aria-hidden="true">→</span></a>
   </div>
 </section>
 
 <main>
 
-<section class="band brands-wrap" id="brands" aria-labelledby="brandsH">
-  <div class="frame brands-note"><h2 id="brandsH" class="rv">Brands we’ve worked with</h2></div>
-  <div class="frame brands">
-    <div class="rv"><span class="name">Serene Herbs</span></div>
-    <div class="rv" style="--d:1"><span class="name">Physician’s CHOICE</span></div>
-    <a class="you rv" style="--d:2" href="#apply"><span>Your brand next <span class="arrow" aria-hidden="true">↗</span></span></a>
+<section class="wrap" aria-label="Headline numbers" style="padding-top:12px">
+  <div class="tiles">
+    <div class="num hot rv"><b data-count="1" data-pre="$" data-post="M+">$1M+</b><span>Revenue generated for partner brands</span></div>
+    <div class="num rv" style="--d:1"><b data-count="100" data-post="%">100%</b><span>Organic traffic, zero paid media risk</span></div>
+    <div class="num rv" style="--d:2"><b>$0</b><span>Ad spend required from your brand</span></div>
   </div>
 </section>
 
-<section class="band" aria-labelledby="whyH">
-  <div class="frame split">
+<section class="wrap" id="results" aria-labelledby="resH" style="padding-top:12px">
+  <div class="results gap" style="padding-inline:clamp(20px,4vw,64px)">
+    <h2 id="resH" class="rv">Results we’ve shipped</h2>
+    <p class="lead rv" style="--d:1">Real brands, organic traffic and no ad spend behind it.</p>
+    <div class="cases">
+      <article class="case rv">
+        <div class="case-logo"><img class="serene" src="assets/logo-serene-herbs-ink.png" width="757" height="429" loading="lazy" alt="Serene Herbs"></div>
+        <h3>Six figures in added revenue, with $0 in ad spend</h3>
+        <p>We built an organic content flywheel around the brand’s hero products and pushed traffic through optimized affiliate funnels.</p>
+        <dl>
+          <div><dt>Revenue added</dt><dd>6-figure</dd></div>
+          <div><dt>Ad spend</dt><dd>$0</dd></div>
+        </dl>
+      </article>
+      <article class="case rv" style="--d:1">
+        <div class="case-logo"><img class="choice" src="assets/logo-physicians-choice-ink.png" width="162" height="56" loading="lazy" alt="Physician’s Choice"></div>
+        <h3>Consistent daily sales, from 100% organic traffic</h3>
+        <p>We scaled supplement offers through creator-style organic content, converting educational angles into consistent daily sales.</p>
+        <dl>
+          <div><dt>Consistent sales</dt><dd>Daily</dd></div>
+          <div><dt>Organic traffic</dt><dd>100%</dd></div>
+        </dl>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="wrap gap" id="why" aria-labelledby="whyH">
+  <div class="versus">
     <div>
       <h2 id="whyH" class="rv">Stop paying for every click.</h2>
-      <p class="soft rv" style="--d:1">We bring your brand high-intent buyers from organic traffic, then send them through funnels built to sell your offer. No retainers, no ad budgets.</p>
-      <a class="btn fill rv" style="--d:2" href="#apply">Apply to work with us</a>
+      <p class="rv" style="--d:1">Paid traffic stops the day the budget does. We bring your brand high-intent buyers from organic content, and we only earn when your offer sells.</p>
+      <a class="btn fill rv" style="--d:2" href="#apply">Apply to work with us <span class="go" aria-hidden="true">→</span></a>
     </div>
-    <div>
-      <svg class="stack" id="stack" viewBox="0 0 460 440" role="img" aria-label="Four layers: organic content, distribution, optimization and revenue">
-        <defs>
-          <g id="plate">
-            <path style="fill:#F1F5F2;stroke:var(--edge);stroke-width:1.2" d="M-90 0v14L0 66l90-52V0L0 52z"/>
-            <path style="fill:var(--face);stroke:var(--edge);stroke-width:1.2;transition:fill .3s,stroke .3s" d="M0-52 90 0 0 52-90 0z"/>
-            <path style="fill:none;stroke:var(--in);stroke-width:1;transition:stroke .3s" d="M0-36 62 0 0 36-62 0z"/>
-          </g>
-          <g id="cube"><path style="fill:var(--cube);stroke:var(--cube-edge);stroke-width:1;transition:fill .3s,stroke .3s" d="M0-9 13-2 0 5-13-2zM-13-2V8L0 15V5zM13-2V8L0 15V5z"/></g>
-        </defs>
-        <g class="plate" style="--i:0"><use href="#plate" x="110" y="350"/><use href="#cube" x="110" y="350"/><use href="#cube" x="82" y="352"/><use href="#cube" x="138" y="352"/></g>
-        <g class="plate" style="--i:1"><use href="#plate" x="110" y="268"/><use href="#cube" x="110" y="256"/><use href="#cube" x="110" y="280"/></g>
-        <g class="plate" style="--i:2"><use href="#plate" x="110" y="186"/><use href="#cube" x="84" y="186"/><use href="#cube" x="136" y="186"/></g>
-        <g class="plate" style="--i:3"><use href="#plate" x="110" y="104"/><use href="#cube" x="110" y="102"/></g>
-        <g class="label" style="--i:0"><path class="lead" d="M204 352h26"/><text x="238" y="349">Content</text><text class="sub" x="238" y="367">Built to pull in buyers</text></g>
-        <g class="label" style="--i:1"><path class="lead" d="M204 270h26"/><text x="238" y="267">Distribution</text><text class="sub" x="238" y="285">Pages, creators, funnels</text></g>
-        <g class="label" style="--i:2"><path class="lead" d="M204 188h26"/><text x="238" y="185">Optimization</text><text class="sub" x="238" y="203">Angles, landers, CRO</text></g>
-        <g class="label" style="--i:3"><path class="lead" d="M204 106h26"/><text x="238" y="103">Revenue</text><text class="sub" x="238" y="121">Sales for your brand</text></g>
-      </svg>
-    </div>
+    <table class="vs rv" style="--d:1">
+      <thead><tr><td></td><th scope="col">Paid ads</th><th scope="col" class="us">Remote Commerce</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Ad budget</th><td>Yours, up front</td><td class="us">$0</td></tr>
+        <tr><th scope="row">Traffic</th><td>Rented, click by click</td><td class="us">100% organic</td></tr>
+        <tr><th scope="row">Retainer</th><td>Often monthly</td><td class="us">None</td></tr>
+        <tr><th scope="row">You pay</th><td>Whether it sells or not</td><td class="us">Commission on revenue</td></tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
-<section class="band tint" id="what" aria-labelledby="whatH">
-  <div class="frame what">
+<section class="wrap" id="what" aria-labelledby="whatH" style="padding-bottom:clamp(72px,9vw,140px)">
+  <div class="svc-head">
     <h2 id="whatH" class="rv">One team. Every lever of organic growth.</h2>
-    <div class="bento">
-
-      <article class="tile wide rv">
-        <h3>Organic content engines</h3>
-        <p>Content across social platforms that pulls in high-intent audiences daily, without a dollar of ad spend.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Short-form, accounts at scale</span></div>
-          <div class="vids">
-            <div class="vid"><img src="assets/phone-in-hand.jpg" width="1600" height="1068" loading="lazy" alt="" style="object-position:46% 40%"><em></em></div>
-            <div class="vid"><img src="assets/looking-at-phone.jpg" width="1024" height="639" loading="lazy" alt="" style="object-position:26% 40%"><em></em></div>
-            <div class="vid"><img src="assets/medicinal-plants-1.jpg" width="1400" height="1894" loading="lazy" alt="" style="object-position:50% 30%"><em></em></div>
-            <div class="vid"><img src="assets/filming-on-phone.jpg" width="1024" height="639" loading="lazy" alt="" style="object-position:36% 30%"><em></em></div>
-          </div>
-        </div></div>
-      </article>
-
-      <article class="tile mid rv" style="--d:1">
-        <h3>Affiliate distribution</h3>
-        <p>Your offer, plugged into our network of pages, creators and funnels.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Distribution</span></div>
-          <div class="rows">
-            <div class="r"><span class="dot">Fb</span><span>Owned pages</span></div>
-            <div class="r"><span class="dot">Ig</span><span>Creators</span></div>
-            <div class="r"><span class="dot g">↗</span><span>Your offer</span></div>
-          </div>
-        </div></div>
-      </article>
-
-      <article class="tile third rv">
-        <h3>Offer and funnel optimization</h3>
-        <p>We test hooks, angles and landing flows until conversion compounds.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Angle testing</span></div>
-          <div class="rows">
-            <div class="r"><span class="dot">A</span><span>Hook one</span><small class="tag off">Dropped</small></div>
-            <div class="r"><span class="dot g">B</span><span>Hook two</span><small class="tag">Scaling</small></div>
-            <div class="r"><span class="dot">C</span><span>Hook three</span><small class="tag off">Testing</small></div>
-          </div>
-        </div></div>
-      </article>
-
-      <article class="tile third rv" style="--d:1">
-        <h3>Paid on performance</h3>
-        <p>We get paid a commission on the revenue we generate.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>What you pay</span></div>
-          <div class="rows">
-            <div class="r"><span>Retainer</span><small>$0</small></div>
-            <div class="r"><span>Ad budget</span><small>$0</small></div>
-            <div class="r"><span>On sales</span><small class="tag">Commission</small></div>
-          </div>
-        </div></div>
-      </article>
-
-      <article class="tile third rv" style="--d:2">
-        <h3>Tracked to the sale</h3>
-        <p>Promotion handled end to end, from the video to the order.</p>
-        <div class="shot"><div class="win">
-          <div class="flow">
-            <div class="r"><span class="dot">1</span><span>Organic video</span></div><div class="join"></div>
-            <div class="r"><span class="dot">2</span><span>Tracked link</span></div><div class="join"></div>
-            <div class="r"><span class="dot">3</span><span>Optimized lander</span></div><div class="join"></div>
-            <div class="r"><span class="dot g">✓</span><span>Order confirmed</span></div>
-          </div>
-        </div></div>
-      </article>
-
-    </div>
   </div>
-</section>
-
-<section class="band" id="results" aria-labelledby="resH">
-  <div class="frame results">
-    <h2 class="results-head rv" id="resH">Results we’ve shipped for partners</h2>
-    <p class="results-sub rv" style="--d:1">Real brands, organic traffic and no ad spend behind it.</p>
-
-    <div class="case rv" style="--d:1">
-      <h3><button type="button" aria-expanded="true" aria-controls="c0">How Serene Herbs added six figures in revenue with $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c0">
-        <img src="assets/medicinal-plants-1.jpg" width="1400" height="1894" loading="lazy" alt="Vintage botanical plate of medicinal plants" style="object-position:50% 38%">
-        <span class="about">Nutra</span>
-        <div class="metrics">
-          <div><b>6-figure</b><span>Revenue added</span></div>
-          <div><b>$0</b><span>Ad spend</span></div>
-          <p>We built an organic content flywheel around the brand’s hero products and pushed traffic through optimized affiliate funnels.</p>
+  <div class="svcs rv" id="svcs">
+    <div class="svc">
+      <h3><button class="svc-btn" type="button" aria-expanded="true" aria-controls="p0"><b>Organic content engines</b><span class="svc-copy">Content across social platforms that pulls in high-intent audiences daily, without a dollar of ad spend.</span></button></h3>
+      <div class="svc-panel" id="p0">
+        <div class="vids">
+          <div class="vid"><img src="assets/phone-in-hand.jpg" width="1600" height="1068" loading="lazy" alt="" style="object-position:46% 40%"><em></em></div>
+          <div class="vid"><img src="assets/looking-at-phone.jpg" width="1024" height="639" loading="lazy" alt="" style="object-position:26% 40%"><em></em></div>
+          <div class="vid"><img src="assets/medicinal-plants-1.jpg" width="1400" height="1894" loading="lazy" alt="" style="object-position:50% 30%"><em></em></div>
+          <div class="vid"><img src="assets/filming-on-phone.jpg" width="1024" height="639" loading="lazy" alt="" style="object-position:36% 30%"><em></em></div>
         </div>
       </div>
     </div>
-
-    <div class="case rv" style="--d:2">
-      <h3><button type="button" aria-expanded="false" aria-controls="c1">How Physician’s CHOICE gets consistent daily sales from 100% organic traffic<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c1" hidden>
-        <img src="assets/phone-in-hand.jpg" width="1600" height="1068" loading="lazy" alt="A hand holding up a phone" style="object-position:50% 40%;filter:grayscale(1)">
-        <span class="about">Nutra</span>
-        <div class="metrics">
-          <div><b>Daily</b><span>Consistent sales</span></div>
-          <div><b>100%</b><span>Organic traffic</span></div>
-          <p>We scaled supplement offers through creator-style organic content, converting educational angles into consistent daily sales.</p>
-        </div>
+    <div class="svc">
+      <h3><button class="svc-btn" type="button" aria-expanded="false" aria-controls="p1"><b>Affiliate distribution</b><span class="svc-copy">Your offer, plugged into our network of pages, creators and funnels. We handle promotion end to end.</span></button></h3>
+      <div class="svc-panel" id="p1" hidden>
+        <div class="panel-t">From the video to the order</div>
+        <div class="row" style="--n:0"><span class="bub">1</span>Owned pages and creators</div>
+        <div class="row" style="--n:1"><span class="bub">2</span>Organic video</div>
+        <div class="row" style="--n:2"><span class="bub">3</span>Tracked link</div>
+        <div class="row" style="--n:3"><span class="bub">4</span>Optimized lander</div>
+        <div class="row hot" style="--n:4"><span class="bub">5</span>Your offer, order confirmed</div>
       </div>
     </div>
-
-    <div class="promise">
-      <div class="rv">
-        <svg class="mini" viewBox="0 0 112 76" aria-hidden="true"><path class="s" d="M6 36v7l50 29 50-29v-7L56 65z"/><path class="t" d="M56 7 106 36 56 65 6 36z"/><path class="i" d="M56 18 87 36 56 54 25 36z"/><path class="k" d="M56 24 72 33 56 42 40 33zM40 33v6l16 9v-6zM72 33v6l-16 9v-6z"/></svg>
-        <h3>Performance-based</h3>
-        <p>No retainers and no ad budget. We earn when your offer sells.</p>
+    <div class="svc">
+      <h3><button class="svc-btn" type="button" aria-expanded="false" aria-controls="p2"><b>Offer and funnel optimization</b><span class="svc-copy">We test hooks, angles and landing flows until conversion compounds, then feed what works back into every channel.</span></button></h3>
+      <div class="svc-panel" id="p2" hidden>
+        <div class="panel-t">Every angle earns its place</div>
+        <div class="row" style="--n:0"><span class="bub">A</span>Hook one<small>Dropped</small></div>
+        <div class="row hot" style="--n:1"><span class="bub">B</span>Hook two<small style="color:inherit">Scaling</small></div>
+        <div class="row" style="--n:2"><span class="bub">C</span>Hook three<small>Testing</small></div>
+        <div class="row" style="--n:3"><span class="bub">D</span>Lander variant<small>Testing</small></div>
       </div>
-      <div class="rv" style="--d:1">
-        <svg class="mini" viewBox="0 0 112 76" aria-hidden="true"><path class="s" d="M6 36v7l50 29 50-29v-7L56 65z"/><path class="t" d="M56 7 106 36 56 65 6 36z"/><path class="i" d="M56 18 87 36 56 54 25 36z"/><path class="k" d="M40 34 48 38.5 40 43 32 38.5zM56 25 64 29.5 56 34 48 29.5zM72 34 80 38.5 72 43 64 38.5z"/></svg>
-        <h3>Straight answers on fit</h3>
-        <p>We review your offer and tell you quickly whether it suits organic distribution.</p>
-      </div>
-      <div class="rv" style="--d:2">
-        <svg class="mini" viewBox="0 0 112 76" aria-hidden="true"><path class="s" d="M6 36v7l50 29 50-29v-7L56 65z"/><path class="t" d="M56 7 106 36 56 65 6 36z"/><path class="i" d="M56 18 87 36 56 54 25 36z"/><path class="k" d="M48 24h16v13l-8 8-8-8z"/></svg>
-        <h3>NDA-friendly</h3>
-        <p>Happy to keep the details of your offer private.</p>
+    </div>
+    <div class="svc">
+      <h3><button class="svc-btn" type="button" aria-expanded="false" aria-controls="p3"><b>Paid on performance</b><span class="svc-copy">We get paid a commission on the revenue we generate. No retainers, no ad budgets.</span></button></h3>
+      <div class="svc-panel" id="p3" hidden>
+        <div class="panel-t">What you pay</div>
+        <div class="row" style="--n:0">Retainer<small>$0</small></div>
+        <div class="row" style="--n:1">Ad budget<small>$0</small></div>
+        <div class="row hot" style="--n:2">On revenue we generate<small style="color:inherit">Commission</small></div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="nums night" aria-labelledby="numsH">
-  <div class="frame">
-    <h2 class="rv" id="numsH">Revenue without the ad bill.</h2>
-    <p class="sub rv" style="--d:1">Organic traffic your brand doesn’t pay for up front.</p>
-    <a class="btn line rv" style="--d:2" href="#apply">Apply to work with us</a>
-    <div class="stats">
-      <div class="stat rv"><b data-count="1" data-pre="$" data-post="M+">$1M+</b><span>Revenue generated for partner brands</span></div>
-      <div class="stat rv" style="--d:1"><b data-count="100" data-post="%">100%</b><span>Organic traffic, zero paid media risk</span><div class="ticks" id="ticks" aria-hidden="true"></div></div>
-      <div class="stat rv" style="--d:2"><b>$0</b><span>Ad spend required from your brand</span></div>
-    </div>
-    <canvas id="globe" aria-hidden="true"></canvas>
-  </div>
-</section>
-
-<section class="night" id="faq" aria-labelledby="faqH">
-  <div class="frame faq">
+<section class="wrap" id="faq" aria-labelledby="faqH" style="padding-bottom:clamp(72px,9vw,140px)">
+  <div class="faq">
     <h2 id="faqH" class="rv">Questions, answered</h2>
-    <div class="rv" style="--d:1" id="faqs">
-      <div class="q"><h3><button type="button" aria-expanded="true" aria-controls="q0">How does working with you cost us anything?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3><p id="q0">We work on a performance basis and get paid a commission on the revenue we generate. No retainers and no ad budgets.</p></div>
-      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q1">What kind of traffic do you drive?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3><p id="q1" hidden>100% organic. We build content engines on social platforms that attract high-intent audiences, then route them through optimized funnels to your offer.</p></div>
-      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q2">Which verticals do you work in?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3><p id="q2" hidden>Our core verticals are nutra and biz opp. If your offer converts and fits organic distribution, we can likely scale it.</p></div>
-      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q3">How fast can we start?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3><p id="q3" hidden>It starts with a quick call to review your offer and terms. We’ll give you a timeline for your brand on that call.</p></div>
-      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q4">I’m an affiliate. Can I join the team?<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3><p id="q4" hidden>Yes. Apply through the form and tell us what you run.</p></div>
+    <div class="qs rv" style="--d:1" id="faqs">
+      <div class="q"><h3><button type="button" aria-expanded="true" aria-controls="q0">How does working with you cost us anything?<span class="plus" aria-hidden="true"></span></button></h3><p id="q0">We work on a performance basis and get paid a commission on the revenue we generate. No retainers and no ad budgets.</p></div>
+      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q1">What kind of traffic do you drive?<span class="plus" aria-hidden="true"></span></button></h3><p id="q1" hidden>100% organic. We build content engines on social platforms that attract high-intent audiences, then route them through optimized funnels to your offer.</p></div>
+      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q2">Which verticals do you work in?<span class="plus" aria-hidden="true"></span></button></h3><p id="q2" hidden>Our core verticals are nutra and biz opp. If your offer converts and fits organic distribution, we can likely scale it.</p></div>
+      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q3">How fast can we start?<span class="plus" aria-hidden="true"></span></button></h3><p id="q3" hidden>It starts with a quick call to review your offer and terms. We’ll give you a timeline for your brand on that call.</p></div>
+      <div class="q"><h3><button type="button" aria-expanded="false" aria-controls="q4">I’m an affiliate. Can I join the team?<span class="plus" aria-hidden="true"></span></button></h3><p id="q4" hidden>Yes. Apply through the form and tell us what you run.</p></div>
     </div>
   </div>
 </section>
 
-<section class="night apply-glow" id="apply" aria-labelledby="applyH">
-  <div class="frame apply">
+<section class="wrap" id="apply" aria-labelledby="applyH">
+  <div class="apply">
     <div>
       <h2 id="applyH" class="rv">Let’s scale together.</h2>
-      <p class="soft rv" style="--d:1">Got an offer to scale? Tell us about your brand. This opens an email to us with your answers filled in.</p>
+      <p class="rv" style="--d:1">Got an offer to scale? Tell us about your brand. This opens an email to us with your answers filled in.</p>
       <ul class="rv" style="--d:2">
         <li>Performance-based, no retainers</li>
         <li>Straight answers on fit, fast</li>
@@ -532,7 +417,7 @@ footer { border-top: 1px solid var(--night-line); }
       <label class="fld">Company or brand<input name="company" autocomplete="organization"></label>
       <label class="fld">You are<select name="role" id="fRole"><option>Brand or offer owner</option><option>Affiliate</option><option>Something else</option></select></label>
       <label class="fld full"><span id="fMsgLabel">Your offer: vertical, payout, current volume</span><textarea name="message" rows="4"></textarea></label>
-      <button class="btn fill" type="submit">Send application</button>
+      <button class="btn fill" type="submit">Send application <span class="go" aria-hidden="true">→</span></button>
       <p class="form-note" id="formNote" role="status"></p>
     </form>
   </div>
@@ -540,16 +425,20 @@ footer { border-top: 1px solid var(--night-line); }
 
 </main>
 
-<footer class="night">
-  <div class="frame foot">
-    <div><a class="brand" href="#top"><img src="logo.png" width="30" height="30" alt="" loading="lazy">Remote Commerce</a><p>Organic traffic that converts, for brands that want revenue without ad spend.</p></div>
-    <div><h3>Company</h3><nav aria-label="Footer"><a href="#brands">Brands</a><a href="#what">What we do</a><a href="#results">Results</a><a href="#faq">FAQ</a></nav></div>
-    <div><h3>Get in touch</h3><nav aria-label="Contact"><a href="#apply">Apply</a><a href="mailto:dusan@remotecommerce.net">dusan@remotecommerce.net</a></nav></div>
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <a class="brand" href="#top"><img src="logo.png" width="30" height="30" alt="" loading="lazy">Remote Commerce</a>
+      <nav aria-label="Footer">
+        <a href="#results">Results</a><a href="#what">What we do</a><a href="#why">Why organic</a><a href="#faq">FAQ</a><a href="#apply">Apply</a><a href="mailto:dusan@remotecommerce.net">dusan@remotecommerce.net</a>
+      </nav>
+    </div>
+    <p class="legal">© 2026 Remote Commerce. Brand names and logos belong to their owners. Photographs:
+      <a href="https://commons.wikimedia.org/w/index.php?curid=197215244">“A woman poses for a selfie”</a> by Shixart1985, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, cropped;
+      <a href="https://www.flickr.com/photos/157635012@N07/40851099253">“Woman with smartphone, Moscow”</a> (<a href="https://www.flickr.com/photos/157635012@N07/33940339288">and a second</a>) by Artem Beliaikin, CC0;
+      <a href="https://commons.wikimedia.org/w/index.php?curid=99568040">“Plantes médicinales”</a>, CC0.</p>
   </div>
-  <div class="frame legal">© 2026 Remote Commerce. Interface panels are illustrations. Photographs:
-    <a href="https://commons.wikimedia.org/w/index.php?curid=197215244">“A woman poses for a selfie”</a> by Shixart1985, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, cropped;
-    <a href="https://www.flickr.com/photos/157635012@N07/40851099253">“Woman with smartphone, Moscow”</a> (<a href="https://www.flickr.com/photos/157635012@N07/33940339288">and a second</a>) by Artem Beliaikin, CC0;
-    <a href="https://commons.wikimedia.org/w/index.php?curid=99568040">“Plantes médicinales”</a>, CC0.</div>
+  <div class="bigname" aria-hidden="true">Remote Commerce</div>
 </footer>
 
 <script>
@@ -565,8 +454,6 @@ footer { border-top: 1px solid var(--night-line); }
   links.addEventListener('click', function () { links.classList.remove('open'); mb.setAttribute('aria-expanded', 'false'); });
 
   // ---- entrances, and the figures count up once
-  var ticks = document.getElementById('ticks');
-  for (var t = 0; t < 40; t++) { var tk = document.createElement('i'); tk.style.setProperty('--n', t); ticks.appendChild(tk); }
   function countUp(el) {
     if (reduce) return;
     var to = +el.dataset.count, pre = el.dataset.pre || '', post = el.dataset.post || '', start = performance.now();
@@ -581,126 +468,71 @@ footer { border-top: 1px solid var(--night-line); }
       if (!e.isIntersecting) return;
       e.target.classList.add('in');
       e.target.querySelectorAll('[data-count]').forEach(countUp);
+      if (e.target.dataset.count) countUp(e.target);
       seen.unobserve(e.target);
     });
   }, { threshold: .12 });
   document.querySelectorAll('.rv').forEach(function (n) { seen.observe(n); });
 
-  // ---- the stack settles, then lights one layer at a time, bottom to top
-  var stack = document.getElementById('stack');
-  var plates = [].slice.call(stack.querySelectorAll('.plate'));
-  var lit = 0;
-  new IntersectionObserver(function (es, o) {
-    if (!es[0].isIntersecting) return;
-    stack.classList.add('open'); o.disconnect();
-    plates[0].classList.add('on');
-    if (reduce) return;
-    setInterval(function () {
-      plates[lit].classList.remove('on');
-      lit = (lit + 1) % plates.length;
-      plates[lit].classList.add('on');
-    }, 1600);
-  }, { threshold: .3 }).observe(stack);
-
-  // ---- accordions: one open at a time
-  function accordion(sel) {
+  // ---- open one at a time. Services always keep one open; questions can all close.
+  function group(sel, keepOne) {
     var bs = [].slice.call(document.querySelectorAll(sel));
     bs.forEach(function (b) {
       b.addEventListener('click', function () {
         var open = b.getAttribute('aria-expanded') === 'true';
+        if (open && keepOne) return;
         bs.forEach(function (o) { o.setAttribute('aria-expanded', 'false'); document.getElementById(o.getAttribute('aria-controls')).hidden = true; });
         if (!open) { b.setAttribute('aria-expanded', 'true'); document.getElementById(b.getAttribute('aria-controls')).hidden = false; }
       });
     });
   }
-  accordion('.case button');
-  accordion('.q button');
+  group('.svc-btn', true);
+  group('.q button', false);
 
-  // runs a drawing only while its element is on screen
-  function onScreen(el, fn) {
+  // ---- the hero glow: light rising off a growth line, brightest where it climbs
+  var hero = document.querySelector('.hero');
+  var cv = document.getElementById('rise'), cx = cv.getContext('2d');
+  function size() {
+    cv.width = 460;
+    cv.height = Math.round(460 * hero.clientHeight / hero.clientWidth) || 260;
+    draw(9000);
+  }
+  function draw(t) {
+    var W = cv.width, H = cv.height, T = t / 1000, N = 130;
+    cx.globalCompositeOperation = 'source-over';
+    cx.clearRect(0, 0, W, H);
+    cx.globalCompositeOperation = 'lighter';
+    var narrow = W / H < 1;
+    for (var i = 0; i <= N; i++) {
+      var f = i / N;
+      var x = -W * .04 + f * W * 1.08;
+      var climb = Math.pow(f, 2.1);
+      var y = H * ((narrow ? .36 : .62) - (narrow ? .3 : .62) * climb);
+      // the normal of the curve, so rays lean back from the climb
+      var slope = -H * (narrow ? .3 : .62) * 2.1 * Math.pow(Math.max(f, .001), 1.1) / (W * 1.08);
+      var nx = slope, ny = -1, l = Math.hypot(nx, ny); nx /= l; ny /= l;
+      var wave = Math.sin(f * 19 + T * .5) * .5 + Math.sin(f * 8 - T * .3 + 1.2) * .5 + Math.sin(f * 37 + T * .85) * .22;
+      var bright = (Math.max(.2, .42 + .5 * wave)) * (.04 + .96 * Math.pow(f, 2));
+      var len = H * (.1 + .3 * Math.max(0, wave + .4));
+      var g = cx.createLinearGradient(x, y, x + nx * len, y + ny * len);
+      g.addColorStop(0, 'rgba(52,224,138,' + Math.min(.95, bright) + ')');
+      g.addColorStop(.4, 'rgba(14,159,94,' + Math.min(.6, bright * .5) + ')');
+      g.addColorStop(1, 'rgba(14,159,94,0)');
+      cx.strokeStyle = g;
+      cx.lineWidth = W / N * 2.8;
+      cx.beginPath(); cx.moveTo(x, y); cx.lineTo(x + nx * len, y + ny * len); cx.stroke();
+    }
+  }
+  size();
+  addEventListener('resize', size);
+  if (!reduce) {
     var vis = false, raf = 0;
-    function loop(t) { fn(t); raf = vis ? requestAnimationFrame(loop) : 0; }
+    var loop = function (t) { draw(t); raf = vis ? requestAnimationFrame(loop) : 0; };
     new IntersectionObserver(function (es) {
       vis = es[0].isIntersecting;
       if (vis && !raf) raf = requestAnimationFrame(loop);
-    }).observe(el);
+    }).observe(hero);
   }
-
-  // ---- the aurora: light rising off an arc
-  var hero = document.querySelector('.hero');
-  var stars = document.getElementById('stars'), sc = stars.getContext('2d');
-  var au = document.getElementById('aurora'), ac = au.getContext('2d');
-  function sizeHero() {
-    var w = hero.clientWidth, h = hero.clientHeight;
-    stars.width = w; stars.height = h;
-    var n = Math.round(w * h / 11000);
-    for (var i = 0; i < n; i++) {
-      sc.fillStyle = 'rgba(255,255,255,' + (0.12 + Math.random() * 0.4) + ')';
-      var s = Math.random() < .12 ? 1.6 : 1;
-      sc.fillRect(Math.random() * w, Math.random() * h, s, s);
-    }
-    // drawn small and softened by the CSS blur, which is far cheaper than drawing it large
-    au.width = 420; au.height = Math.round(420 * h / w) || 240;
-    drawAurora(9000);
-  }
-  function drawAurora(t) {
-    var W = au.width, H = au.height, T = t / 1000;
-    ac.globalCompositeOperation = 'source-over';
-    ac.clearRect(0, 0, W, H);
-    ac.globalCompositeOperation = 'lighter';
-    var cx = W / 2, cy = H * 0.86, rx = W * 0.56, ry = H * 0.6, N = 110;
-    for (var i = 0; i <= N; i++) {
-      var f = i / N, a = Math.PI * (1.02 + 0.96 * f);
-      var x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry;
-      var nx = Math.cos(a) / rx, ny = Math.sin(a) / ry, l = Math.hypot(nx, ny); nx /= l; ny /= l;
-      var wave = Math.sin(f * 17 + T * .55) * .5 + Math.sin(f * 7 - T * .32 + 1.3) * .5 + Math.sin(f * 31 + T * .9) * .25;
-      var bright = Math.max(.2, .36 + .5 * wave) * (.5 + .5 * Math.sin(f * Math.PI)) + (f > .62 && f < .86 ? .32 : 0);
-      var len = (H * .12) + (H * .3) * Math.max(0, wave + .35);
-      var g = ac.createLinearGradient(x, y, x + nx * len, y + ny * len);
-      g.addColorStop(0, 'rgba(52,224,138,' + Math.min(.95, bright) + ')');
-      g.addColorStop(.35, 'rgba(14,159,94,' + Math.min(.6, bright * .55) + ')');
-      g.addColorStop(1, 'rgba(14,159,94,0)');
-      ac.strokeStyle = g;
-      ac.lineWidth = W / N * 2.6;
-      ac.beginPath(); ac.moveTo(x, y); ac.lineTo(x + nx * len, y + ny * len); ac.stroke();
-    }
-  }
-  sizeHero();
-  addEventListener('resize', sizeHero);
-  if (!reduce) onScreen(hero, drawAurora);
-
-  // ---- the globe: a dotted world that turns slowly
-  var gl = document.getElementById('globe'), gc = gl.getContext('2d'), pts = [];
-  var COUNT = innerWidth < 700 ? 6000 : 14000;
-  for (var p = 0; p < COUNT; p++) {
-    var y0 = 1 - (p / (COUNT - 1)) * 2, r0 = Math.sqrt(1 - y0 * y0), th = p * 2.399963;
-    var lat = Math.asin(y0), lon = th % (Math.PI * 2);
-    var land = Math.sin(lat * 3.1 + 1) + Math.sin(lon * 2 + Math.sin(lat * 2) * 1.6) + .7 * Math.sin(lon * 5 + lat * 4);
-    if (land > -.45) pts.push([r0 * Math.cos(th), y0, r0 * Math.sin(th)]);
-  }
-  function sizeGlobe() {
-    var d = Math.min(devicePixelRatio || 1, 2);
-    gl.width = gl.clientWidth * d; gl.height = gl.clientHeight * d;
-    drawGlobe(0);
-  }
-  function drawGlobe(t) {
-    var W = gl.width, H = gl.height, R = Math.min(W * .48, H * .94), cx = W / 2, cy = H * 1.02;
-    var a = t / 26000, c = Math.cos(a), s = Math.sin(a), tilt = -.5, ct = Math.cos(tilt), st = Math.sin(tilt);
-    gc.clearRect(0, 0, W, H);
-    var dot = Math.max(1, R / 420);
-    for (var i = 0; i < pts.length; i++) {
-      var q = pts[i], x = q[0] * c + q[2] * s, z = -q[0] * s + q[2] * c, y = q[1] * ct - z * st;
-      z = q[1] * st + z * ct;
-      if (z < 0) continue;
-      var py = cy - y * R; if (py > H) continue;
-      var hot = i % 211 === 0;
-      gc.fillStyle = hot ? 'rgba(52,224,138,.95)' : 'rgba(205,235,219,' + (.22 + z * .6) + ')';
-      gc.fillRect(cx + x * R, py, hot ? dot * 2 : dot, hot ? dot * 2 : dot);
-    }
-  }
-  sizeGlobe();
-  addEventListener('resize', sizeGlobe);
-  if (!reduce) onScreen(gl, drawGlobe);
 
   // ---- no form backend: open the visitor's email with their answers written in
   var form = document.getElementById('applyForm');
