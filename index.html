@@ -146,8 +146,9 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .vid { position: relative; aspect-ratio: 9 / 13; border-radius: 9px; overflow: hidden; background: var(--night); }
 .vid img { width: 100%; height: 100%; object-fit: cover; transition: transform .8s var(--ease); }
 .tile:hover .vid img { transform: scale(1.05); }
-.vid em { position: absolute; top: 7px; left: 7px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.9); display: flex; align-items: center; justify-content: center; }
-.vid em::after { content: ''; border-left: 7px solid var(--ink); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; margin-left: 2px; }
+.vid::after { content: ''; position: absolute; inset: 0 0 auto; height: 56px; background: linear-gradient(rgba(0,0,0,.5), transparent); pointer-events: none; }
+.vid .views { position: absolute; z-index: 1; top: 8px; left: 9px; display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: .9375rem; font-weight: 700; line-height: 1; letter-spacing: -.01em; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.vid .views svg { width: 17px; height: 17px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
 .rows { padding: 10px 12px 14px; display: grid; gap: 7px; }
 .r { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-weight: 500; min-width: 0; }
 .r span { min-width: 0; }
@@ -299,7 +300,6 @@ footer { border-top: 1px solid var(--night-line); }
   .brands > * { min-height: 76px; border-right: 0; }
   .promise, .stats { grid-template-columns: 1fr; }
   .vids { grid-template-columns: repeat(2, 1fr); }
-  .vid:nth-child(n+3) { display: none; }
   form { grid-template-columns: 1fr; }
   .hero-cta .btn { flex: 1 1 100%; }
   .case-card { aspect-ratio: auto; min-height: 480px; }
@@ -411,10 +411,10 @@ footer { border-top: 1px solid var(--night-line); }
         <div class="shot"><div class="win">
           <div class="win-bar"><i></i><i></i><i></i><span>Short-form, accounts at scale</span></div>
           <div class="vids">
-            <div class="vid"><img src="assets/phone-in-hand.jpg" width="1600" height="1068" loading="lazy" alt="" style="object-position:46% 40%"><em></em></div>
-            <div class="vid"><img src="assets/looking-at-phone.jpg" width="1024" height="639" loading="lazy" alt="" style="object-position:26% 40%"><em></em></div>
-            <div class="vid"><img src="assets/medicinal-plants-1.jpg" width="1400" height="1894" loading="lazy" alt="" style="object-position:50% 30%"><em></em></div>
-            <div class="vid"><img src="assets/filming-on-phone.jpg" width="1024" height="639" loading="lazy" alt="" style="object-position:36% 30%"><em></em></div>
+            <div class="vid"><img src="assets/video-1.webp" loading="lazy" alt="A man comparing two clear coiled tubes, one clean and one dirty"><span class="views" aria-label="10.4M views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>10.4M</span></div>
+            <div class="vid"><img src="assets/video-2.webp" loading="lazy" alt="A man showing models of a liver and a gallbladder at a table"><span class="views" aria-label="5M views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>5M</span></div>
+            <div class="vid"><img src="assets/video-3.webp" loading="lazy" alt="A woman trimming a hedge while two people jog past"><span class="views" aria-label="3.1M views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>3.1M</span></div>
+            <div class="vid"><img src="assets/video-4.webp" loading="lazy" alt="A doctor comparing two chicken breasts in a supermarket"><span class="views" aria-label="6.5M views"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>6.5M</span></div>
           </div>
         </div></div>
       </article>
@@ -626,10 +626,7 @@ footer { border-top: 1px solid var(--night-line); }
     <div><h3>Company</h3><nav aria-label="Footer"><a href="#brands">Brands</a><a href="#what">What we do</a><a href="#results">Results</a><a href="#faq">FAQ</a></nav></div>
     <div><h3>Get in touch</h3><nav aria-label="Contact"><a href="#apply">Apply</a><a href="mailto:dusan@remotecommerce.net">dusan@remotecommerce.net</a></nav></div>
   </div>
-  <div class="frame legal">© 2026 Remote Commerce. Interface panels are illustrations. Photographs:
-    <a href="https://commons.wikimedia.org/w/index.php?curid=197215244">“A woman poses for a selfie”</a> by Shixart1985, <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>, cropped;
-    <a href="https://www.flickr.com/photos/157635012@N07/40851099253">“Woman with smartphone, Moscow”</a> (<a href="https://www.flickr.com/photos/157635012@N07/33940339288">and a second</a>) by Artem Beliaikin, CC0;
-    <a href="https://commons.wikimedia.org/w/index.php?curid=99568040">“Plantes médicinales”</a>, CC0.</div>
+  <div class="frame legal">© 2026 Remote Commerce. Interface panels are illustrations.</div>
 </footer>
 
 <script>
