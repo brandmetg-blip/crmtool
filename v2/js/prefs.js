@@ -8,8 +8,6 @@ import { state } from './state.js';
 const ROW = 'workspace';
 
 export const DEFAULTS = {
-  rosterTarget: 10,     // how many pages should be live at once
-  reviewAfterDays: 30,  // runway before a page with no winners is worth a decision
   sheetColumns: [],     // extra columns on the avatar sheet
   onboardingForm: null, // edited onboarding checklist; null = the built-in layout
   brands: null,         // the brand list once edited; null = the built-in five

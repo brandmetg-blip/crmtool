@@ -170,7 +170,7 @@ function openMember(existing, draft) {
     if (!accounts.length) {
       assignWrap.appendChild(el('div', { class: 'hint' },
         state.db.accounts.length
-          ? 'Every avatar is archived. Only pages on the roster can be assigned.'
+          ? 'Every avatar is archived. Only running pages can be assigned.'
           : 'No avatars exist yet — create them under Avatars first.'));
       staleNote();
       return;

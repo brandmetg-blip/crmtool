@@ -18,10 +18,9 @@ import {
   captionsNeeded, legacyCaption, captionTemplate, hasPlaceholder,
   LINKTWIN_LINKS, linktwinLink, setLinktwinLink, linktwinComplete,
 } from '../captions.js';
-import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats } from '../lifecycle.js';
-import { renderRoster, lineageNote } from './roster.js';
+import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats, lineageNote } from '../lifecycle.js';
 import { renderSheet, openColumns } from './sheet.js';
-import { onboardingPages, startNewPage } from './onboarding.js';
+import { startNewPage } from './onboarding.js';
 
 // [stored id, tone, what a person reads]
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone, l.label]);
@@ -208,9 +207,6 @@ export function renderAccounts(root) {
 
   const liveCount = buckets.roster.filter(isLive).length;
   root.appendChild(head(canEdit, liveCount, buckets.roster.length - liveCount));
-  if (view === 'roster' && !asSheet) {
-    renderRoster(root, all, canEdit, onboardingPages(state.db));
-  }
   root.appendChild(filters(all, buckets, view, asSheet, canEdit));
 
   const shown = buckets[view]
@@ -315,12 +311,10 @@ function groupedCards(shown, canEdit) {
 
 function head(canEdit, liveCount, buildingCount) {
   const spacer = el('span', { class: 'spacer' });
-  // the roster is both together — a page being set up is already one of yours
   const total = liveCount + buildingCount;
   const wrap = el('div', { class: 'page-head' },
     el('div', null, el('h1', null, 'Avatars'),
-      el('div', { class: 'sub' }, total + (total === 1 ? ' page' : ' pages') + ' — '
-        + liveCount + ' live' + (buildingCount ? ', ' + buildingCount + ' setting up' : ''))),
+      el('div', { class: 'sub' }, total + (total === 1 ? ' page' : ' pages'))),
     spacer);
   // async so it lands after the buttons below are appended — anchor on the
   // spacer so the pill sits to their left either way
