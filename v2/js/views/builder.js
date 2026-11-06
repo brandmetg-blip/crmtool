@@ -745,9 +745,6 @@ function openMassAdd(u) {
     el('span', { class: 'label' }, label),
     el(tag || 'input', { class: 'input', placeholder: ph, oninput: e => draft[key] = e.target.value }));
 
-  const conceptField = field('concept', 'CONCEPT', 'e.g. Transformation, Villain…');
-  body.appendChild(conceptField);
-
   // One script box: hook and body used to be two. It is stored as the body, so
   // "From concept" (each avatar's own bodies folder) still works.
   const coverage = el('div');
@@ -759,8 +756,6 @@ function openMassAdd(u) {
       // picking a concept also names the video, so the builder shows it
       const c = conceptById(draft.conceptId);
       draft.concept = c ? c.name : '';
-      const inp = conceptField.querySelector('input');
-      if (inp) inp.value = draft.concept;
       // and re-picks, since a product that does not take this concept is no
       // longer a page that needs the video
       const before = new Set(picked);
