@@ -1,4 +1,5 @@
-// mainscripts.js — the copy-paste workspace. A script is a finished reference
+// mainscripts.js — the Prompts tab, the copy-paste workspace. A prompt pack (stored
+// as a script) is a finished reference
 // video broken into shots: each shot has its reference image and its image and
 // video prompts, ready to copy. The person making it picks the page it is for
 // and ticks each step off, and the next step is always the one lit up.
@@ -34,7 +35,7 @@ export async function addScript() {
   const { save } = await import('../app.js');
   const existing = state.db.scripts.filter(s => s.date === state.date);
   const s = {
-    id: uid('s'), date: state.date, order: existing.length, title: 'Script ' + (existing.length + 1),
+    id: uid('s'), date: state.date, order: existing.length, title: 'Pack ' + (existing.length + 1),
     type: 'Product', productId: '', body: '', notes: '', referenceVideo: '',
     frames: [], createdBy: state.user.name, createdAt: Date.now(),
   };
@@ -99,7 +100,7 @@ function list(scripts, canEdit, u) {
     const others = state.db.scripts.map(s => s.date).filter(d => d && d !== state.date).sort();
     const latest = others.pop();
     return el('div', { class: 'card col', style: 'align-items:center;text-align:center;color:var(--dim);padding:34px;gap:12px' },
-      canEdit ? 'No scripts for this day yet. Add one to start.' : 'No scripts for this day yet.',
+      canEdit ? 'No prompt packs for this day yet. Add one to start.' : 'No prompt packs for this day yet.',
       latest ? el('button', { class: 'btn small', onclick: () => { state.date = latest; forceEmit(); } }, 'Go to ' + fmtDate(latest)) : null);
   }
 
@@ -112,7 +113,7 @@ function list(scripts, canEdit, u) {
       el('button', { class: filter === t ? 'on' : '', onclick: () => { state.scriptFilter = t; forceEmit(); } }, t))));
   }
   if (!shown.length) {
-    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:28px' }, 'No ' + filter.toLowerCase() + ' scripts on this day.'));
+    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:28px' }, 'No ' + filter.toLowerCase() + ' prompt packs on this day.'));
     return wrap;
   }
   wrap.appendChild(el('div', { class: 'sc-list' }, shown.map(s => scriptCard(s, u))));
@@ -164,10 +165,10 @@ function detailHead(s, canEdit, editing) {
   const product = byId(state.db.products, s.productId);
 
   return el('div', { class: 'row wrap', style: 'gap:10px' },
-    el('button', { class: 'btn small', onclick: () => { state.openScript = null; forceEmit(); } }, '‹ All scripts'),
+    el('button', { class: 'btn small', onclick: () => { state.openScript = null; forceEmit(); } }, '‹ All packs'),
     editing
       ? guarded('script:' + s.id + ':title',
-          () => el('input', { class: 'input sc-title', value: s.title || '', placeholder: 'Script title…', oninput: e => quiet(s.id, x => x.title = e.target.value) }),
+          () => el('input', { class: 'input sc-title', value: s.title || '', placeholder: 'Pack name…', oninput: e => quiet(s.id, x => x.title = e.target.value) }),
           () => el('b', { style: 'font-size:16px' }, s.title || 'Untitled'))
       : el('b', { style: 'font-size:16px' }, s.title || 'Untitled'),
     !editing ? el('span', { class: 'chip ' + (s.type === 'Growth' ? 'blue' : 'green') }, s.type || 'Product') : null,
@@ -180,7 +181,7 @@ function detailHead(s, canEdit, editing) {
     canEdit ? el('button', { class: 'btn small', onclick: () => copyToDay(s) }, 'Copy to another day') : null,
     canEdit ? el('button', {
       class: 'btn small danger', onclick: async () => {
-        if (!confirm('Delete this script, its shots and everyone’s progress on it?')) return;
+        if (!confirm('Delete this prompt pack, its shots and everyone’s progress on it?')) return;
         const { removeItem } = await import('../app.js');
         state.db.entries.filter(e => e.scriptId === s.id).forEach(e => removeItem('entries', e.id));
         removeItem('scripts', s.id);
@@ -191,7 +192,7 @@ function detailHead(s, canEdit, editing) {
 
 // A winning script gets used again, so it can be sent to another day whole.
 async function copyToDay(s) {
-  const date = (prompt('Copy this script to which date? (YYYY-MM-DD)', todayStr()) || '').trim();
+  const date = (prompt('Copy this pack to which date? (YYYY-MM-DD)', todayStr()) || '').trim();
   if (!date) return;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('Use the format YYYY-MM-DD.'); return; }
   const { save } = await import('../app.js');
@@ -376,7 +377,7 @@ function shotsList(s, u) {
   const shots = shotsOf(s);
   const wrap = el('div', { class: 'col', style: 'gap:12px' });
   if (!shots.length) {
-    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' }, 'No shots added to this script yet.'));
+    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' }, 'No shots added to this pack yet.'));
     return wrap;
   }
   const logs = can.logCompletion(u);

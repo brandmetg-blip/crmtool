@@ -7,7 +7,7 @@
 //             Repost), which video editor it belongs to, whether it's made
 //             (+ the finished link), and whether it's posted (+ platforms).
 //
-//   SCRIPTS — the day's Main Scripts, the copy-paste workspace. See mainscripts.js.
+//   SCRIPTS — the day's prompt packs, the copy-paste workspace. See mainscripts.js.
 //
 // Who can do what:
 //   admin / manager  write the brief and assign editors
@@ -79,7 +79,7 @@ function head(u) {
   import('../app.js').then(({ statusPill }) => wrap.appendChild(statusPill()));
 
   if (scriptsOn && can.editScripts(u) && !state.openScript) {
-    wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ Add script'));
+    wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ New prompt pack'));
   }
   // Write the brief once, drop it on as many avatars as you like.
   if (!scriptsOn && can.editVideos(u) && !state.builderAvatar) {
@@ -88,7 +88,7 @@ function head(u) {
   return wrap;
 }
 
-// Videos / Posting / Main Scripts. Posting carries a count of what is made but
+// Videos / Posting / Prompts. Posting carries a count of what is made but
 // not yet posted, so a growing backlog is visible without opening anything —
 // that is the whole reason it is easy to forget.
 function modeSeg(u) {
@@ -132,7 +132,7 @@ function modeSeg(u) {
   seg.appendChild(el('button', {
     class: mode === 'scripts' ? 'on' : '',
     onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
-  }, 'Main Scripts', scriptCount ? el('span', { class: 'pill' }, String(scriptCount)) : null));
+  }, 'Prompts', scriptCount ? el('span', { class: 'pill' }, String(scriptCount)) : null));
   return seg;
 }
 
@@ -156,7 +156,7 @@ function dayStrip(u) {
       caption = n ? n + (n === 1 ? ' hook' : ' hooks') : '';
     } else if (scriptsOn) {
       const n = state.db.scripts.filter(s => s.date === ds).length;
-      caption = n ? n + (n === 1 ? ' script' : ' scripts') : '';
+      caption = n ? n + (n === 1 ? ' pack' : ' packs') : '';
     } else {
       const es = dayEntries(u, ds, accts);
       caption = es.length ? es.filter(e => e.done).length + '/' + es.length : '';

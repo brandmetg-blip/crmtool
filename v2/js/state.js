@@ -19,10 +19,10 @@ export const state = {
   builderEditor: 'all',       // filter the avatar cards to one editor's avatars
   builderProduct: 'all',      // ...and/or to one product ('none' = no product set)
   openScript: null,           // script id open in detail view
-  scriptView: 'edit',         // main scripts, for those who can edit: edit | va
-  scriptFilter: 'All',        // main scripts list: All | Growth | Product
+  scriptView: 'edit',         // prompts tab, for those who can edit: edit | va
+  scriptFilter: 'All',        // prompts list: All | Growth | Product
   scriptPage: null,           // { scriptId, accountId } the page a video is being made for
-  scriptAllPages: false,      // main scripts: every page's progress is open
+  scriptAllPages: false,      // prompts tab: every page's progress is open
   acctView: 'roster',         // avatars tab: roster (live + setting up) | archive
   acctLayout: 'cards',        // avatars tab: cards | sheet
   acctProfile: 'all',
@@ -108,7 +108,7 @@ export const PERMISSIONS = [
   ['editAccounts', 'Manage pages', 'Create and edit avatars, products, concepts and profiles.'],
   ['editVideos', 'Write the daily brief', 'Add and mass add videos, assign editors, edit a video’s brief.'],
   ['markPosted', 'Mark videos posted', 'Use the posting queue and tick posted with platforms.'],
-  ['editScripts', 'Write main scripts', 'Create and edit main scripts and their frames.'],
+  ['editScripts', 'Write prompts', 'Create and edit prompt packs and their shots.'],
   ['editHooks', 'Write the day’s hooks', 'Add and edit the hooks shared across every page.'],
   ['seesAllAccounts', 'See every page', 'See all pages and the analytics, not only the ones assigned to them.'],
   ['onboarding', 'Set up new pages', 'Open the onboarding pipeline and take new pages through it.'],

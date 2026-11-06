@@ -146,7 +146,7 @@ one thing they change) and reads the analytics for those pages.
 | Mark posted + platforms | ✅ | ❌ view only | sees it once posted | ✅ their pages |
 | Captions board | ✅ | ✅ | ❌ | ✅ their pages |
 | Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see | ❌ |
-| Main Scripts (frames, prompts) | ✅ | ❌ view + copy | ❌ view + copy | ❌ |
+| Prompts (shots, prompts) | ✅ | ❌ view + copy | ❌ view + copy | ❌ |
 | Avatars | ✅ | ❌ view only | ❌ | ❌ |
 | Onboarding (new pages, before they join Avatars) | ✅ | ✅ **sets them up** | ❌ cannot see | ❌ |
 | Assets | ✅ | ✅ all | ✅ theirs only | ❌ |
@@ -156,7 +156,7 @@ one thing they change) and reads the analytics for those pages.
 
 **Extra permissions.** The table above is what each role does by default. Under
 **Team**, any member can be granted extra abilities on top of their role —
-manage pages, write the daily brief, mark videos posted, write main scripts,
+manage pages, write the daily brief, mark videos posted, write prompts,
 write the day's hooks, see every page, see and set tasks, or set up new pages.
 Use these to let one person do more without making them an admin.
 
