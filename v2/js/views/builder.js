@@ -25,7 +25,7 @@ import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stag
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
-import { scriptsMode, addScript, promptChoices, openPrompts, promptProgress } from './mainscripts.js';
+import { scriptsMode, addScript, scriptForVideo, ensureScript, findLabelled, labelTitle, typeName, openPrompts, promptProgress } from './mainscripts.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
 import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
@@ -561,11 +561,14 @@ function sheet(a, entries, u) {
 }
 
 async function addEntry(a) {
+  const type = (rampPhase(a) || {}).growing ? 'Growth' : 'Product';
+  const why = rampBlock(a, type, state.date);
+  if (why) { alert((a.name || 'This page') + ': ' + why + '.'); return; }
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
-    // a page still making its first growth videos starts on growth
-    type: (rampPhase(a) || {}).growing ? 'Growth' : 'Product',
+    // a page still on its first videos starts on growth
+    type, promptV: 1,
     prod: 'Assembly', assignedEditorId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
@@ -633,7 +636,7 @@ function openMassAdd(u) {
   // ---- who it's for: brand, then product, with their pictures
   const brandBox = el('div', { class: 'ma-brands' });
   const productBox = el('div', { class: 'ma-products' });
-  const aim = () => { applyQuality(); reselect(); autoRemoved = 0; paintBrands(); buildPicker(); refresh(); };
+  const aim = () => { draft.version = null; applyQuality(); reselect(); autoRemoved = 0; paintBrands(); buildPicker(); refresh(); };
   function paintBrands() {
     brandBox.innerHTML = '';
     brandBox.appendChild(el('button', {
@@ -694,6 +697,7 @@ function openMassAdd(u) {
     // videos stranded on a page that has since been dropped are in neither.
     // The whole day, not just the slice being aimed at: narrowing the picker
     // does not make the other videos stop existing.
+    draft.version = null;
     const n = dayEntries(state.user, draft.date, allAccounts).length;
     dayCount.textContent = n ? n + (n === 1 ? ' video already on this day' : ' videos already on this day') : 'Nothing on this day yet';
     reselect();
@@ -709,6 +713,7 @@ function openMassAdd(u) {
           class: draft.type === t ? 'on' : '',
           onclick: () => {
             draft.type = t;
+            draft.version = null;
             // the new-page rule depends on the type, so the selection does too
             reselect();
             autoRemoved = 0;
@@ -766,12 +771,37 @@ function openMassAdd(u) {
   });
   body.appendChild(bodyField);
 
-  // ---- the same script on the Prompts tab, so every video it lands on links there
-  const promptSel = el('select', { class: 'input', 'aria-label': 'Same script in Prompts', onchange: e => draft.promptId = e.target.value },
-    [el('option', { value: '' }, 'Not linked')].concat(promptChoices().map(c => el('option', { value: c.id }, c.label))));
-  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
-    el('span', { class: 'label' }, 'SAME SCRIPT IN PROMPTS'), promptSel,
-    el('span', { class: 'hint' }, 'Every video added here gets an Open prompts button.')));
+  // ---- the label: finds or creates this script in Prompts, on this day
+  const labelBox = el('div', { class: 'col', style: 'gap:5px' });
+  body.appendChild(labelBox);
+  // the lowest version no video uses yet, so a script made in advance is found
+  // first and a second script that day goes to the next version
+  const nextVersion = () => {
+    const used = new Set((state.db.dailyEntries || []).filter(v => {
+      if (v.date !== draft.date || (v.type || 'Product') !== draft.type || !v.promptV) return false;
+      if (!draft.brandId) return true;
+      const b = pageBrand(byId(state.db.accounts, v.accountId));
+      return !!b && b.id === draft.brandId;
+    }).map(v => +v.promptV));
+    return [1, 2, 3, 4, 5].find(n => !used.has(n)) || 5;
+  };
+  const chosenVersion = () => draft.version || nextVersion();
+  function paintLabel() {
+    const v = chosenVersion();
+    const hit = draft.brandId ? findLabelled(draft.date, draft.brandId, draft.type, v) : null;
+    labelBox.innerHTML = '';
+    labelBox.appendChild(el('span', { class: 'label' }, 'PROMPTS LABEL'));
+    labelBox.appendChild(el('div', { class: 'row wrap', style: 'gap:8px' },
+      el('span', { class: 'chip gray' }, draft.brandId ? (brandById(draft.brandId) || {}).name || 'Brand' : 'Each page’s brand'),
+      el('span', { class: 'chip ' + (draft.type === 'Growth' ? 'blue' : 'green') }, typeName(draft.type)),
+      el('div', { class: 'seg mini' }, [1, 2, 3, 4, 5].map(n => el('button', {
+        class: v === n ? 'on' : '', onclick: () => { draft.version = n; paintLabel(); }
+      }, String(n))))));
+    labelBox.appendChild(el('span', { class: 'hint' }, !draft.brandId
+      ? 'One script per brand in Prompts, version ' + v + ', on this day.'
+      : hit ? 'Uses “' + (hit.title || 'Untitled') + '”, already in Prompts on this day.'
+        : 'Creates “' + labelTitle(draft.brandId, draft.type, v) + '” in Prompts on this day.'));
+  }
   body.appendChild(field('refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…'));
   body.appendChild(field('notes', 'NOTES', 'Anything the editors should know…', 'textarea'));
 
@@ -792,6 +822,7 @@ function openMassAdd(u) {
 
   function refresh() {
     // ---- how many of the avatars actually have this concept set up
+    paintLabel();
     const useConcept = draft.bodyKind === 'concept' && !!draft.conceptId;
     const has = a => hasBodies(a, draft.conceptId, draft.rotate ? '' : draft.variationId);
     coverage.innerHTML = '';
@@ -816,7 +847,7 @@ function openMassAdd(u) {
 
     const ruled = accounts.filter(blocked).length;
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
-      + (ruled ? ' · ' + ruled + ' skipped by the new-page rule' : '')
+      + (ruled ? ' · ' + ruled + ' skipped by the first videos rule' : '')
       + (autoRemoved ? ' · ' + autoRemoved + ' dropped — their product does not use this concept' : '');
 
     // each product heading shows all / some / none of its avatars selected
@@ -990,6 +1021,14 @@ function openMassAdd(u) {
     // rotation deals the angles out in order across the chosen avatars
     const c = conceptById(draft.conceptId);
     const vars = (c && c.variations) || [];
+    const version = chosenVersion();
+    const typedBody = draft.bodyKind === 'text' ? draft.body : '';
+    for (const brandId of new Set(chosen.map(a => (pageBrand(a) || {}).id).filter(Boolean))) {
+      await ensureScript({
+        date: draft.date, brandId, type: draft.type, version,
+        productId: draft.productId, body: typedBody, refVideo: draft.refVideo,
+      });
+    }
     chosen.forEach((a, i) => {
       const variationId = draft.rotate && vars.length
         ? vars[i % vars.length].id
@@ -1002,7 +1041,7 @@ function openMassAdd(u) {
         body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
         conceptId: draft.conceptId, variationId,   // link resolved from the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
-        promptId: draft.promptId || '',
+        promptV: pageBrand(a) ? version : 0,
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
         win: false, createdBy: state.user.name, createdAt: Date.now(),
@@ -1118,29 +1157,44 @@ function editorFor(account, mode, editors) {
 }
 
 function setType(en, a, type) {
+  const p = rampPhase(a);
+  if (p && type !== 'Growth' && (p.growing || p.first.includes(en))) {
+    alert('The first ' + p.need + ' videos of a page are growth.');
+    return;
+  }
   eLoud(en.id, x => x.type = type);
 }
 
 async function eQuiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('dailyEntries', id, fn); }
 async function eLoud(id, fn) { const { mutate } = await import('../app.js'); mutate('dailyEntries', id, fn); }
 
-// Where a video meets the Prompts tab: the button to go make it, and, for whoever
-// adds videos, the choice of which script it is.
-function promptsRow(en, canEdit, u) {
-  const linked = !!en.promptId && state.db.scripts.some(s => s.id === en.promptId);
-  const p = linked ? promptProgress(en) : null;
-  const open = linked && !isPoster(u) ? el('button', { class: 'btn small primary', onclick: () => openPrompts(en) }, 'Open prompts ›') : null;
-  const count = open && p.total ? el('span', { class: 'hint sc-count' }, p.done + ' of ' + p.total + ' steps') : null;
+// Where a video meets the Prompts tab. Whoever makes it gets the button; only
+// those who add videos see the label behind it.
+function promptsRow(en, a, canEdit, u) {
+  const s = scriptForVideo(en);
+  const ready = !!s && (s.frames || []).length > 0;
+  const p = ready ? promptProgress(en) : null;
+  const open = isPoster(u) ? null
+    : ready ? el('button', { class: 'btn small primary', onclick: () => openPrompts(en) }, 'Open prompts ›')
+    : s ? el('span', { class: 'hint' }, 'Prompts not ready yet') : null;
+  const count = p && p.total && !isPoster(u) ? el('span', { class: 'hint sc-count' }, p.done + ' of ' + p.total + ' steps') : null;
   if (!canEdit) return open ? el('div', { class: 'row wrap', style: 'gap:10px' }, open, count) : null;
 
-  const sel = el('select', {
-    class: 'input', style: 'height:32px;width:auto;min-width:200px;max-width:100%;flex:0 1 auto', 'aria-label': 'Same script in Prompts',
-    onchange: e => { const id = e.target.value; eLoud(en.id, x => x.promptId = id); }
-  }, [el('option', { value: '' }, 'Not linked')].concat(promptChoices().map(c => el('option', { value: c.id }, c.label))));
-  sel.value = linked ? en.promptId : '';
+  const b = pageBrand(a);
+  const setVersion = async n => {
+    await eLoud(en.id, x => { x.promptV = n; x.promptId = ''; });
+    if (n && b) {
+      await ensureScript({ date: en.date, brandId: b.id, type: en.type, version: n });
+      forceEmit();
+    }
+  };
   return el('div', { class: 'col', style: 'gap:6px' },
-    el('span', { class: 'label' }, 'SAME SCRIPT IN PROMPTS'),
-    el('div', { class: 'row wrap', style: 'gap:10px' }, sel, open, count));
+    el('span', { class: 'label' }, 'PROMPTS LABEL'),
+    el('div', { class: 'row wrap', style: 'gap:10px' },
+      b ? el('span', { class: 'chip gray' }, b.name + ' ' + typeName(en.type)) : el('span', { class: 'hint' }, 'This page has no brand'),
+      b ? el('div', { class: 'seg mini' }, [[0, 'None'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']].map(([n, label]) =>
+        el('button', { class: +(en.promptV || 0) === n ? 'on' : '', onclick: () => setVersion(n) }, label))) : null,
+      open, count));
 }
 
 function entryRow(en, a, num, u) {
@@ -1205,7 +1259,7 @@ function entryRow(en, a, num, u) {
     card.appendChild(sourceBlock(en, 'hook', 'HOOK (OLDER VIDEO)', 'The hook / opening line…', canEdit, a));
   }
   card.appendChild(sourceBlock(en, 'body', 'SCRIPT', 'The whole script…', canEdit, a));
-  const toPrompts = promptsRow(en, canEdit, u);
+  const toPrompts = promptsRow(en, a, canEdit, u);
   if (toPrompts) card.appendChild(toPrompts);
 
   card.appendChild(linkBlock(en, 'refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…', canEdit));

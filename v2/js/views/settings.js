@@ -62,11 +62,10 @@ function sheetSection() {
       el('button', { class: 'btn small', onclick: openColumns }, 'Edit columns')));
 }
 
-// New pages make their growth videos first, then go CTA only. Pages that existed
-// before this rule are not affected.
+// Every page's first videos are growth, one a day.
 function rampSection() {
-  const on = !!getPref('rampOn');
-  const need = getPref('rampCount');
+  const on = !!getPref('firstVideosOn');
+  const need = getPref('firstVideosCount');
   const stagePick = (key, label, hint) => el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
     el('span', { class: 'label' }, label),
     (() => {
@@ -81,32 +80,32 @@ function rampSection() {
 
   return el('div', { class: 'card col', style: 'gap:12px;margin-bottom:22px' },
     el('div', null,
-      el('b', { style: 'font-size:14px' }, 'New page rule'),
+      el('b', { style: 'font-size:14px' }, 'First videos rule'),
       el('div', { class: 'hint' },
         on
-          ? 'A new page gets ' + need + ' growth videos first, at most one a day, and then only CTA videos. Mass add skips any page the video does not belong on. Pages made before the rule was on are not affected.'
-          : 'Off. Every page can take any video. Switch it on to make new pages start with growth videos only.')),
+          ? 'Every page’s first ' + need + ' videos are growth, one a day. A video counts as soon as it is added, even before it is made or posted. After that the page can take any video. Mass add skips any page the video does not belong on.'
+          : 'Off. Every page can take any video.')),
     el('div', { class: 'seg mini', style: 'align-self:flex-start' }, [[false, 'Off'], [true, 'On']].map(([v, label]) =>
       el('button', {
         class: on === v ? 'on' : '',
-        onclick: async () => { await setPref('rampOn', v); forceEmit(); }
+        onclick: async () => { await setPref('firstVideosOn', v); forceEmit(); }
       }, label))),
     !on ? null : el('div', { class: 'row wrap', style: 'gap:20px;align-items:flex-start' },
       el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
-        el('span', { class: 'label' }, 'GROWTH VIDEOS FIRST'),
+        el('span', { class: 'label' }, 'FIRST VIDEOS'),
         el('input', {
           class: 'input', type: 'number', min: '1', max: '100', value: String(need),
           style: 'width:110px;height:34px;font-size:15px;font-weight:800;text-align:center',
           onchange: async e => {
             const v = Math.max(1, Math.min(100, Math.round(+e.target.value || 1)));
             e.target.value = String(v);
-            await setPref('rampCount', v);
+            await setPref('firstVideosCount', v);
             forceEmit();
           }
         }),
-        el('span', { class: 'hint' }, 'Then CTA only.')),
+        el('span', { class: 'hint' }, 'All growth, one a day.')),
       stagePick('rampGrowthStage', 'STARTS IN STAGE', 'Where a new page begins.'),
-      stagePick('rampCtaStage', 'MOVES TO STAGE', 'Where it goes after its growth videos.')));
+      stagePick('rampCtaStage', 'MOVES TO STAGE', 'Where it goes after its first videos.')));
 }
 
 // ---------------------------------------------------------------------------

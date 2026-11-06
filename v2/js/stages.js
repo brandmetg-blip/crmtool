@@ -58,29 +58,33 @@ export function videosOn(account, type, date, entries) {
 }
 
 // ---------------------------------------------------------------------------
-// the new-page rule
+// the first videos rule
 // ---------------------------------------------------------------------------
-// Off unless switched on in Settings. While it is on, a page created under it
-// (it carries `ramp: true`) makes its first growth videos, one a day, and then
-// only CTA videos. Pages made before it have no flag, so nothing changes for them.
+// Every page's first videos are growth, one a day. A video counts the moment it
+// is added, made or not. After those, the page can take any video.
 //
 // The count is read off the page's videos rather than stored, so deleting a
 // video can never leave the number wrong.
 export function rampPhase(a) {
-  const need = Math.max(0, Math.round(+getPref('rampCount') || 0));
-  if (!getPref('rampOn') || !a || !a.ramp || !need) return null;
-  const have = (state.db.dailyEntries || [])
-    .filter(e => e.accountId === a.id && (e.type || 'Product') === 'Growth').length;
-  return { have, need, growing: have < need };
+  const need = Math.max(0, Math.round(+getPref('firstVideosCount') || 0));
+  if (!getPref('firstVideosOn') || !a || !need) return null;
+  const videos = (state.db.dailyEntries || []).filter(e => e.accountId === a.id)
+    .sort((x, y) => (x.date || '').localeCompare(y.date || '') || (x.createdAt || 0) - (y.createdAt || 0));
+  return { have: videos.length, need, growing: videos.length < need, first: videos.slice(0, need) };
 }
 
 // Why this page cannot take a video of `type` on `date`, or '' if it can.
 export function rampBlock(a, type, date) {
   const p = rampPhase(a);
   if (!p) return '';
-  if (!p.growing) return type === 'Growth' ? 'Past growth, CTA only' : '';
-  if (type !== 'Growth') return 'In growth, ' + p.have + ' of ' + p.need;
-  return videosOn(a, 'Growth', date) ? 'Growth already that day' : '';
+  if (p.growing) {
+    if (type !== 'Growth') return 'First videos are growth, ' + p.have + ' of ' + p.need;
+    return p.first.some(v => v.date === date) ? 'Already has a video that day' : '';
+  }
+  // those days belong to the first videos. Pages that started before the rule
+  // never ran it this way, so they are left alone.
+  const ranIt = p.first.every(v => v.type === 'Growth') && new Set(p.first.map(v => v.date)).size === p.need;
+  return ranIt && date <= p.first[p.need - 1].date ? 'Still on its first ' + p.need + ' days' : '';
 }
 
 // Moves the page between the two chosen stages when it crosses the line, and
@@ -88,7 +92,7 @@ export function rampBlock(a, type, date) {
 // other reason is left alone. Returns true if the page changed.
 export function syncRampStage(a) {
   const p = rampPhase(a);
-  if (!p) return false;
+  if (!p || !a.ramp) return false;   // pages made while the rule was on
   const stage = key => { const id = getPref(key); return byId(state.db.stages, id) ? id : ''; };
   const growth = stage('rampGrowthStage'), cta = stage('rampCtaStage');
   if (!p.growing && cta && a.stageId !== cta && (!a.stageId || a.stageId === growth)) { a.stageId = cta; return true; }
@@ -98,7 +102,7 @@ export function syncRampStage(a) {
 
 // What a brand-new page starts with.
 export function rampSeed() {
-  if (!getPref('rampOn')) return { stageId: '' };
+  if (!getPref('firstVideosOn')) return { stageId: '' };
   return { ramp: true, stageId: byId(state.db.stages, getPref('rampGrowthStage')) ? getPref('rampGrowthStage') : '' };
 }
 

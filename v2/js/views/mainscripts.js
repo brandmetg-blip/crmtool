@@ -7,8 +7,10 @@
 // Progress is kept per page on that page's entry, so two people making the same
 // script for different pages never touch each other's ticks.
 //
-// A video in the Videos tab points here through its promptId. When it does, the
-// finished link and the done tick are the video's own, so nobody logs them twice.
+// A video finds its script here by its label: same day, same brand, same type,
+// same version (Growth 1, CTA 2…). The brand comes from the video's page and the
+// version is the video's promptV. When a video has a script, the finished link
+// and the done tick are the video's own, so nobody logs them twice.
 //
 // The whole shell is rebuilt on any change, so the reference video element is
 // kept between renders. Put back in the same tick, it carries on playing.
@@ -17,7 +19,7 @@ import { state, emit, forceEmit, uid, todayStr, fmtDate, byId, can, myAccounts }
 import { el, copyText, avatar } from '../ui.js';
 import { guarded } from '../guard.js';
 import { liveAccounts } from '../stages.js';
-import { productOptions } from '../brands.js';
+import { productOptions, brands, brandById, pageBrand } from '../brands.js';
 
 const TOOLS = [['veo', 'Veo'], ['omniflash', 'Omni Flash'], ['grok', 'Grok']];
 const TYPES = ['Growth', 'Product'];
@@ -35,27 +37,67 @@ export function scriptsMode(root, u) {
   else root.appendChild(list(scripts, canEdit, u));
 }
 
-// The scripts a video can be linked to, newest day first.
-export function promptChoices() {
-  return state.db.scripts.slice()
-    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (a.order || 0) - (b.order || 0))
-    .map(s => ({ id: s.id, label: (s.title || 'Untitled') + (s.date ? ' · ' + fmtDate(s.date) : '') }));
+// Does this video belong to this script?
+function matches(s, v, a) {
+  if (!v.promptV) return v.promptId === s.id;   // linked by hand before labels
+  const b = pageBrand(a);
+  return !!b && s.brandId === b.id && s.date === v.date && +s.version === +v.promptV
+    && (s.type || 'Product') === (v.type || 'Product');
+}
+
+export function scriptForVideo(v) {
+  if (!v.promptV && !v.promptId) return null;
+  const a = byId(state.db.accounts, v.accountId);
+  return state.db.scripts.find(s => matches(s, v, a)) || null;
+}
+
+export const typeName = t => t === 'Growth' ? 'Growth' : 'CTA';
+export const labelTitle = (brandId, type, version) =>
+  ((brandById(brandId) || {}).name || 'Script') + ' ' + typeName(type) + ' ' + version;
+
+export function findLabelled(date, brandId, type, version) {
+  return state.db.scripts.find(s => s.date === date && s.brandId === brandId && +s.version === +version
+    && (s.type || 'Product') === (type || 'Product')) || null;
+}
+
+// The script for a label: the one already there, or a new one. Whatever the mass
+// add knows goes into blanks only, so finished work is never written over.
+export async function ensureScript({ date, brandId, type, version, productId, body, refVideo }) {
+  const { save } = await import('../app.js');
+  const s = findLabelled(date, brandId, type, version);
+  if (s) {
+    if (!(s.body || '').trim() && body) s.body = body;
+    if (!(s.referenceVideo || '').trim() && refVideo) s.referenceVideo = refVideo;
+    save('scripts', s);
+    return s;
+  }
+  const made = {
+    id: uid('s'), date, brandId, version, type: type || 'Product',
+    order: state.db.scripts.filter(x => x.date === date).length,
+    title: labelTitle(brandId, type, version), productId: productId || '',
+    body: body || '', notes: '', referenceVideo: refVideo || '', frames: [],
+    createdBy: state.user.name, createdAt: Date.now(),
+  };
+  save('scripts', made);
+  return made;
 }
 
 // From a video's card: straight to its script, already on that avatar.
 export function openPrompts(video) {
   state.builderMode = 'scripts';
+  const s = scriptForVideo(video);
+  if (!s) return;
   state.builderAvatar = null;
-  state.openScript = video.promptId;
+  state.openScript = s.id;
   state.scriptView = 'va';
-  state.scriptPage = { scriptId: video.promptId, accountId: video.accountId };
-  state.scriptBack = { scriptId: video.promptId, accountId: video.accountId };
+  state.scriptPage = { scriptId: s.id, accountId: video.accountId };
+  state.scriptBack = { scriptId: s.id, accountId: video.accountId };
   forceEmit();
 }
 
 // "6 of 24 steps" for a video's card.
 export function promptProgress(video) {
-  const s = state.db.scripts.find(x => x.id === video.promptId);
+  const s = scriptForVideo(video);
   if (!s) return null;
   return progress(s, state.db.entries.find(e => e.scriptId === s.id && e.accountId === video.accountId) || null);
 }
@@ -66,7 +108,7 @@ export async function addScript() {
   const s = {
     id: uid('s'), date: state.date, order: existing.length, title: 'Script ' + (existing.length + 1),
     type: 'Product', productId: '', body: '', notes: '', referenceVideo: '',
-    frames: [], createdBy: state.user.name, createdAt: Date.now(),
+    frames: [], brandId: '', version: 1, createdBy: state.user.name, createdAt: Date.now(),
   };
   save('scripts', s);
   state.openScript = s.id;
@@ -84,7 +126,7 @@ const stepDone = (en, f, k) => !!(en && en.shots && en.shots[f.id] && en.shots[f
 // The video in the Videos tab this script is being made for on a page, if any.
 // The one still to make wins, for a script used on the same page more than once.
 function videoFor(s, a) {
-  const all = (state.db.dailyEntries || []).filter(v => v.promptId === s.id && v.accountId === a.id);
+  const all = (state.db.dailyEntries || []).filter(v => v.accountId === a.id && matches(s, v, a));
   return all.find(v => !v.done) || all[all.length - 1] || null;
 }
 function pageDone(s, a) {
@@ -170,7 +212,7 @@ function list(scripts, canEdit, u) {
 function scriptCard(s, u) {
   const shots = shotsOf(s);
   const pages = pagesFor(s, u);
-  const done = pages.filter(a => { const en = entryFor(s, a); return en && en.done; }).length;
+  const done = pages.filter(a => pageDone(s, a)).length;
   const pics = shots.filter(f => f.imageUrl);
   const product = byId(state.db.products, s.productId);
 
@@ -182,7 +224,8 @@ function scriptCard(s, u) {
       el('b', { class: 'sc-card-title' }, s.title || 'Untitled'),
       el('span', { class: 'chip ' + (s.type === 'Growth' ? 'blue' : 'green') }, s.type || 'Product')),
     el('div', { class: 'hint' },
-      [product ? product.name : null,
+      [can.editScripts(u) && s.brandId ? labelTitle(s.brandId, s.type, s.version) : null,
+       product ? product.name : null,
        shots.length + (shots.length === 1 ? ' shot' : ' shots'),
        pages.length ? done + ' of ' + pages.length + ' videos done' : null].filter(Boolean).join(' · ')));
 }
@@ -334,6 +377,17 @@ function scriptPanel(s, editing) {
           sel.value = s.productId || '';
           return sel;
         })())));
+    // the label videos find this script by, on this day
+    const brandSel = el('select', {
+      class: 'input', style: 'height:32px', 'aria-label': 'Brand label',
+      onchange: e => loud(s.id, x => x.brandId = e.target.value)
+    }, el('option', { value: '' }, 'No brand, no videos match'), brands().map(b => el('option', { value: b.id }, b.name)));
+    brandSel.value = s.brandId || '';
+    box.appendChild(el('div', { class: 'row wrap', style: 'gap:12px' },
+      el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:150px' }, el('span', { class: 'label' }, 'LABEL: BRAND'), brandSel),
+      el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'VERSION'),
+        el('div', { class: 'seg mini' }, [1, 2, 3, 4, 5].map(n =>
+          el('button', { class: +(s.version || 1) === n ? 'on' : '', onclick: () => loud(s.id, x => x.version = n) }, String(n)))))));
   }
 
   if ((s.hook || '').trim()) box.appendChild(textBlock(s, 'hook', 'HOOK (OLDER SCRIPT)', 'The opening line…', editing, true));
