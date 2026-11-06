@@ -1,14 +1,12 @@
 // assets.js — the reference sheet an editor needs while cutting a video: what
-// the avatar looks like, what its stage asks for, and where its base images and
-// bodies live. Read-only for everyone; it exists to be looked at and copied
-// from.
+// the avatar looks like, what its stage asks for, and where its base images
+// live. Read-only for everyone; it exists to be looked at and copied from.
 //
 // An editor sees only the avatars they have access to — the same set they get
 // in the Daily Builder, so the two tabs never disagree about what is theirs.
 
 import { state, builderAccounts, can, byId } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
-import { sortedConcepts, bodyLinkFor, bodyRow } from '../concepts.js';
 import { pageStanding } from '../stages.js';
 import { lifecycleOf, takesDailyVideos } from '../lifecycle.js';
 import { stageChip, qualityChip, qualityClass, targetingChip, byProduct, productColor } from './accounts.js';
@@ -142,40 +140,7 @@ function card(a) {
   }
 
   box.appendChild(linkCol);
-  box.appendChild(bodiesBlock(a));
   return box;
-}
-
-// The pre-made bodies for this avatar: a folder per concept, with an angle
-// listed separately only when it has its own folder rather than sharing.
-function bodiesBlock(a) {
-  const concepts = sortedConcepts().filter(c => bodyLinkFor(a, c.id));
-
-  const col = el('div', { class: 'col', style: 'gap:9px;border-top:1px solid var(--line);padding-top:12px' },
-    el('div', { class: 'row' },
-      el('span', { class: 'label' }, 'BODIES BY CONCEPT'),
-      el('span', { class: 'spacer' }),
-      concepts.length ? el('span', { class: 'hint' }, concepts.length + (concepts.length === 1 ? ' concept' : ' concepts')) : null));
-
-  if (!concepts.length) {
-    col.appendChild(el('span', { class: 'hint' },
-      (a.bodyLinks || []).length
-        ? 'Older links on this avatar are waiting to be imported — an admin can do it under Avatars → Concepts.'
-        : 'No concepts set up for this avatar yet.'));
-    return col;
-  }
-
-  concepts.forEach(c => {
-    col.appendChild(linkLine(c.name, bodyLinkFor(a, c.id), true));
-    const row = bodyRow(a, c.id);
-    (c.variations || []).forEach(v => {
-      const own = (row && row.varUrls && row.varUrls[v.id]) || '';
-      if (!own.trim()) return;                 // shares the concept folder — nothing to add
-      col.appendChild(el('div', { style: 'padding-left:14px' },
-        linkLine(v.label || 'Untitled angle', own.trim(), false)));
-    });
-  });
-  return col;
 }
 
 // The videos starred as winners in the builder — what a reposting page lives on.
@@ -202,16 +167,4 @@ function winnersBlock(a) {
         : el('span', { class: 'hint' }, 'no link')));
   });
   return col;
-}
-
-function linkLine(label, url, strong) {
-  const isUrl = /^https?:\/\//.test(url);
-  return el('div', { class: 'row wrap', style: 'gap:8px' },
-    el('span', {
-      style: 'flex:1;min-width:90px;font-size:' + (strong ? '12.5px;font-weight:700' : '11.5px;color:var(--mut)')
-    }, label),
-    isUrl
-      ? el('a', { class: 'btn small', href: url, target: '_blank', rel: 'noopener' }, 'Open bodies ↗')
-      : el('span', { class: 'hint' }, url || 'No link'),
-    isUrl ? el('button', { class: 'btn small', onclick: e => copyText(url, e.currentTarget) }, 'Copy') : null);
 }

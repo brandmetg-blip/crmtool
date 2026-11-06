@@ -7,8 +7,7 @@
 //             Repost), which video editor it belongs to, whether it's made
 //             (+ the finished link), and whether it's posted (+ platforms).
 //
-//   SCRIPTS — the day's Main Scripts: frames with 9:16 stills and AI prompts,
-//             copied by editors and ticked off per avatar.
+//   SCRIPTS — the day's Main Scripts, the copy-paste workspace. See mainscripts.js.
 //
 // Who can do what:
 //   admin / manager  write the brief and assign editors
@@ -26,11 +25,11 @@ import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stag
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
+import { scriptsMode, addScript } from './mainscripts.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
 import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
 
-const TOOLS = [['grok', 'Grok'], ['veo', 'Veo'], ['omniflash', 'Omni Flash']];
 const TYPES = ['Growth', 'Product'];
 const PROD = ['Assembly', 'Scratch', 'Repost'];
 const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
@@ -129,10 +128,11 @@ function modeSeg(u) {
     }, 'Hooks'));
   }
 
+  const scriptCount = state.db.scripts.filter(s => s.date === state.date).length;
   seg.appendChild(el('button', {
     class: mode === 'scripts' ? 'on' : '',
     onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
-  }, 'Main Scripts'));
+  }, 'Main Scripts', scriptCount ? el('span', { class: 'pill' }, String(scriptCount)) : null));
   return seg;
 }
 
@@ -1408,278 +1408,4 @@ function seg(options, current, canEdit, onset, colour) {
   if (!canEdit) return el('span', { class: 'chip ' + colour }, current);
   return el('div', { class: 'seg mini' }, options.map(o =>
     el('button', { class: o === current ? 'on' : '', onclick: () => onset(o) }, o)));
-}
-
-// ===========================================================================
-// MAIN SCRIPTS MODE
-// ===========================================================================
-function scriptsMode(root, u) {
-  const canEdit = can.editScripts(u);
-  const scripts = state.db.scripts.filter(s => s.date === state.date).sort((a, b) => (a.order || 0) - (b.order || 0));
-  const open = state.openScript ? scripts.find(s => s.id === state.openScript) : null;
-  if (open) root.appendChild(detail(open, canEdit, u));
-  else root.appendChild(list(scripts, canEdit));
-}
-
-async function addScript() {
-  const { save } = await import('../app.js');
-  const existing = state.db.scripts.filter(s => s.date === state.date);
-  const s = {
-    id: uid('s'), date: state.date, order: existing.length, title: 'Script ' + (existing.length + 1),
-    type: 'Product', concept: '', body: '', notes: '', referenceVideo: '',
-    frames: [], createdBy: state.user.name, createdAt: Date.now(),
-  };
-  save('scripts', s);
-  state.openScript = s.id;
-  forceEmit();
-}
-
-function list(scripts, canEdit) {
-  if (!scripts.length) {
-    return el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
-      canEdit ? 'No scripts for this day yet — add one to start.' : 'No scripts posted for this day yet.');
-  }
-  const entriesFor = id => state.db.entries.filter(e => e.scriptId === id);
-  const total = myAccounts(state.user, state.db).length;
-  return el('div', { class: 'grid' }, scripts.map((s, i) => {
-    const done = entriesFor(s.id).filter(e => e.done).length;
-    return el('div', { class: 'card click col', onclick: () => { state.openScript = s.id; forceEmit(); } },
-      el('div', { class: 'row' },
-        el('span', { class: 'chip violet' }, String(i + 1)),
-        el('b', { style: 'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, s.title || 'Untitled'),
-        el('span', { class: 'chip ' + (s.type === 'Growth' ? 'blue' : 'green') }, s.type || 'Product')),
-      el('div', { class: 'row hint' },
-        (s.frames || []).length + ' frames', '·', done + ' / ' + Math.max(total, done) + ' videos done'));
-  }));
-}
-
-function detail(s, canEdit, u) {
-  const wrap = el('div', { class: 'col', style: 'gap:18px' });
-
-  wrap.appendChild(el('div', { class: 'row wrap' },
-    el('button', { class: 'btn small', onclick: () => { state.openScript = null; forceEmit(); } }, '‹ All scripts'),
-    canEdit
-      ? guarded('script:' + s.id + ':title',
-          () => el('input', { class: 'input', style: 'width:280px;font-weight:800', value: s.title || '', placeholder: 'Script title…', oninput: e => quiet(s.id, x => x.title = e.target.value) }),
-          () => el('b', { style: 'font-size:16px' }, s.title || 'Untitled'))
-      : el('b', { style: 'font-size:16px' }, s.title || 'Untitled'),
-    el('span', { class: 'spacer' }),
-    canEdit && el('button', {
-      class: 'btn small danger', onclick: async () => {
-        if (!confirm('Delete this script, its frames and completion marks?')) return;
-        const { removeItem } = await import('../app.js');
-        state.db.entries.filter(e => e.scriptId === s.id).forEach(e => removeItem('entries', e.id));
-        removeItem('scripts', s.id);
-        state.openScript = null; forceEmit();
-      }
-    }, 'Delete script')));
-
-  wrap.appendChild(framesRow(s, canEdit));
-  wrap.appendChild(detailsBlock(s, canEdit));
-  wrap.appendChild(completion(s, u));
-  return wrap;
-}
-
-async function quiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('scripts', id, fn); }
-async function loud(id, fn) { const { mutate } = await import('../app.js'); mutate('scripts', id, fn); }
-
-function framesRow(s, canEdit) {
-  const frames = (s.frames || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-  const col = el('div', { class: 'col', style: 'gap:8px' }, el('span', { class: 'label' }, 'FRAMES'));
-  const row = el('div', { class: 'frames' });
-
-  frames.forEach((f, i) => row.appendChild(frameCard(s, f, i, frames.length, canEdit)));
-  if (canEdit) row.appendChild(el('div', {
-    class: 'add-tile', onclick: () => loud(s.id, x => {
-      if (!Array.isArray(x.frames)) x.frames = [];
-      x.frames.push({ id: uid('f'), imagePrompt: '', videoPrompt: '', tool: 'grok', imageUrl: '', order: x.frames.length });
-    })
-  }, '+', 'Add frame'));
-  if (!frames.length && !canEdit) row.appendChild(el('div', { class: 'hint', style: 'padding:12px' }, 'No frames yet.'));
-
-  col.appendChild(row);
-  return col;
-}
-
-function frameCard(s, f, i, count, canEdit) {
-  const card = el('div', { class: 'card frame' });
-
-  card.appendChild(el('div', { class: 'row' },
-    el('span', { class: 'chip violet' }, 'Frame ' + (i + 1)),
-    el('span', { class: 'spacer' }),
-    canEdit && el('button', { class: 'iconbtn', title: 'Move left', onclick: () => moveFrame(s, f.id, -1) }, '‹'),
-    canEdit && el('button', { class: 'iconbtn', title: 'Move right', onclick: () => moveFrame(s, f.id, 1) }, '›'),
-    canEdit && el('button', { class: 'iconbtn danger', title: 'Delete frame', onclick: () => loud(s.id, x => { x.frames = x.frames.filter(y => y.id !== f.id); x.frames.forEach((y, k) => y.order = k); }) }, '✕')));
-
-  if (f.imageUrl) {
-    card.appendChild(el('img', { class: 'frame-img', src: f.imageUrl }));
-    if (canEdit) card.appendChild(el('div', { class: 'row', style: 'justify-content:center' },
-      uploadBtn(s, f.id, 'Replace'),
-      el('button', { class: 'btn small danger', onclick: () => loud(s.id, x => { const fr = x.frames.find(y => y.id === f.id); if (fr) fr.imageUrl = ''; }) }, 'Remove')));
-  } else if (canEdit) {
-    card.appendChild(uploadDrop(s, f.id));
-  }
-
-  card.appendChild(promptBox(s, f, 'imagePrompt', 'IMAGE PROMPT', 'Describe the image to generate…', canEdit));
-
-  const toolRow = el('div', { class: 'row' }, el('span', { class: 'label' }, 'TOOL'));
-  if (canEdit) {
-    toolRow.appendChild(el('select', {
-      class: 'input', style: 'width:auto;height:30px',
-      onchange: e => loud(s.id, x => { const fr = x.frames.find(y => y.id === f.id); if (fr) fr.tool = e.target.value; })
-    }, TOOLS.map(([id, name]) => { const o = el('option', { value: id }, name); if (f.tool === id) o.selected = true; return o; })));
-  } else {
-    toolRow.appendChild(el('span', { class: 'chip violet' }, (TOOLS.find(t => t[0] === f.tool) || TOOLS[0])[1]));
-  }
-  card.appendChild(toolRow);
-  card.appendChild(promptBox(s, f, 'videoPrompt', 'VIDEO PROMPT', 'Describe the video / motion…', canEdit));
-  return card;
-}
-
-function promptBox(s, f, key, label, ph, canEdit) {
-  const copy = el('button', { class: 'btn small', onclick: e => copyText(f[key], e.currentTarget) }, 'Copy');
-  const head = el('div', { class: 'row' }, el('span', { class: 'label' }, label), el('span', { class: 'spacer' }), copy);
-  const ro = () => el('div', { class: 'ro-text' }, (f[key] || '').trim() || '—');
-  const body = canEdit
-    ? guarded('frame:' + s.id + ':' + f.id + ':' + key,
-        () => el('textarea', { class: 'input', placeholder: ph, oninput: e => { f[key] = e.target.value; quiet(s.id, x => { const fr = x.frames.find(y => y.id === f.id); if (fr) fr[key] = e.target.value; }); } }, f[key] || ''),
-        ro)
-    : ro();
-  return el('div', { class: 'col', style: 'gap:6px' }, head, body);
-}
-
-function uploadDrop(s, fid) {
-  const input = el('input', { type: 'file', accept: 'image/*', style: 'display:none', onchange: e => doUpload(s, fid, e) });
-  return el('label', { class: 'frame-drop' }, 'Upload frame image', el('small', null, '9:16 portrait'), input);
-}
-function uploadBtn(s, fid, label) {
-  const input = el('input', { type: 'file', accept: 'image/*', style: 'display:none', onchange: e => doUpload(s, fid, e) });
-  return el('label', { class: 'btn small', style: 'cursor:pointer' }, label, input);
-}
-async function doUpload(s, fid, e) {
-  const file = e.target.files && e.target.files[0]; if (!file) return;
-  const { store } = await import('../app.js');
-  try {
-    const url = await store.uploadImage(file);
-    loud(s.id, x => { const fr = (x.frames || []).find(y => y.id === fid); if (fr) fr.imageUrl = url; });
-  } catch (err) { alert('Image upload failed — try again.\n' + (err.message || '')); }
-}
-
-async function moveFrame(s, fid, dir) {
-  loud(s.id, x => {
-    const fr = (x.frames || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
-    const i = fr.findIndex(y => y.id === fid), j = i + dir;
-    if (i < 0 || j < 0 || j >= fr.length) return;
-    [fr[i], fr[j]] = [fr[j], fr[i]];
-    fr.forEach((y, k) => y.order = k);
-    x.frames = fr;
-  });
-}
-
-function detailsBlock(s, canEdit) {
-  const card = el('div', { class: 'card col', style: 'gap:15px' });
-  card.appendChild(el('span', { class: 'label' }, 'SCRIPT DETAILS'));
-
-  const typeSeg = canEdit
-    ? el('div', { class: 'seg' }, TYPES.map(t =>
-        el('button', { class: s.type === t ? 'on' : '', onclick: () => loud(s.id, x => x.type = t) }, t)))
-    : el('span', { class: 'chip ' + (s.type === 'Growth' ? 'blue' : 'green') }, s.type || 'Product');
-
-  card.appendChild(el('div', { class: 'row wrap', style: 'gap:16px;align-items:flex-end' },
-    el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'TYPE'), typeSeg),
-    el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' }, el('span', { class: 'label' }, 'CONCEPT'),
-      canEdit
-        ? guarded('script:' + s.id + ':concept',
-            () => el('input', { class: 'input', placeholder: 'e.g. Transformation, Villain…', value: s.concept || '', oninput: e => quiet(s.id, x => x.concept = e.target.value) }),
-            () => el('span', { class: 'ro-text' }, (s.concept || '').trim() || '—'))
-        : el('span', { class: 'ro-text' }, (s.concept || '').trim() || '—'))));
-
-  // one script box (stored as the body); an older script keeps its hook visible
-  if ((s.hook || '').trim()) card.appendChild(textBlock(s, 'hook', 'HOOK (OLDER SCRIPT)', 'The hook / opening line…', canEdit, true));
-  card.appendChild(textBlock(s, 'body', 'SCRIPT', 'The whole script…', canEdit, true));
-
-  const refHead = el('div', { class: 'row' }, el('span', { class: 'label' }, 'REFERENCE VIDEO'), el('span', { class: 'hint' }, 'the video the frames are based on'));
-  let refBody;
-  if (canEdit) {
-    const openA = () => /^https?:\/\//.test(s.referenceVideo || '')
-      ? el('a', { class: 'btn small', href: s.referenceVideo, target: '_blank' }, 'Open ↗') : null;
-    refBody = el('div', { class: 'row wrap' },
-      guarded('script:' + s.id + ':referenceVideo',
-        () => el('input', { class: 'input', style: 'flex:1;min-width:220px', placeholder: 'Paste the reference video link…', value: s.referenceVideo || '', oninput: e => quiet(s.id, x => x.referenceVideo = e.target.value) }),
-        () => el('span', { class: 'ro-text' }, (s.referenceVideo || '').trim() || '—')),
-      openA());
-  } else {
-    refBody = (s.referenceVideo || '').trim()
-      ? el('a', { href: s.referenceVideo, target: '_blank', style: 'font-size:12.5px;font-weight:700;word-break:break-all' }, 'Open reference video ↗')
-      : el('span', { class: 'hint' }, 'No reference video');
-  }
-  card.appendChild(el('div', { class: 'col', style: 'gap:6px' }, refHead, refBody));
-
-  card.appendChild(textBlock(s, 'notes', 'NOTES', 'Anything the editors should know…', canEdit, false));
-  return card;
-}
-
-function textBlock(s, key, label, ph, canEdit, copyable) {
-  const head = el('div', { class: 'row' }, el('span', { class: 'label' }, label), el('span', { class: 'spacer' }),
-    copyable && el('button', { class: 'btn small', onclick: e => copyText(s[key], e.currentTarget) }, 'Copy'));
-  const ro = () => el('div', { class: 'ro-text' }, (s[key] || '').trim() || '—');
-  const body = canEdit
-    ? guarded('script:' + s.id + ':' + key,
-        () => el('textarea', { class: 'input', placeholder: ph, oninput: e => { s[key] = e.target.value; quiet(s.id, x => x[key] = e.target.value); } }, s[key] || ''),
-        ro)
-    : ro();
-  return el('div', { class: 'col', style: 'gap:6px' }, head, body);
-}
-
-function completion(s, u) {
-  const accounts = myAccounts(u, state.db).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  const canLog = can.logCompletion(u);
-  const heading = can.seesAllAccounts(u) ? 'COMPLETION · ALL AVATARS' : 'YOUR AVATARS — LOG YOUR FINISHED VIDEO';
-
-  const col = el('div', { class: 'col', style: 'gap:9px' }, el('span', { class: 'label' }, heading));
-  if (!accounts.length) {
-    col.appendChild(el('div', { class: 'hint', style: 'padding:12px' },
-      can.seesAllAccounts(u) ? 'No avatars yet — add them under Avatars.' : 'No avatars assigned to you yet — ask an admin.'));
-    return col;
-  }
-
-  accounts.forEach(a => {
-    const en = state.db.entries.find(e => e.scriptId === s.id && e.accountId === a.id) || null;
-    const done = !!(en && en.done);
-    const row = el('div', { class: 'card row wrap', style: 'padding:10px 13px' + (done ? ';border-color:rgba(52,224,138,0.3);background:rgba(52,224,138,0.05)' : '') },
-      avatar(a, 30),
-      el('div', { style: 'min-width:120px' }, el('b', { style: 'font-size:12.5px;display:block' }, a.name)),
-      el('button', {
-        class: 'check' + (done ? ' on' : ''), disabled: !canLog,
-        onclick: () => canLog && toggleDone(s, a, en)
-      }, done ? '✓' : ''),
-      el('span', { style: 'font-size:11.5px;font-weight:700;min-width:80px;color:' + (done ? '#9affc9' : 'var(--mut)') }, done ? 'Video done' : 'Not done'));
-
-    if (canLog) {
-      row.appendChild(el('input', {
-        class: 'input', style: 'flex:1;min-width:200px;height:30px;font-size:12px', placeholder: 'Finished video link…',
-        value: (en && en.videoLink) || '',
-        oninput: e => setLink(s, a, en, e.target.value)
-      }));
-    } else if (en && (en.videoLink || '').trim()) {
-      row.appendChild(el('a', { class: 'btn small', href: en.videoLink, target: '_blank' }, 'Video ↗'));
-    }
-    col.appendChild(row);
-  });
-  return col;
-}
-
-async function toggleDone(s, a, en) {
-  const { save } = await import('../app.js');
-  const item = en || { id: uid('e'), scriptId: s.id, accountId: a.id, done: false, videoLink: '' };
-  item.done = !item.done;
-  item.doneAt = item.done ? Date.now() : null;
-  item.doneBy = item.done ? state.user.name : item.doneBy;
-  save('entries', item); emit();
-}
-async function setLink(s, a, en, val) {
-  const { save } = await import('../app.js');
-  const item = en || (state.db.entries.find(e => e.scriptId === s.id && e.accountId === a.id)) || { id: uid('e'), scriptId: s.id, accountId: a.id, done: false, videoLink: '' };
-  item.videoLink = val;
-  save('entries', item); // quiet — no emit while typing
 }
