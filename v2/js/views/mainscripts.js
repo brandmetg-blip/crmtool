@@ -1,11 +1,14 @@
-// mainscripts.js — the Prompts tab, the copy-paste workspace. A prompt pack (stored
-// as a script) is a finished reference
+// mainscripts.js — the Prompts tab, the copy-paste workspace. A script here is a
+// finished reference
 // video broken into shots: each shot has its reference image and its image and
 // video prompts, ready to copy. The person making it picks the page it is for
 // and ticks each step off, and the next step is always the one lit up.
 //
 // Progress is kept per page on that page's entry, so two people making the same
 // script for different pages never touch each other's ticks.
+//
+// A video in the Videos tab points here through its promptId. When it does, the
+// finished link and the done tick are the video's own, so nobody logs them twice.
 //
 // The whole shell is rebuilt on any change, so the reference video element is
 // kept between renders. Put back in the same tick, it carries on playing.
@@ -26,16 +29,42 @@ async function loud(id, fn) { const { mutate } = await import('../app.js'); muta
 export function scriptsMode(root, u) {
   const canEdit = can.editScripts(u);
   const scripts = state.db.scripts.filter(s => s.date === state.date).sort((a, b) => (a.order || 0) - (b.order || 0));
-  const open = state.openScript ? scripts.find(s => s.id === state.openScript) : null;
+  // by id, not by day: a video made today can use a script written days ago
+  const open = state.openScript ? state.db.scripts.find(s => s.id === state.openScript) : null;
   if (open) root.appendChild(detail(open, canEdit, u));
   else root.appendChild(list(scripts, canEdit, u));
+}
+
+// The scripts a video can be linked to, newest day first.
+export function promptChoices() {
+  return state.db.scripts.slice()
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (a.order || 0) - (b.order || 0))
+    .map(s => ({ id: s.id, label: (s.title || 'Untitled') + (s.date ? ' · ' + fmtDate(s.date) : '') }));
+}
+
+// From a video's card: straight to its script, already on that avatar.
+export function openPrompts(video) {
+  state.builderMode = 'scripts';
+  state.builderAvatar = null;
+  state.openScript = video.promptId;
+  state.scriptView = 'va';
+  state.scriptPage = { scriptId: video.promptId, accountId: video.accountId };
+  state.scriptBack = { scriptId: video.promptId, accountId: video.accountId };
+  forceEmit();
+}
+
+// "6 of 24 steps" for a video's card.
+export function promptProgress(video) {
+  const s = state.db.scripts.find(x => x.id === video.promptId);
+  if (!s) return null;
+  return progress(s, state.db.entries.find(e => e.scriptId === s.id && e.accountId === video.accountId) || null);
 }
 
 export async function addScript() {
   const { save } = await import('../app.js');
   const existing = state.db.scripts.filter(s => s.date === state.date);
   const s = {
-    id: uid('s'), date: state.date, order: existing.length, title: 'Pack ' + (existing.length + 1),
+    id: uid('s'), date: state.date, order: existing.length, title: 'Script ' + (existing.length + 1),
     type: 'Product', productId: '', body: '', notes: '', referenceVideo: '',
     frames: [], createdBy: state.user.name, createdAt: Date.now(),
   };
@@ -52,6 +81,18 @@ const shotsOf = s => (s.frames || []).slice().sort((a, b) => (a.order || 0) - (b
 const stepsOf = f => Object.keys(STEP).filter(k => (f[STEP[k]] || '').trim());
 const entryFor = (s, a) => a ? state.db.entries.find(e => e.scriptId === s.id && e.accountId === a.id) || null : null;
 const stepDone = (en, f, k) => !!(en && en.shots && en.shots[f.id] && en.shots[f.id][k]);
+// The video in the Videos tab this script is being made for on a page, if any.
+// The one still to make wins, for a script used on the same page more than once.
+function videoFor(s, a) {
+  const all = (state.db.dailyEntries || []).filter(v => v.promptId === s.id && v.accountId === a.id);
+  return all.find(v => !v.done) || all[all.length - 1] || null;
+}
+function pageDone(s, a) {
+  const v = videoFor(s, a);
+  if (v) return !!v.done;
+  const en = entryFor(s, a);
+  return !!(en && en.done);
+}
 const shotDone = (en, f) => { const st = stepsOf(f); return st.length > 0 && st.every(k => stepDone(en, f, k)); };
 
 function progress(s, en) {
@@ -71,18 +112,24 @@ function pagesFor(s, u) {
   const all = myAccounts(u, state.db).filter(a => !a.onboarding);
   const live = liveAccounts(all);
   const started = a => state.db.entries.some(e => e.scriptId === s.id && e.accountId === a.id);
+  const opened = state.scriptPage && state.scriptPage.scriptId === s.id ? byId(state.db.accounts, state.scriptPage.accountId) : null;
+  const withVideo = all.filter(a => videoFor(s, a));
   let pages = all.filter(a => live.includes(a) || started(a));
-  if (s.productId) {
+  if (withVideo.length) {
+    // linked in Videos: these are exactly the pages getting this script
+    pages = all.filter(a => videoFor(s, a) || started(a));
+  } else if (s.productId) {
     const onProduct = pages.filter(a => a.productId === s.productId || started(a));
     if (onProduct.length) pages = onProduct;
   }
+  if (opened && !pages.includes(opened)) pages = pages.concat(opened);
   return pages.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 }
 
 function currentPage(s, pages) {
   const picked = state.scriptPage && state.scriptPage.scriptId === s.id ? pages.find(a => a.id === state.scriptPage.accountId) : null;
   if (picked) return picked;
-  return pages.find(a => { const en = entryFor(s, a); return !(en && en.done); }) || pages[0] || null;
+  return pages.find(a => !pageDone(s, a)) || pages[0] || null;
 }
 
 async function writeEntry(s, a, fn) {
@@ -100,7 +147,7 @@ function list(scripts, canEdit, u) {
     const others = state.db.scripts.map(s => s.date).filter(d => d && d !== state.date).sort();
     const latest = others.pop();
     return el('div', { class: 'card col', style: 'align-items:center;text-align:center;color:var(--dim);padding:34px;gap:12px' },
-      canEdit ? 'No prompt packs for this day yet. Add one to start.' : 'No prompt packs for this day yet.',
+      canEdit ? 'No scripts here for this day yet. Add one to start.' : 'No scripts here for this day yet.',
       latest ? el('button', { class: 'btn small', onclick: () => { state.date = latest; forceEmit(); } }, 'Go to ' + fmtDate(latest)) : null);
   }
 
@@ -113,7 +160,7 @@ function list(scripts, canEdit, u) {
       el('button', { class: filter === t ? 'on' : '', onclick: () => { state.scriptFilter = t; forceEmit(); } }, t))));
   }
   if (!shown.length) {
-    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:28px' }, 'No ' + filter.toLowerCase() + ' prompt packs on this day.'));
+    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:28px' }, 'No ' + filter.toLowerCase() + ' scripts here on this day.'));
     return wrap;
   }
   wrap.appendChild(el('div', { class: 'sc-list' }, shown.map(s => scriptCard(s, u))));
@@ -165,10 +212,10 @@ function detailHead(s, canEdit, editing) {
   const product = byId(state.db.products, s.productId);
 
   return el('div', { class: 'row wrap', style: 'gap:10px' },
-    el('button', { class: 'btn small', onclick: () => { state.openScript = null; forceEmit(); } }, '‹ All packs'),
+    backButton(s),
     editing
       ? guarded('script:' + s.id + ':title',
-          () => el('input', { class: 'input sc-title', value: s.title || '', placeholder: 'Pack name…', oninput: e => quiet(s.id, x => x.title = e.target.value) }),
+          () => el('input', { class: 'input sc-title', value: s.title || '', placeholder: 'Script name…', oninput: e => quiet(s.id, x => x.title = e.target.value) }),
           () => el('b', { style: 'font-size:16px' }, s.title || 'Untitled'))
       : el('b', { style: 'font-size:16px' }, s.title || 'Untitled'),
     !editing ? el('span', { class: 'chip ' + (s.type === 'Growth' ? 'blue' : 'green') }, s.type || 'Product') : null,
@@ -181,7 +228,7 @@ function detailHead(s, canEdit, editing) {
     canEdit ? el('button', { class: 'btn small', onclick: () => copyToDay(s) }, 'Copy to another day') : null,
     canEdit ? el('button', {
       class: 'btn small danger', onclick: async () => {
-        if (!confirm('Delete this prompt pack, its shots and everyone’s progress on it?')) return;
+        if (!confirm('Delete this script from Prompts, with its shots and everyone’s progress on it?')) return;
         const { removeItem } = await import('../app.js');
         state.db.entries.filter(e => e.scriptId === s.id).forEach(e => removeItem('entries', e.id));
         removeItem('scripts', s.id);
@@ -190,9 +237,25 @@ function detailHead(s, canEdit, editing) {
     }, 'Delete') : null);
 }
 
+// Came from a video: back to that avatar's videos. Otherwise back to the list.
+function backButton(s) {
+  const back = state.scriptBack && state.scriptBack.scriptId === s.id ? state.scriptBack : null;
+  const a = back && byId(state.db.accounts, back.accountId);
+  if (!a) return el('button', { class: 'btn small', onclick: () => { state.openScript = null; forceEmit(); } }, '‹ All scripts');
+  return el('button', {
+    class: 'btn small', onclick: () => {
+      state.builderMode = 'videos';
+      state.builderAvatar = a.id;
+      state.openScript = null;
+      state.scriptBack = null;
+      forceEmit();
+    }
+  }, '‹ Back to ' + (a.name || 'videos'));
+}
+
 // A winning script gets used again, so it can be sent to another day whole.
 async function copyToDay(s) {
-  const date = (prompt('Copy this pack to which date? (YYYY-MM-DD)', todayStr()) || '').trim();
+  const date = (prompt('Copy this script to which date? (YYYY-MM-DD)', todayStr()) || '').trim();
   if (!date) return;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('Use the format YYYY-MM-DD.'); return; }
   const { save } = await import('../app.js');
@@ -307,8 +370,9 @@ function nowPanel(s, u) {
   const p = progress(s, en);
   const pct = p.total ? Math.round(p.done / p.total * 100) : 0;
   const allDone = p.total > 0 && p.done === p.total;
-  const finished = !!(en && en.done);
-  const doneCount = pages.filter(x => { const e = entryFor(s, x); return e && e.done; }).length;
+  const video = videoFor(s, a);
+  const finished = pageDone(s, a);
+  const doneCount = pages.filter(x => pageDone(s, x)).length;
   const base = (a.baseImageLink || '').trim();
 
   const pick = el('select', {
@@ -316,8 +380,7 @@ function nowPanel(s, u) {
     'aria-label': 'Page this video is for',
     onchange: e => { state.scriptPage = { scriptId: s.id, accountId: e.target.value }; forceEmit(); }
   }, pages.map(x => {
-    const e = entryFor(s, x);
-    return el('option', { value: x.id }, (x.name || 'Untitled') + (e && e.done ? ' (done)' : ''));
+    return el('option', { value: x.id }, (x.name || 'Untitled') + (pageDone(s, x) ? ' (done)' : ''));
   }));
   pick.value = a.id;
 
@@ -339,17 +402,26 @@ function nowPanel(s, u) {
     el('div', { class: 'row wrap', style: 'gap:10px' },
       el('input', {
         class: 'input', style: 'flex:1;min-width:210px;height:34px', placeholder: 'Finished video link…',
-        'aria-label': 'Finished video link', value: (en && en.videoLink) || '',
-        oninput: e => writeEntry(s, a, x => x.videoLink = e.target.value)
+        'aria-label': 'Finished video link', value: (video ? video.videoLink : en && en.videoLink) || '',
+        oninput: async e => {
+          const val = e.target.value;
+          if (!video) return writeEntry(s, a, x => x.videoLink = val);
+          const { mutateQuiet } = await import('../app.js');
+          mutateQuiet('dailyEntries', video.id, x => x.videoLink = val);
+        }
       }),
       el('button', {
         class: 'btn ' + (finished ? 'ok' : allDone ? 'primary' : ''), style: 'height:34px',
         onclick: async () => {
-          await writeEntry(s, a, x => {
+          const flip = x => {
             x.done = !x.done;
             x.doneAt = x.done ? Date.now() : null;
             x.doneBy = x.done ? state.user.name : x.doneBy;
-          });
+          };
+          if (video) {
+            const { mutate } = await import('../app.js');
+            await mutate('dailyEntries', video.id, flip);
+          } else await writeEntry(s, a, flip);
           emit();
         }
       }, finished ? 'Video done ✓' : 'Mark video done')));
@@ -364,7 +436,7 @@ function nowPanel(s, u) {
       },
         avatar(x, 24),
         el('span', { class: 'sc-page-name' }, x.name || 'Untitled'),
-        el('span', { class: 'hint sc-count' }, e && e.done ? 'Done' : pr.done + ' of ' + pr.total));
+        el('span', { class: 'hint sc-count' }, pageDone(s, x) ? 'Done' : pr.done + ' of ' + pr.total));
     })));
   }
   return box;
@@ -377,7 +449,7 @@ function shotsList(s, u) {
   const shots = shotsOf(s);
   const wrap = el('div', { class: 'col', style: 'gap:12px' });
   if (!shots.length) {
-    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' }, 'No shots added to this pack yet.'));
+    wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' }, 'No shots added to this script yet.'));
     return wrap;
   }
   const logs = can.logCompletion(u);

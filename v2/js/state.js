@@ -22,6 +22,7 @@ export const state = {
   scriptView: 'edit',         // prompts tab, for those who can edit: edit | va
   scriptFilter: 'All',        // prompts list: All | Growth | Product
   scriptPage: null,           // { scriptId, accountId } the page a video is being made for
+  scriptBack: null,           // prompts tab: { scriptId, accountId } when opened from a video
   scriptAllPages: false,      // prompts tab: every page's progress is open
   acctView: 'roster',         // avatars tab: roster (live + setting up) | archive
   acctLayout: 'cards',        // avatars tab: cards | sheet
@@ -108,7 +109,7 @@ export const PERMISSIONS = [
   ['editAccounts', 'Manage pages', 'Create and edit avatars, products, concepts and profiles.'],
   ['editVideos', 'Write the daily brief', 'Add and mass add videos, assign editors, edit a video’s brief.'],
   ['markPosted', 'Mark videos posted', 'Use the posting queue and tick posted with platforms.'],
-  ['editScripts', 'Write prompts', 'Create and edit prompt packs and their shots.'],
+  ['editScripts', 'Write prompts', 'Create and edit scripts on the Prompts tab and their shots.'],
   ['editHooks', 'Write the day’s hooks', 'Add and edit the hooks shared across every page.'],
   ['seesAllAccounts', 'See every page', 'See all pages and the analytics, not only the ones assigned to them.'],
   ['onboarding', 'Set up new pages', 'Open the onboarding pipeline and take new pages through it.'],

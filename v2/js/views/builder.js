@@ -7,7 +7,7 @@
 //             Repost), which video editor it belongs to, whether it's made
 //             (+ the finished link), and whether it's posted (+ platforms).
 //
-//   SCRIPTS — the day's prompt packs, the copy-paste workspace. See mainscripts.js.
+//   SCRIPTS — the Prompts tab, the copy-paste workspace. See mainscripts.js.
 //
 // Who can do what:
 //   admin / manager  write the brief and assign editors
@@ -25,7 +25,7 @@ import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stag
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
-import { scriptsMode, addScript } from './mainscripts.js';
+import { scriptsMode, addScript, promptChoices, openPrompts, promptProgress } from './mainscripts.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
 import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
@@ -79,7 +79,7 @@ function head(u) {
   import('../app.js').then(({ statusPill }) => wrap.appendChild(statusPill()));
 
   if (scriptsOn && can.editScripts(u) && !state.openScript) {
-    wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ New prompt pack'));
+    wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ New script'));
   }
   // Write the brief once, drop it on as many avatars as you like.
   if (!scriptsOn && can.editVideos(u) && !state.builderAvatar) {
@@ -156,7 +156,7 @@ function dayStrip(u) {
       caption = n ? n + (n === 1 ? ' hook' : ' hooks') : '';
     } else if (scriptsOn) {
       const n = state.db.scripts.filter(s => s.date === ds).length;
-      caption = n ? n + (n === 1 ? ' pack' : ' packs') : '';
+      caption = n ? n + (n === 1 ? ' script' : ' scripts') : '';
     } else {
       const es = dayEntries(u, ds, accts);
       caption = es.length ? es.filter(e => e.done).length + '/' + es.length : '';
@@ -765,6 +765,13 @@ function openMassAdd(u) {
     },
   });
   body.appendChild(bodyField);
+
+  // ---- the same script on the Prompts tab, so every video it lands on links there
+  const promptSel = el('select', { class: 'input', 'aria-label': 'Same script in Prompts', onchange: e => draft.promptId = e.target.value },
+    [el('option', { value: '' }, 'Not linked')].concat(promptChoices().map(c => el('option', { value: c.id }, c.label))));
+  body.appendChild(el('div', { class: 'col', style: 'gap:5px' },
+    el('span', { class: 'label' }, 'SAME SCRIPT IN PROMPTS'), promptSel,
+    el('span', { class: 'hint' }, 'Every video added here gets an Open prompts button.')));
   body.appendChild(field('refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…'));
   body.appendChild(field('notes', 'NOTES', 'Anything the editors should know…', 'textarea'));
 
@@ -995,6 +1002,7 @@ function openMassAdd(u) {
         body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
         conceptId: draft.conceptId, variationId,   // link resolved from the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
+        promptId: draft.promptId || '',
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
         win: false, createdBy: state.user.name, createdAt: Date.now(),
@@ -1116,6 +1124,25 @@ function setType(en, a, type) {
 async function eQuiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('dailyEntries', id, fn); }
 async function eLoud(id, fn) { const { mutate } = await import('../app.js'); mutate('dailyEntries', id, fn); }
 
+// Where a video meets the Prompts tab: the button to go make it, and, for whoever
+// adds videos, the choice of which script it is.
+function promptsRow(en, canEdit, u) {
+  const linked = !!en.promptId && state.db.scripts.some(s => s.id === en.promptId);
+  const p = linked ? promptProgress(en) : null;
+  const open = linked && !isPoster(u) ? el('button', { class: 'btn small primary', onclick: () => openPrompts(en) }, 'Open prompts ›') : null;
+  const count = open && p.total ? el('span', { class: 'hint sc-count' }, p.done + ' of ' + p.total + ' steps') : null;
+  if (!canEdit) return open ? el('div', { class: 'row wrap', style: 'gap:10px' }, open, count) : null;
+
+  const sel = el('select', {
+    class: 'input', style: 'height:32px;width:auto;min-width:200px;max-width:100%;flex:0 1 auto', 'aria-label': 'Same script in Prompts',
+    onchange: e => { const id = e.target.value; eLoud(en.id, x => x.promptId = id); }
+  }, [el('option', { value: '' }, 'Not linked')].concat(promptChoices().map(c => el('option', { value: c.id }, c.label))));
+  sel.value = linked ? en.promptId : '';
+  return el('div', { class: 'col', style: 'gap:6px' },
+    el('span', { class: 'label' }, 'SAME SCRIPT IN PROMPTS'),
+    el('div', { class: 'row wrap', style: 'gap:10px' }, sel, open, count));
+}
+
 function entryRow(en, a, num, u) {
   const canEdit = can.editVideos(u);
   const canMake = canMakeThis(u, en);
@@ -1178,6 +1205,8 @@ function entryRow(en, a, num, u) {
     card.appendChild(sourceBlock(en, 'hook', 'HOOK (OLDER VIDEO)', 'The hook / opening line…', canEdit, a));
   }
   card.appendChild(sourceBlock(en, 'body', 'SCRIPT', 'The whole script…', canEdit, a));
+  const toPrompts = promptsRow(en, canEdit, u);
+  if (toPrompts) card.appendChild(toPrompts);
 
   card.appendChild(linkBlock(en, 'refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…', canEdit));
 
