@@ -11,7 +11,7 @@
 
 import { state, forceEmit, byId } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { brands, brandById } from '../brands.js';
+import { brands, brandById, brandArt } from '../brands.js';
 import { typeName, videosByScript, scriptHasPrompts } from './mainscripts.js';
 
 const ROW = 'scriptNumbers';
@@ -133,9 +133,13 @@ export function libraryMode(root) {
 
     const pick = (key, value) => () => { state[key] = value; paint(); };
     filters.innerHTML = '';
-    filters.appendChild(el('div', { class: 'seg mini' },
-      el('button', { class: brandId ? '' : 'on', onclick: pick('libBrand', '') }, 'All brands'),
-      brands().map(b => el('button', { class: brandId === b.id ? 'on' : '', onclick: pick('libBrand', b.id) }, b.name))));
+    filters.appendChild(el('div', { class: 'ma-brands lib-brands' },
+      el('button', { type: 'button', class: 'ma-brand all' + (brandId ? '' : ' on'), onclick: pick('libBrand', '') },
+        el('span', { class: 'ba-name' }, 'All brands')),
+      brands().map(b => el('button', {
+        type: 'button', class: 'ma-brand' + (brandId === b.id ? ' on' : ''), title: b.name, 'aria-label': b.name,
+        onclick: pick('libBrand', b.id),
+      }, brandArt(b)))));
     filters.appendChild(el('div', { class: 'seg mini' }, TYPES.map(([k, label]) =>
       el('button', { class: type === k ? 'on' : '', onclick: pick('libType', k) }, label))));
     filters.appendChild(el('div', { class: 'seg mini' },
@@ -151,17 +155,17 @@ export function libraryMode(root) {
     }
 
     const newest = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || 0) - (a.createdAt || 0);
-    const section = (title, note, scripts) => {
+    const section = (brand, note, scripts) => {
       if (!scripts.length) return;
       list.appendChild(el('section', { class: 'lib-group' },
         el('div', { class: 'lib-group-head' },
-          el('b', null, title),
+          brand ? el('span', { class: 'lib-mark', title: brand.name, role: 'img', 'aria-label': brand.name }, brandArt(brand)) : el('b', null, 'No brand yet'),
           el('span', { class: 'hint' }, scripts.length + (scripts.length === 1 ? ' script' : ' scripts')),
           note ? el('span', { class: 'hint' }, note) : null),
         el('div', { class: 'lib-rows' }, scripts.sort(newest).map(s => row(s, numbers, uses.get(s.id) || [])))));
     };
-    section('No brand yet', 'Set the brand on a script to give it a number.', shown.filter(s => !brandById(s.brandId)));
-    brands().forEach(b => section(b.name, '', shown.filter(s => s.brandId === b.id)));
+    section(null, 'Set the brand on a script to give it a number.', shown.filter(s => !brandById(s.brandId)));
+    brands().forEach(b => section(b, '', shown.filter(s => s.brandId === b.id)));
   }
   paint();
 }
