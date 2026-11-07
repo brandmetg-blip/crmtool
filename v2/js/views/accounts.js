@@ -20,6 +20,7 @@ import {
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats, lineageNote } from '../lifecycle.js';
 import { renderSheet, openColumns } from './sheet.js';
 import { startNewPage } from './onboarding.js';
+import { openAvatarPreview } from './avatarpreview.js';
 import { linkFieldsInto, accountFieldsInto } from '../pagelinks.js';
 
 // [stored id, tone, what a person reads]
@@ -241,8 +242,8 @@ function archiveCard(a, canEdit) {
   ].filter(Boolean).join(' · ');
 
   const box = el('div', {
-    class: 'card col retired', style: 'gap:10px' + (canEdit ? ';cursor:pointer' : ''),
-    onclick: canEdit ? () => openAccount(a) : null,
+    class: 'card col retired', style: 'gap:10px;cursor:pointer',
+    onclick: () => openAvatarPreview(a, canEdit),
   },
     el('div', { class: 'row' },
       avatar(a, 40),
@@ -378,36 +379,17 @@ function filters(all, buckets, view, asSheet, canEdit) {
   return row;
 }
 
+// Just who it is. Everything else about the page is in the preview a click opens.
 function card(a, canEdit) {
-  // Read through lifecycleOf, never a raw lookup: a page still carrying a
-  // legacy status ("Active") is not in this list and would fall through to the
-  // first entry, labelling every live page as Building.
-  const st = [lifecycleLabel(a), lifecycleDef(a).tone];
-  const ig = byId(state.db.profiles, a.instagramProfileId);
-
-  const c = el('div', {
-    class: 'card col' + qualityClass(a) + (canEdit ? ' click' : '') + (a.coverUrl ? ' has-cover' : ''), style: 'gap:12px',
-    onclick: canEdit ? () => openAccount(a) : null,
+  return el('div', {
+    class: 'card row click' + (a.coverUrl ? ' has-cover' : ''), style: 'gap:13px',
+    onclick: () => openAvatarPreview(a, canEdit),
   },
     // the page's cover photo, faint, under a dark gradient so the text stays readable
     a.coverUrl ? el('div', { class: 'av-cover', style: 'background-image:url(' + JSON.stringify(a.coverUrl) + ')' }) : null,
-    el('div', { class: 'row' },
-      avatar(a, 44),
-      el('b', { style: 'flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
-      lifecycleChip(a)),
-
-    // no product chip here — the group heading above already says it
-    el('div', { class: 'row wrap', style: 'gap:6px' },
-      stageOnlyChip(a),
-      qualityChip(a),
-      targetingChip(a),
-      handleChip('instagram', a.platforms && a.platforms.instagram, ig)));
-
-  if ((a.notes || '').trim()) {
-    c.appendChild(el('div', { class: 'hint', style: 'white-space:pre-wrap;border-top:1px solid var(--line);padding-top:9px' },
-      a.notes.trim().slice(0, 140) + (a.notes.trim().length > 140 ? '…' : '')));
-  }
-  return c;
+    avatar(a, 52),
+    el('b', { style: 'flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+    lifecycleChip(a));
 }
 
 // Colours a product can wear. Fixed set rather than a free colour picker:
@@ -488,17 +470,6 @@ export function productChip(a) {
     class: 'chip', title: 'Promotes ' + p.name,
     style: 'color:' + c + ';background:' + c + '1f;border-color:' + c + '55',
   }, p.imageUrl ? el('img', { class: 'prod-ico', src: p.imageUrl, alt: '' }) : null, p.name);
-}
-
-// The Facebook handle is deliberately not shown on the card: it is usually a
-// full page URL, which turned into a long blue bar next to the other chips.
-function handleChip(platform, handle, profile) {
-  if (!handle && !profile) return null;
-  const label = handle ? '@' + String(handle).replace(/^@/, '') : profile.name;
-  return el('span', {
-    class: 'chip ' + (platform === 'facebook' ? 'blue' : 'pink'),
-    title: profile ? profile.name : '',
-  }, platform === 'facebook' ? 'FB' : 'IG', label);
 }
 
 // ---------------------------------------------------------------------------

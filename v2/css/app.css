@@ -538,6 +538,43 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .ro-text { font-size: 12.5px; color: #cfd0d4; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 
 /* ---- modal ---- */
+/* ---- avatar preview ---- */
+.modal.ap { position: relative; overflow-x: hidden; }
+.ap-cover { position: relative; aspect-ratio: 16 / 5; background: linear-gradient(135deg, #17382a, #0d1110); }
+.ap-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ap-close { position: absolute; top: 12px; right: 12px; background: rgba(4,6,5,0.72); color: #fff; backdrop-filter: blur(4px); }
+.ap-who { display: flex; align-items: flex-end; gap: 16px; padding: 0 24px; margin-top: -44px; position: relative; }
+.ap-who .avatar { border: 4px solid var(--panel); background-color: var(--panel); }
+.ap-name { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; padding-bottom: 8px; }
+.ap-name h2 { font-size: 24px; line-height: 1.15; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.ap-body { display: grid; gap: 20px; padding: 20px 24px; }
+.ap-body.has-base { grid-template-columns: minmax(0, 1fr) 176px; align-items: start; }
+.ap-promo { display: flex; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line2); border-radius: 14px; background: linear-gradient(120deg, color-mix(in srgb, var(--product, var(--green)) 16%, transparent), transparent 70%), var(--panel2); }
+.ap-promo-art { width: 68px; height: 68px; flex: none; object-fit: cover; border-radius: 11px; background: #0e0e11; }
+.ap-promo-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ap-promo-text b { font-size: 17px; line-height: 1.25; overflow-wrap: anywhere; }
+.ap-brand { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--mut); }
+.ap-brand img { height: 18px; max-width: 90px; object-fit: contain; }
+.ap-stats { display: grid; grid-template-columns: repeat(3, 1fr); border-block: 1px solid var(--line); }
+.ap-stats > div { display: flex; flex-direction: column; padding: 11px 0; }
+.ap-stats b { font-size: 20px; line-height: 1.2; }
+.ap-details { display: grid; grid-template-columns: 1fr 1fr; gap: 13px 16px; }
+.ap-details > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.ap-base { display: block; aspect-ratio: 9 / 14; border-radius: 13px; overflow: hidden; border: 1px solid var(--line2); }
+.ap-base img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
+.ap-base:hover img { transform: scale(1.03); }
+.ap-foot { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 9px; padding: 13px 24px; background: var(--panel); border-top: 1px solid var(--line); }
+@media (max-width: 600px) {
+  .ap-cover { aspect-ratio: 16 / 7; }
+  .ap-who { padding: 0 18px; gap: 12px; }
+  .ap-who .avatar { width: 84px !important; height: 84px !important; }
+  .ap-name h2 { font-size: 20px; }
+  .ap-body { padding: 18px; }
+  .ap-body.has-base { grid-template-columns: 1fr; }
+  .ap-base { width: min(100%, 220px); }
+  .ap-foot { padding: 12px 18px; }
+}
+
 .overlay { position: fixed; inset: 0; background: rgba(4,6,5,0.72); display: flex; align-items: center; justify-content: center; z-index: 40; padding: 20px; }
 .modal { width: 100%; max-width: 520px; max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 16px; }
 .modal.wide { max-width: 660px; }
