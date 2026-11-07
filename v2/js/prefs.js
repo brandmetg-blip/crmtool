@@ -9,7 +9,6 @@ const ROW = 'workspace';
 
 export const DEFAULTS = {
   sheetColumns: [],     // extra columns on the avatar sheet
-  onboardingForm: null, // edited onboarding checklist; null = the built-in layout
   brands: null,         // the brand list once edited; null = the built-in five
   firstVideosOn: true,  // every page's first videos are growth, one a day
   firstVideosCount: 3,  // how many; a video counts as soon as it is added

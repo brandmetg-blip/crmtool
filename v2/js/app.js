@@ -256,7 +256,6 @@ function signOutState() {
   state.acctProfile = 'all';
   state.acctProduct = 'all';
   state.onboardAvatar = null;
-  state.obEditForm = false;
   state.settingsTab = 'brands';
   state.settingsBrand = null;
   state.capSearch = '';

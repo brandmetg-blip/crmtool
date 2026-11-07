@@ -29,10 +29,9 @@ export const state = {
   acctProfile: 'all',
   acctProduct: 'all',
   capSearch: '',              // caption board: filter text
-  onboardAvatar: null,        // page id whose setup checklist is open
+  onboardAvatar: null,        // page id whose onboarding stages are open
   settingsTab: 'brands',      // settings: brands | concepts | profiles | workspace
   settingsBrand: null,        // settings: the brand open in the Brands tab
-  obEditForm: false,          // onboarding: the admin is editing the form
   modal: null,                // { type, ... } | null
   loginError: null,
   authEmail: null,            // cloud mode: the signed-in Supabase Auth email

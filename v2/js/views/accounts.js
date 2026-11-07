@@ -16,11 +16,11 @@ import { brands, brandOf, productOptions } from '../brands.js';
 import {
   captionFor, captionOverride, hasOwnCaption, setCaption, clearCaption,
   captionsNeeded, legacyCaption, captionTemplate, hasPlaceholder,
-  LINKTWIN_LINKS, linktwinLink, setLinktwinLink, linktwinComplete,
 } from '../captions.js';
 import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster, isDropped, pageStats, lineageNote } from '../lifecycle.js';
 import { renderSheet, openColumns } from './sheet.js';
 import { startNewPage } from './onboarding.js';
+import { linkFieldsInto, accountFieldsInto } from '../pagelinks.js';
 
 // [stored id, tone, what a person reads]
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone, l.label]);
@@ -159,30 +159,6 @@ export function captionFieldsInto(container, account, onMutate) {
         onclick: () => { onMutate(x => setCaption(x, t, old)); rebuild(); }
       }, 'Use as ' + t.toLowerCase()))));
   }
-}
-
-// The four LinkTwin links, as an editable block. Same onMutate contract.
-// `afterCaptionLink` fires when the caption link changes, so a caller can
-// refresh the captions that are built around it.
-export function linktwinFieldsInto(container, account, onMutate, afterCaptionLink) {
-  container.innerHTML = '';
-  LINKTWIN_LINKS.forEach(([k, label]) => {
-    container.appendChild(el('div', { class: 'col', style: 'gap:3px' },
-      el('span', { class: 'label' }, label.toUpperCase()),
-      el('input', {
-        class: 'input', style: 'height:30px;font-size:12px',
-        value: linktwinLink(account, k), placeholder: label + ' URL…',
-        oninput: e => {
-          onMutate(x => {
-            setLinktwinLink(x, k, e.target.value);
-            // the sheet's "Link created" tick means exactly "the LinkTwin links
-            // exist", so keep it in step with the four fields
-            x.linkCreated = linktwinComplete(x);
-          });
-          if (k === 'caption' && afterCaptionLink) afterCaptionLink();
-        },
-      })));
-  });
 }
 
 export function renderAccounts(root) {
@@ -715,12 +691,17 @@ export function openAccount(existing, seed) {
   const capWrap = el('div', { class: 'col', style: 'gap:9px' });
   const repaintCaps = () => captionFieldsInto(capWrap, a, fn => fn(a));
 
-  // The four LinkTwin links. The caption link among them is what every caption
+  // The links for each placement. Facebook's caption link is what every caption
   // is built around, so it stays editable here after the page has graduated.
-  body.appendChild(el('span', { class: 'label' }, 'LINKTWIN LINKS'));
-  const ltWrap = el('div', { class: 'col', style: 'gap:8px' });
-  linktwinFieldsInto(ltWrap, a, fn => fn(a), repaintCaps);
-  body.appendChild(ltWrap);
+  body.appendChild(el('span', { class: 'label' }, 'LINKS'));
+  const linkWrap = el('div', { class: 'col', style: 'gap:8px' });
+  linkFieldsInto(linkWrap, a, fn => fn(a), repaintCaps);
+  body.appendChild(linkWrap);
+
+  body.appendChild(el('span', { class: 'label' }, 'ACCOUNTS'));
+  const acctWrap = el('div', { class: 'col', style: 'gap:8px' });
+  accountFieldsInto(acctWrap, a, fn => fn(a));
+  body.appendChild(acctWrap);
 
   body.appendChild(el('span', { class: 'label' }, 'CAPTIONS'));
   repaintCaps();
@@ -1313,7 +1294,7 @@ function productCard(p, concepts) {
   return card;
 }
 
-function profileSelect(platform, current, onset) {
+export function profileSelect(platform, current, onset) {
   const list = state.db.profiles.filter(p => p.platform === platform);
   const sel = el('select', {
     class: 'input', style: 'width:auto;min-width:170px',

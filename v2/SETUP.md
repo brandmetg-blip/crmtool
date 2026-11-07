@@ -161,18 +161,16 @@ write the day's hooks, see every page, see and set tasks, or set up new pages.
 Use these to let one person do more without making them an admin.
 
 **Onboarding.** A new page does not go straight into Avatars. It starts in
-**Onboarding** and works through a checklist — the Facebook page exists, name,
-profile picture, cover photo, page link, automations, Amazon settings, the four
-LinkTwin links (link in bio, caption, ManyChat growth, ManyChat product),
-product, targeting, quality, stage, captions, base images, and a body for each
-concept it starts on. Most items tick themselves off the record; the Facebook
-page, automations and Amazon boxes are ticked by hand, because that work happens
-outside the tool, and two of those are the same boxes the Avatars sheet has
-always had, so ticking one ticks the other. Only when every item is
-filled in can it be submitted, at which point it joins the Avatars centre and
-goes Live. Pages
-still in the pipeline count toward the roster target (the slot is spoken for)
-but never appear in the account centre.
+**Onboarding** and goes through five stages, one screen at a time: images
+(profile picture, cover photo, base image), details (name, product, targeting,
+video quality, stage), links (a LinkTwin and a Lens link for each placement on
+each platform), accounts (which exist, their links, the Facebook main account
+and Instagram email), and editor. YT Shorts and Threads are optional, and the
+editor can stay unassigned. A stage must be complete to continue, finished
+stages can be reopened, and progress is saved as you go. The last stage adds the
+page to the Avatars centre and it goes Live. Pages still being set up count
+toward the roster target (the slot is spoken for) but never appear in the
+account centre.
 
 **Captions and product templates.** Each product carries a caption template per
 video type (growth, product) under Avatars → Products, with a `[caption link]`
