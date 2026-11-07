@@ -16,7 +16,7 @@
 // A dropped page keeps its history. Dropping is not deleting.
 // ============================================================================
 
-import { state, byId } from './state.js';
+import { state, byId, can, uid } from './state.js';
 import { takesDailyVideos, isDropped, lifecycleOf, lifecycleDef } from './lifecycle.js';
 import { getPref } from './prefs.js';
 
@@ -46,6 +46,7 @@ export function stageColor(s) {
 
 // The one-line answer to "what am I meant to be doing for this page?"
 export function stageGoal(a) {
+  if (!can.seeStage(state.user)) return '';
   const s = stageOf(a);
   return s ? (s.goal || '').trim() : '';
 }
@@ -87,23 +88,49 @@ export function rampBlock(a, type, date) {
   return ranIt && date <= p.first[p.need - 1].date ? 'Still on its first ' + p.need + ' days' : '';
 }
 
-// Moves the page between the two chosen stages when it crosses the line, and
-// back if a deleted video takes it under again. A stage picked by hand for any
-// other reason is left alone. Returns true if the page changed.
+// A page starts in the first stage and moves to the second once it has its
+// growth videos, and back if a deleted video takes it under again. Nobody picks
+// this: Settings can name other stages for the two, otherwise it is the first
+// two on the list. A stage the admin set by hand for any other reason is left
+// alone. Returns true if the page changed.
+function startStage() {
+  const id = getPref('rampGrowthStage');
+  if (byId(state.db.stages, id)) return id;
+  const first = sortedStages()[0];
+  return first ? first.id : '';
+}
+
+function nextStage() {
+  const id = getPref('rampCtaStage');
+  if (byId(state.db.stages, id)) return id;
+  const second = sortedStages()[1];
+  return second ? second.id : '';
+}
+
 export function syncRampStage(a) {
-  const p = rampPhase(a);
-  if (!p || !a.ramp) return false;   // pages made while the rule was on
-  const stage = key => { const id = getPref(key); return byId(state.db.stages, id) ? id : ''; };
-  const growth = stage('rampGrowthStage'), cta = stage('rampCtaStage');
-  if (!p.growing && cta && a.stageId !== cta && (!a.stageId || a.stageId === growth)) { a.stageId = cta; return true; }
-  if (p.growing && growth && a.stageId === cta) { a.stageId = growth; return true; }
-  return false;
+  if (!a || !a.ramp) return false;   // pages that began before this existed
+  const need = Math.max(1, Math.round(+getPref('firstVideosCount') || 1));
+  const growth = (state.db.dailyEntries || []).filter(e => e.accountId === a.id && e.type === 'Growth').length;
+  const start = startStage(), next = nextStage();
+  const want = growth >= need ? next : start;
+  if (!want || a.stageId === want) return false;
+  if (a.stageId && a.stageId !== start && a.stageId !== next) return false;
+  a.stageId = want;
+  return true;
 }
 
 // What a brand-new page starts with.
 export function rampSeed() {
-  if (!getPref('firstVideosOn')) return { stageId: '' };
-  return { ramp: true, stageId: byId(state.db.stages, getPref('rampGrowthStage')) ? getPref('rampGrowthStage') : '' };
+  return { ramp: true, stageId: startStage() };
+}
+
+// The automatic move needs two stages to move between, so it adds whatever is
+// missing. They can be renamed under Settings.
+export async function ensureRampStages() {
+  const { save } = await import('./app.js');
+  for (let n = sortedStages().length + 1; n <= 2; n++) {
+    save('stages', { id: uid('st'), name: 'Stage ' + n, goal: '', color: n === 1 ? '#5b8def' : '#34e08a', order: n - 1, createdAt: Date.now() });
+  }
 }
 
 // Everything an editor needs to know before touching a page, in one place.
@@ -113,6 +140,7 @@ export function pageStanding(a) {
   if (!def.work) {
     return { retired: isDropped(a), label: lifecycleDef(a).label, tone: def.tone, note: def.note };
   }
+  if (!can.seeStage(state.user)) return { retired: false, label: def.label, tone: def.tone, note: '' };
   const s = stageOf(a);
   if (!s) return { retired: false, label: 'No stage set', tone: 'gray', note: '' };
   return { retired: false, label: s.name, tone: null, color: stageColor(s), note: (s.goal || '').trim() };

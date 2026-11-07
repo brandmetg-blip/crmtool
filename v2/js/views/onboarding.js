@@ -2,7 +2,7 @@
 // onboarding.js — the five stages a new page goes through before it is a page.
 //
 //   1 Images    profile picture, cover photo, base image
-//   2 Details   name, product, targeting, video quality, stage
+//   2 Details   name, product, targeting, video quality
 //   3 Links     a LinkTwin and a Lens link for each placement on each platform
 //   4 Accounts  which accounts exist, their links, where they are held
 //   5 Editor    who works on it (can stay unassigned)
@@ -20,7 +20,7 @@
 
 import { state, forceEmit, uid, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
-import { sortedStages, stageOf, rampSeed } from '../stages.js';
+import { rampSeed, syncRampStage, ensureRampStages } from '../stages.js';
 import { QUALITY, TARGETING, profileSelect } from './accounts.js';
 import { productOptions } from '../brands.js';
 import { linkFieldsInto, accountFieldsInto, missingLinks, missingAccounts } from '../pagelinks.js';
@@ -43,7 +43,7 @@ const STAGES = [
     label: 'Details', title: 'Page details', note: 'Who this page is and what it promotes.',
     missing: a => [
       !(a.name || '').trim() && 'Name', !byId(state.db.products, a.productId) && 'Product',
-      !a.targeting && 'Targeting', !a.quality && 'Video quality', !stageOf(a) && 'Stage',
+      !a.targeting && 'Targeting', !a.quality && 'Video quality',
     ].filter(Boolean),
     body: detailsStage,
   },
@@ -81,6 +81,7 @@ function currentStage(a) {
 // ---------------------------------------------------------------------------
 export async function startNewPage(seed) {
   const { save } = await import('../app.js');
+  await ensureRampStages();
   const a = Object.assign({
     id: uid('a'), name: '', status: 'Building', phase: 'P1',
     productId: '', platforms: { facebook: '', instagram: '' },
@@ -102,11 +103,14 @@ export async function startNewPage(seed) {
 // Live means.
 async function submitPage(a) {
   if (furthestStage(a) < LAST) return;
+  await ensureRampStages();
   const { mutate } = await import('../app.js');
   mutate('accounts', a.id, x => {
     x.onboarding = false;
     x.onboardedAt = Date.now();
     delete x.obStage;
+    // a page begun before stages were automatic joins them now
+    if (!x.stageId) { x.ramp = true; syncRampStage(x); }
     if (x.status === 'Building') { x.status = 'Live'; x.wentLiveAt = x.wentLiveAt || Date.now(); }
   });
   state.onboardAvatar = null;
@@ -356,19 +360,6 @@ function detailsStage(a, change) {
   }, [el('option', { value: '' }, 'Choose a product')].concat(productOptions()));
   product.value = a.productId || '';
 
-  const stages = sortedStages();
-  const goal = el('span', { class: 'hint' });
-  const paintGoal = () => {
-    const s = stageOf(a);
-    goal.textContent = s ? (s.goal || '').trim() : (stages.length ? '' : 'No stages yet. Add them under Settings.');
-  };
-  const stage = el('select', {
-    class: 'input', 'aria-label': 'Stage',
-    onchange: e => { change(x => { x.stageId = e.target.value; }); paintGoal(); },
-  }, [['', 'Choose a stage']].concat(stages.map(s => [s.id, s.name])).map(([v, label]) => el('option', { value: v }, label)));
-  stage.value = a.stageId || '';
-  paintGoal();
-
   const note = el('div', { class: 'col', style: 'gap:6px' });
   const paintNote = () => {
     note.innerHTML = '';
@@ -389,8 +380,7 @@ function detailsStage(a, change) {
     row('PRODUCT', product, state.db.products.length ? null : el('span', { class: 'hint' }, 'No products yet. Add one under Settings → Brands.')),
     row('TARGETING', seg(TARGETING.map(t => [t[0], t[1]]), a.targeting, v => { change(x => { x.targeting = v; }); paintNote(); })),
     note,
-    row('VIDEO QUALITY', seg(QUALITY.map(q => [q[0], q[1]]), a.quality, v => change(x => { x.quality = v; }))),
-    row('STAGE', stage, goal));
+    row('VIDEO QUALITY', seg(QUALITY.map(q => [q[0], q[1]]), a.quality, v => change(x => { x.quality = v; }))));
 }
 
 // ---- stage 3

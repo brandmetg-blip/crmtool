@@ -66,13 +66,13 @@ function sheetSection() {
 function rampSection() {
   const on = !!getPref('firstVideosOn');
   const need = getPref('firstVideosCount');
-  const stagePick = (key, label, hint) => el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
+  const stagePick = (key, label, hint, auto) => el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
     el('span', { class: 'label' }, label),
     (() => {
       const sel = el('select', {
         class: 'input', style: 'height:34px',
         onchange: async e => { await setPref(key, e.target.value); forceEmit(); }
-      }, [el('option', { value: '' }, 'Not set')].concat(sortedStages().map(s => el('option', { value: s.id }, s.name || 'Untitled'))));
+      }, [el('option', { value: '' }, auto)].concat(sortedStages().map(s => el('option', { value: s.id }, s.name || 'Untitled'))));
       sel.value = getPref(key) || '';
       return sel;
     })(),
@@ -104,8 +104,8 @@ function rampSection() {
           }
         }),
         el('span', { class: 'hint' }, 'All growth, one a day.')),
-      stagePick('rampGrowthStage', 'STARTS IN STAGE', 'Where a new page begins.'),
-      stagePick('rampCtaStage', 'MOVES TO STAGE', 'Where it goes after its first videos.')));
+      stagePick('rampGrowthStage', 'STARTS IN STAGE', 'Where a new page begins.', 'First on the list'),
+      stagePick('rampCtaStage', 'MOVES TO STAGE', 'Where it goes after its first growth videos.', 'Second on the list')));
 }
 
 // ---------------------------------------------------------------------------

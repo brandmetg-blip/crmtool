@@ -434,6 +434,7 @@ export function lifecycleChip(a) {
 // The stage alone, never standing in for the lifecycle — used where a
 // lifecycle chip sits beside it.
 export function stageOnlyChip(a) {
+  if (!can.seeStage(state.user)) return null;
   const s = stageOf(a);
   // a new page still making its first growth videos shows how far along it is
   const r = rampPhase(a);
@@ -680,11 +681,11 @@ export function openAccount(existing, seed) {
         }
         a.status = v; paintLife();
       })),
-    field('STAGE', stageSel)));
+    can.seeStage(state.user) ? field('STAGE', stageSel) : null));
   body.appendChild(lifeNote);
   paintLife();
   body.appendChild(reasonWrap);
-  body.appendChild(stageNote);
+  if (can.seeStage(state.user)) body.appendChild(stageNote);
 
   // What goes out with this page's videos, following its product by default.
   // Declared before the links so the caption-link field can refresh it.

@@ -119,7 +119,7 @@ function card(a) {
     box.appendChild(el('div', { class: 'hint' }, (st.label || '') + ' — not posting right now.'));
   } else if (st && st.note) {
     box.appendChild(el('div', { class: 'col', style: 'gap:5px' },
-      el('span', { class: 'label' }, 'AT THIS STAGE'),
+      el('span', { class: 'label' }, 'RIGHT NOW'),
       el('div', { class: 'ro-text' }, st.note)));
   }
 

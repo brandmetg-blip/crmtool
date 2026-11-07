@@ -13,7 +13,7 @@
 //
 // Extra columns can be defined in Settings for anything this does not cover.
 
-import { state, forceEmit, uid } from '../state.js';
+import { state, forceEmit, uid, can } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { sortedConcepts, bodyLinkFor, accountAcceptsConcept } from '../concepts.js';
 import { getPref, setPref } from '../prefs.js';
@@ -30,7 +30,7 @@ const HEAD = [
   { id: 'pfp', label: 'PFP', w: 50 },
   { id: 'name', label: 'Name', w: 180 },
   { id: 'lifecycle', label: 'Status', w: 96 },
-  { id: 'stage', label: 'Stage', w: 118 },
+  { id: 'stage', get label() { return can.seeStage(state.user) ? 'Stage' : 'Targeting'; }, w: 118 },
 ];
 // One caption column per kind of video, replacing the single one pages used to
 // share: a growth video and a product video never go out under the same words.
