@@ -752,9 +752,7 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .lib-group { display: flex; flex-direction: column; gap: 8px; }
 .lib-group-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .lib-brands { flex: 1 0 100%; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
-.lib-mark { position: relative; display: flex; align-items: center; justify-content: center; width: 108px; height: 44px; overflow: hidden; border-radius: 9px; background: #0d2a1d; }
-.lib-mark .ba-name { font-size: 12px; }
-.lib-mark .ba-logo { max-height: 62%; max-width: 70%; }
+.lib-logo { display: block; height: 30px; width: auto; max-width: 170px; object-fit: contain; }
 .lib-group-head b { font-size: 15px; }
 .lib-rows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
 .lib-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 190px 210px; align-items: center; gap: 14px; width: 100%; padding: 11px 14px; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }

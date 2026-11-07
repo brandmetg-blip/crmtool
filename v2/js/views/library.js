@@ -159,7 +159,9 @@ export function libraryMode(root) {
       if (!scripts.length) return;
       list.appendChild(el('section', { class: 'lib-group' },
         el('div', { class: 'lib-group-head' },
-          brand ? el('span', { class: 'lib-mark', title: brand.name, role: 'img', 'aria-label': brand.name }, brandArt(brand)) : el('b', null, 'No brand yet'),
+          brand && brand.logoUrl
+            ? el('img', { class: 'lib-logo', src: brand.logoUrl, alt: brand.name, title: brand.name, loading: 'lazy' })
+            : el('b', null, brand ? brand.name : 'No brand yet'),
           el('span', { class: 'hint' }, scripts.length + (scripts.length === 1 ? ' script' : ' scripts')),
           note ? el('span', { class: 'hint' }, note) : null),
         el('div', { class: 'lib-rows' }, scripts.sort(newest).map(s => row(s, numbers, uses.get(s.id) || [])))));
