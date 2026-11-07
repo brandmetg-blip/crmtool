@@ -76,8 +76,34 @@ async function absorbBlank(id) {
     && +x.version === +(s.version || 1) && (x.type || 'Product') === (s.type || 'Product')).forEach(x => {
     if (!(s.body || '').trim() && (x.body || '').trim()) { s.body = x.body; save('scripts', s); }
     removeItem('scripts', x.id);
+    import('./library.js').then(m => m.inheritNumber(s.id, x.id));
     forceEmit();
   });
+}
+
+// Every script's videos, for a list of all of them. The same answer as
+// scriptForVideo, without searching every script once per video.
+export function videosByScript() {
+  const label = (date, brandId, type, version) => [date, brandId, type || 'Product', +version].join('|');
+  const scripts = new Map();
+  state.db.scripts.forEach(s => {
+    if (!s.brandId) return;
+    const k = label(s.date, s.brandId, s.type, s.version);
+    scripts.set(k, (scripts.get(k) || []).concat(s));
+  });
+  const brandIds = new Map();
+  const brandIdOf = id => {
+    if (!brandIds.has(id)) brandIds.set(id, (pageBrand(byId(state.db.accounts, id)) || {}).id || '');
+    return brandIds.get(id);
+  };
+  const out = new Map();
+  (state.db.dailyEntries || []).forEach(v => {
+    const s = v.promptV
+      ? best(scripts.get(label(v.date, brandIdOf(v.accountId), v.type, v.promptV)) || [])
+      : (v.promptId ? { id: v.promptId } : null);
+    if (s) out.set(s.id, (out.get(s.id) || []).concat(v));
+  });
+  return out;
 }
 
 // The script for a label: the one already there, or a new one. Whatever the mass
@@ -141,6 +167,7 @@ export async function addScript() {
 // ---------------------------------------------------------------------------
 const shotsOf = s => (s.frames || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
 const stepsOf = f => Object.keys(STEP).filter(k => (f[STEP[k]] || '').trim());
+export const scriptHasPrompts = s => shotsOf(s).some(f => stepsOf(f).length > 0);
 const entryFor = (s, a) => a ? state.db.entries.find(e => e.scriptId === s.id && e.accountId === a.id) || null : null;
 const stepDone = (en, f, k) => !!(en && en.shots && en.shots[f.id] && en.shots[f.id][k]);
 // The video in the Videos tab this script is being made for on a page, if any.
@@ -295,6 +322,7 @@ function detailHead(s, canEdit, editing) {
         const { removeItem } = await import('../app.js');
         state.db.entries.filter(e => e.scriptId === s.id).forEach(e => removeItem('entries', e.id));
         removeItem('scripts', s.id);
+        if (state.libraryBack === s.id) state.builderMode = 'library';
         state.openScript = null; forceEmit();
       }
     }, 'Delete') : null);
@@ -304,6 +332,11 @@ function detailHead(s, canEdit, editing) {
 function backButton(s) {
   const back = state.scriptBack && state.scriptBack.scriptId === s.id ? state.scriptBack : null;
   const a = back && byId(state.db.accounts, back.accountId);
+  if (!a && state.libraryBack === s.id) {
+    return el('button', {
+      class: 'btn small', onclick: () => { state.builderMode = 'library'; state.openScript = null; forceEmit(); }
+    }, '‹ Library');
+  }
   if (!a) return el('button', { class: 'btn small', onclick: () => { state.openScript = null; forceEmit(); } }, '‹ All scripts');
   return el('button', {
     class: 'btn small', onclick: () => {

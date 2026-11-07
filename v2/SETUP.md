@@ -223,6 +223,10 @@ put the **service_role** key in this file; it bypasses RLS entirely.
 | Someone else's update overwrites what you're typing | Incoming live rows are merged one at a time and never applied to a row you have an unsaved change on. |
 | Two people type in the *same* field | Focusing a field claims it. Everyone else sees "Ana is editing" and a read-only copy until you leave. Claims expire on their own, so nothing gets stuck. |
 
+## Script library
+
+Daily Builder → Library lists every script across all days, for anyone who can write prompts. Each brand's scripts are numbered (G006 for growth, C006 for CTA) oldest first, and a number stays with its script. A script shows **Needs prompts** until it has prompts, then **Ready**, along with the pages it has gone to and how many have made it. A script gets its number once its brand is set. The numbers are kept in their own `scriptNumbers` row in `settings`, so nothing needs setting up in Supabase.
+
 ## Prompt Studio
 
 Finished projects come over from the Prompt Studio artifact by hand: **Copy data** there, then Prompts → Import here. A project lands on the day on screen, and its brand, type and version are set on the script. Importing the same project again updates that script and keeps those choices. Nothing needs setting up in Supabase.

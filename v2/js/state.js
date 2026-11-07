@@ -10,7 +10,7 @@ export const state = {
   db: { team: [], accounts: [], profiles: [], products: [], concepts: [], stages: [], settings: [], tasks: [], scripts: [], entries: [], dailyEntries: [], dailyHooks: [] },
   route: 'builder',           // builder | accounts | team | login | setup
   date: todayStr(),           // selected day in the builder
-  builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts
+  builderMode: 'videos',      // videos (per-avatar cards) | posting | scripts | library
   postScope: 'day',           // posting queue range: day | week | all
   postShowPosted: false,      // include already-posted rows
   postMonth: null,            // posting calendar: YYYY-MM shown (poster)

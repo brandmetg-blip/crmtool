@@ -745,6 +745,33 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
   .ma-foot { position: sticky; bottom: 0; }
 }
 
+/* ---- the script library ---- */
+.lib-search { max-width: 460px; }
+.lib-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.lib-filters .seg { flex-wrap: wrap; }
+.lib-group { display: flex; flex-direction: column; gap: 8px; }
+.lib-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.lib-group-head b { font-size: 15px; }
+.lib-rows { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+.lib-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 190px 210px; align-items: center; gap: 14px; width: 100%; padding: 11px 14px; border: 0; border-top: 1px solid var(--line); background: transparent; color: var(--text); text-align: left; }
+.lib-row:first-child { border-top: 0; }
+.lib-row:hover { background: rgba(255,255,255,0.03); }
+.lib-num { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lib-num.blue { color: #9fbef7; }
+.lib-num.green { color: var(--green); }
+.lib-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.lib-words, .lib-meta, .lib-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-words { font-size: 13px; font-weight: 600; }
+.lib-status { display: flex; flex-wrap: wrap; gap: 6px; }
+.lib-pages { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.lib-stack { display: flex; flex: none; gap: 3px; }
+.lib-names { display: flex; flex-direction: column; min-width: 0; font-size: 12px; }
+@media (max-width: 860px) {
+  .lib-row { grid-template-columns: 54px minmax(0, 1fr); gap: 8px 12px; }
+  .lib-status, .lib-pages { grid-column: 2; }
+  .lib-words { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+}
+
 /* ---- main scripts: the copy-paste workspace ---- */
 .sc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
 .sc-card { display: flex; flex-direction: column; gap: 11px; text-align: left; color: inherit; transition: border-color .12s; }

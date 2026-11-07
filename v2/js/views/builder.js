@@ -8,6 +8,7 @@
 //             (+ the finished link), and whether it's posted (+ platforms).
 //
 //   SCRIPTS — the Prompts tab, the copy-paste workspace. See mainscripts.js.
+//   LIBRARY — every script across all days. See library.js.
 //
 // Who can do what:
 //   admin / manager  write the brief and assign editors
@@ -26,6 +27,7 @@ import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, acco
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
 import { scriptsMode, addScript, scriptForVideo, ensureScript, findLabelled, labelTitle, typeName, openPrompts, promptProgress } from './mainscripts.js';
+import { libraryMode } from './library.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
 import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
@@ -52,10 +54,12 @@ export function renderBuilder(root) {
   // some modes are gated; if the role changed under one, fall back
   if (state.builderMode === 'posting' && !can.markPosted(u)) state.builderMode = 'videos';
   if (state.builderMode === 'hooks' && !can.seeHooks(u)) state.builderMode = 'videos';
+  if (state.builderMode === 'library' && !can.editScripts(u)) state.builderMode = 'videos';
 
   root.appendChild(head(u));
-  if (state.builderMode !== 'posting') root.appendChild(dayStrip(u));
+  if (state.builderMode !== 'posting' && state.builderMode !== 'library') root.appendChild(dayStrip(u));
   if (state.builderMode === 'scripts') scriptsMode(root, u);
+  else if (state.builderMode === 'library') libraryMode(root);
   else if (state.builderMode === 'posting') renderPosting(root, u);
   else if (state.builderMode === 'hooks') renderHooks(root, u);
   else videosMode(root, u);
@@ -63,13 +67,14 @@ export function renderBuilder(root) {
 
 function head(u) {
   const scriptsOn = state.builderMode === 'scripts';
+  const libraryOn = state.builderMode === 'library';   // every day at once, so no day to pick
   const wrap = el('div', { class: 'page-head' },
-    el('div', null, el('h1', null, 'Daily Builder'), el('div', { class: 'sub' }, fmtDate(state.date))),
-    el('div', { class: 'seg' },
+    el('div', null, el('h1', null, 'Daily Builder'), el('div', { class: 'sub' }, libraryOn ? 'Every script, across all days' : fmtDate(state.date))),
+    libraryOn ? null : el('div', { class: 'seg' },
       el('button', { onclick: () => go(shiftDate(state.date, -1)) }, '‹'),
       el('button', { onclick: () => go(todayStr()) }, 'Today'),
       el('button', { onclick: () => go(shiftDate(state.date, 1)) }, '›')),
-    el('input', {
+    libraryOn ? null : el('input', {
       class: 'input', type: 'date', style: 'width:150px', value: state.date,
       onchange: e => { if (e.target.value) go(e.target.value); }
     }),
@@ -83,7 +88,7 @@ function head(u) {
     wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ New script'));
   }
   // Write the brief once, drop it on as many avatars as you like.
-  if (!scriptsOn && can.editVideos(u) && !state.builderAvatar) {
+  if (!scriptsOn && !libraryOn && can.editVideos(u) && !state.builderAvatar) {
     wrap.appendChild(el('button', { class: 'btn violet', onclick: () => openMassAdd(u) }, '+ Mass add script'));
   }
   return wrap;
@@ -134,6 +139,13 @@ function modeSeg(u) {
     class: mode === 'scripts' ? 'on' : '',
     onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
   }, 'Prompts', scriptCount ? el('span', { class: 'pill' }, String(scriptCount)) : null));
+
+  if (can.editScripts(u)) {
+    seg.appendChild(el('button', {
+      class: mode === 'library' ? 'on' : '',
+      onclick: () => { state.builderMode = 'library'; state.builderAvatar = null; state.openScript = null; state.libraryBack = null; forceEmit(); }
+    }, 'Library'));
+  }
   return seg;
 }
 
