@@ -1237,23 +1237,6 @@ function entryRow(en, a, num, u) {
   card.appendChild(editorRow(en, u, canEdit));
 
   // ---- the brief
-  // A video's concept can come from the library — mass add sets it, and the
-  // body block below reads its bodies folder from it — or be typed free-hand.
-  // This row used to show only the typed one, so anything mass-added with a
-  // library concept read "—" here to the very people making it.
-  const lib = conceptLabel(en.conceptId, en.variationId, '');
-  const conceptCol = el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:180px' },
-    el('span', { class: 'label' }, 'CONCEPT'));
-  if (lib) conceptCol.appendChild(el('span', { class: 'chip violet', style: 'align-self:flex-start' }, lib));
-  if (canEdit) {
-    conceptCol.appendChild(guarded('de:' + en.id + ':concept',
-      () => el('input', { class: 'input', value: en.concept || '', placeholder: lib ? 'Add a note…' : 'e.g. Transformation, Villain…', oninput: e => eQuiet(en.id, x => x.concept = e.target.value) }),
-      () => el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—')));
-  } else if (!lib || (en.concept || '').trim()) {
-    conceptCol.appendChild(el('span', { class: 'ro-text' }, (en.concept || '').trim() || '—'));
-  }
-  card.appendChild(conceptCol);
-
   // Hook and body are now one script box, stored as the body. A video written
   // before that still shows its hook, so nothing already typed disappears.
   if ((en.hook || '').trim() || (en.hookLink || '').trim()) {
