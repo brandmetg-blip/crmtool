@@ -26,7 +26,7 @@ import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stag
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
-import { scriptsMode, addScript, scriptForVideo, ensureScript, findLabelled, labelTitle, typeName, openPrompts, promptProgress, connectVideo, scriptHasPrompts } from './mainscripts.js';
+import { scriptsMode, addScript, scriptForVideo, ensureScript, findLabelled, labelTitle, typeName, openPrompts, promptProgress, connectVideo, scriptHasPrompts, scriptsFor } from './mainscripts.js';
 import { libraryMode, scriptNumber } from './library.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
@@ -134,7 +134,7 @@ function modeSeg(u) {
     }, 'Hooks'));
   }
 
-  const scriptCount = state.db.scripts.filter(s => s.date === state.date).length;
+  const scriptCount = scriptsFor(u).filter(s => s.date === state.date).length;
   seg.appendChild(el('button', {
     class: mode === 'scripts' ? 'on' : '',
     onclick: () => { state.builderMode = 'scripts'; state.builderAvatar = null; forceEmit(); }
@@ -160,6 +160,7 @@ function dayStrip(u) {
   const T = todayStr();
   const accts = liveAccounts(builderAccounts(u, state.db));
   const scriptsOn = state.builderMode === 'scripts';
+  const allowed = scriptsOn ? scriptsFor(u) : [];
 
   return el('div', { class: 'days' }, DOW.map((dw, i) => {
     const ds = shiftDate(start, i);
@@ -168,7 +169,7 @@ function dayStrip(u) {
       const n = hooksForDate(ds).length;
       caption = n ? n + (n === 1 ? ' hook' : ' hooks') : '';
     } else if (scriptsOn) {
-      const n = state.db.scripts.filter(s => s.date === ds).length;
+      const n = allowed.filter(s => s.date === ds).length;
       caption = n ? n + (n === 1 ? ' script' : ' scripts') : '';
     } else {
       const es = dayEntries(u, ds, accts);

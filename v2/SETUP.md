@@ -146,7 +146,7 @@ one thing they change) and reads the analytics for those pages.
 | Mark posted + platforms | ✅ | ❌ view only | sees it once posted | ✅ their pages |
 | Captions board | ✅ | ✅ | ❌ | ✅ their pages |
 | Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see | ❌ |
-| Prompts (shots, prompts) | ✅ | ❌ view + copy | ❌ view + copy | ❌ |
+| Prompts (shots, prompts) | ✅ | ❌ view + copy | ❌ view + copy, for their own pages only | ❌ |
 | Connect a video to prompts | ✅ | ✅ | ❌ | ❌ |
 | Avatars | ✅ | ❌ view only | ❌ | ❌ |
 | Onboarding (new pages, before they join Avatars) | ✅ | ✅ **sets them up** | ❌ cannot see | ❌ |

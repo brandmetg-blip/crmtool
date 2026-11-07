@@ -17,7 +17,7 @@
 // The whole shell is rebuilt on any change, so the reference video element is
 // kept between renders. Put back in the same tick, it carries on playing.
 
-import { state, emit, forceEmit, uid, todayStr, fmtDate, byId, can, myAccounts } from '../state.js';
+import { state, emit, forceEmit, uid, todayStr, fmtDate, byId, can, myAccounts, builderAccounts, visibleEntries } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { guarded } from '../guard.js';
 import { liveAccounts } from '../stages.js';
@@ -32,11 +32,35 @@ async function loud(id, fn) { const { mutate } = await import('../app.js'); muta
 
 export function scriptsMode(root, u) {
   const canEdit = can.editScripts(u);
-  const scripts = state.db.scripts.filter(s => s.date === state.date).sort((a, b) => (a.order || 0) - (b.order || 0));
+  const allowed = scriptsFor(u);
+  const scripts = allowed.filter(s => s.date === state.date).sort((a, b) => (a.order || 0) - (b.order || 0));
   // by id, not by day: a video made today can use a script written days ago
-  const open = state.openScript ? state.db.scripts.find(s => s.id === state.openScript) : null;
+  const open = state.openScript ? allowed.find(s => s.id === state.openScript) : null;
   if (open) root.appendChild(detail(open, canEdit, u));
-  else root.appendChild(list(scripts, canEdit, u));
+  else root.appendChild(list(scripts, canEdit, u, allowed));
+}
+
+// The scripts this person may see. Whoever writes prompts or oversees every page
+// sees them all. A VA sees the ones for their own pages: a script already on videos
+// belongs to those videos' pages, and one on no videos yet to its product, or
+// failing that its brand.
+export function scriptsFor(u) {
+  if (can.editScripts(u) || can.seesAllAccounts(u)) return state.db.scripts;
+  const pages = builderAccounts(u, state.db);
+  const ids = new Set(pages.map(a => a.id));
+  // their own pages only: being handed one video on another brand's page does not
+  // open up that brand's other scripts
+  const own = myAccounts(u, state.db);
+  const products = new Set(own.map(a => a.productId).filter(Boolean));
+  const brandIds = new Set(own.map(a => (pageBrand(a) || {}).id).filter(Boolean));
+  const started = new Set(state.db.entries.filter(e => ids.has(e.accountId)).map(e => e.scriptId));
+  const uses = videosByScript();
+  return state.db.scripts.filter(s => {
+    if (started.has(s.id)) return true;
+    const videos = uses.get(s.id);
+    if (videos) return visibleEntries(u, videos, pages).length > 0;
+    return s.productId ? products.has(s.productId) : brandIds.has(s.brandId);
+  });
 }
 
 // Does this video belong to this script?
@@ -270,9 +294,9 @@ async function writeEntry(s, a, fn) {
 // ---------------------------------------------------------------------------
 // the day's scripts
 // ---------------------------------------------------------------------------
-function list(scripts, canEdit, u) {
+function list(scripts, canEdit, u, allowed) {
   if (!scripts.length) {
-    const others = state.db.scripts.map(s => s.date).filter(d => d && d !== state.date).sort();
+    const others = allowed.map(s => s.date).filter(d => d && d !== state.date).sort();
     const latest = others.pop();
     return el('div', { class: 'card col', style: 'align-items:center;text-align:center;color:var(--dim);padding:34px;gap:12px' },
       canEdit ? 'No scripts here for this day yet. Add one to start.' : 'No scripts here for this day yet.',
