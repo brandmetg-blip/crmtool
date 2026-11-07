@@ -163,15 +163,43 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 
 /* ---- what you get ---- */
 .get { padding-block: clamp(64px, 8vw, 100px) 0; }
-.get-head { margin-bottom: 14px; max-width: 26ch; }
-.get-sub { color: var(--ink-soft); margin-bottom: 32px; max-width: 54ch; }
-.get-bento { margin-top: 0; }
-.tile.half { grid-column: span 3; }
-.ava { width: 30px; height: 30px; flex: none; border-radius: 50%; background-size: 90px auto; background-repeat: no-repeat; background-color: var(--paper-2); }
-.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 12px 12px 20px; }
-.day { display: grid; justify-items: center; gap: 8px; font-size: .8125rem; font-weight: 600; color: var(--ink-soft); }
-.day i { width: 100%; max-width: 30px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 7px; background: var(--green); color: var(--green-ink); font-style: normal; font-weight: 700; }
-@media (max-width: 920px) { .tile.half { grid-column: 1 / -1; min-height: 0; } }
+.get-top { display: grid; grid-template-columns: 7fr 5fr; gap: 24px clamp(24px, 5vw, 64px); align-items: end; margin-bottom: 36px; }
+.get-top h2 { max-width: 16ch; font-size: clamp(2rem, 1.3rem + 2.6vw, 3.25rem); }
+.get-top p { color: var(--ink-soft); }
+.get-panels { display: grid; grid-template-columns: 5fr 7fr; gap: 14px; }
+.panel { position: relative; overflow: hidden; border-radius: 16px; min-height: 400px; }
+.panel h3 { font-size: clamp(1.5rem, 1.2rem + 1.1vw, 2.125rem); letter-spacing: -.03em; line-height: 1.12; }
+.panel p { margin-top: 12px; max-width: 40ch; }
+.panel-copy { position: relative; z-index: 1; padding: clamp(24px, 3vw, 36px); }
+.panel-ai { grid-column: 1 / -1; display: grid; grid-template-columns: 5fr 7fr; align-items: center; background: radial-gradient(60% 110% at 78% 100%, rgba(52,224,138,.34), transparent 72%), var(--night); color: var(--on-night); }
+.panel-ai p { color: var(--on-night-soft); }
+.faces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: end; align-self: end; padding: 36px clamp(24px, 3vw, 36px) 0 0; }
+.face { position: relative; margin: 0; border-radius: 14px 14px 0 0; overflow: hidden; transition: transform .5s var(--ease); }
+.panel-ai:hover .face { transform: translateY(-6px); }
+.face div { aspect-ratio: 3 / 4; background-size: 140% auto; background-repeat: no-repeat; background-color: var(--night-2); }
+.face.up div { aspect-ratio: 3 / 4.45; background-size: 190% auto; }
+.face figcaption { position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 7px; background: #fff; color: var(--ink); font-size: .8125rem; font-weight: 600; line-height: 1.3; }
+.panel-rank { display: flex; flex-direction: column; background: var(--green); color: var(--green-ink); }
+.panel-rank p { color: var(--green-ink); }
+.climb { display: block; width: 100%; height: 170px; margin-top: auto; }
+.climb-fill { fill: rgba(4,20,12,.1); }
+.climb-line { fill: none; stroke: var(--green-ink); stroke-width: 2.5; }
+.panel-photo { display: flex; align-items: flex-end; background: var(--night); color: #fff; }
+.panel-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1.4s var(--ease); }
+.panel-photo:hover img { transform: scale(1.03); }
+.panel-photo::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 30%, rgba(5,16,11,.92) 82%); }
+.panel-photo p { color: #E6EEE9; }
+.get-list { margin-top: 22px; border-top: 1px solid var(--line); }
+.get-list > div { display: grid; grid-template-columns: 5fr 7fr; gap: 6px 14px; padding-block: 22px; border-bottom: 1px solid var(--line); }
+.get-list h3 { font-size: 1.25rem; letter-spacing: -.02em; }
+.get-list p { color: var(--ink-soft); max-width: 56ch; }
+@media (max-width: 920px) {
+  .get-top, .get-panels, .panel-ai, .get-list > div { grid-template-columns: 1fr; }
+  .panel { min-height: 340px; }
+  .panel-ai { min-height: 0; }
+  .faces { padding: 0 24px; }
+}
+@media (max-width: 600px) { .face figcaption { display: none; } .faces { gap: 8px; } .panel-photo { min-height: 460px; } .panel-photo img { height: 64%; object-position: 72% 90% !important; } .panel-photo::after { background: linear-gradient(transparent 34%, var(--night) 64%); } }
 @keyframes open { from { opacity: 0; transform: translateY(12px); } }
 
 .promise { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(24px, 4vw, 48px); padding-block: 56px clamp(64px, 8vw, 100px); }
@@ -440,71 +468,49 @@ footer { border-top: 1px solid var(--night-line); }
 
 <section class="band" id="get" aria-labelledby="getH">
   <div class="frame get">
-    <h2 class="get-head rv" id="getH">What you get when you work with us</h2>
-    <p class="get-sub rv" style="--d:1">A full organic team on your brand, with no retainer and no ad budget.</p>
-    <div class="bento get-bento">
+    <div class="get-top">
+      <h2 class="rv" id="getH">What you get when you work with us</h2>
+      <p class="rv" style="--d:1">A full organic team on your brand, with no retainer and no ad budget.</p>
+    </div>
+    <div class="get-panels">
 
-      <article class="tile half rv">
-        <h3>Realistic AI influencers for your brand</h3>
-        <p>AI creators built around your products, on camera every day with no shoots and no creator fees.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Your AI creators</span></div>
-          <div class="rows">
-            <div class="r"><span class="ava" style="background-image:url(assets/video-2.webp);background-position:-31px -29px"></span><span>Health explainer</span><small class="tag">Posting daily</small></div>
-            <div class="r"><span class="ava" style="background-image:url(assets/video-3.webp);background-position:-20px -52px"></span><span>Lifestyle creator</span><small class="tag">Posting daily</small></div>
-            <div class="r"><span class="ava" style="background-image:url(assets/video-1.webp);background-position:-33px -35px"></span><span>Home and wellness</span><small class="tag">Posting daily</small></div>
-          </div>
-        </div></div>
+      <article class="panel panel-ai rv">
+        <div class="panel-copy">
+          <h3>Realistic AI influencers for your brand</h3>
+          <p>AI creators built around your products, on camera every day with no shoots and no creator fees.</p>
+        </div>
+        <div class="faces">
+          <figure class="face "><div role="img" aria-label="AI creator: Health explainer" style="background-image:url(assets/video-2.webp);background-position:50% 0%"></div><figcaption>Health explainer</figcaption></figure>
+          <figure class="face up"><div role="img" aria-label="AI creator: Lifestyle creator" style="background-image:url(assets/video-3.webp);background-position:46% 27%"></div><figcaption>Lifestyle creator</figcaption></figure>
+          <figure class="face "><div role="img" aria-label="AI creator: Home and wellness" style="background-image:url(assets/video-1.webp);background-position:54% 0%"></div><figcaption>Home and wellness</figcaption></figure>
+        </div>
       </article>
 
-      <article class="tile half rv" style="--d:1">
-        <h3>Rank your Amazon product higher</h3>
-        <p>Organic traffic that buys on your listing, giving it the sales that help it climb in search.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Amazon search</span></div>
-          <div class="rows">
-            <div class="r"><span class="dot">1</span><span>Other listing</span></div>
-            <div class="r"><span class="dot g">2</span><span>Your product</span><small class="tag">Climbing ↑</small></div>
-            <div class="r"><span class="dot">3</span><span>Other listing</span></div>
-          </div>
-        </div></div>
+      <article class="panel panel-rank rv">
+        <div class="panel-copy">
+          <h3>Rank your Amazon product higher</h3>
+          <p>Organic traffic that buys on your listing, giving it the sales that help it climb in search.</p>
+        </div>
+        <svg class="climb" viewBox="0 0 480 170" preserveAspectRatio="none" aria-hidden="true">
+          <path class="climb-fill" d="M0 170V150C60 146 96 132 150 126S240 112 282 84 390 42 480 16V170Z"/>
+          <path class="climb-line" d="M0 150C60 146 96 132 150 126S240 112 282 84 390 42 480 16" vector-effect="non-scaling-stroke"/>
+        </svg>
       </article>
 
-      <article class="tile third rv">
-        <h3>Grow your brand and Amazon sales</h3>
-        <p>New buyers from social, sent straight to your Amazon listing or your own store.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Where buyers go</span></div>
-          <div class="rows">
-            <div class="r"><span class="dot">a</span><span>Amazon listing</span></div>
-            <div class="r"><span class="dot">S</span><span>Your own store</span></div>
-            <div class="r"><span class="dot g">↗</span><span>New customers</span></div>
-          </div>
-        </div></div>
+      <article class="panel panel-photo rv" style="--d:1">
+        <img src="assets/case-serene-herbs.webp" width="2000" height="1185" loading="lazy" alt="Serene Herbs Soursop Bitters and digestive drops on a wooden table" style="object-position:82% 88%">
+        <div class="panel-copy">
+          <h3>Grow your brand and Amazon sales</h3>
+          <p>New buyers from social, sent straight to your Amazon listing or your own store.</p>
+        </div>
       </article>
 
-      <article class="tile third rv" style="--d:1">
-        <h3>New videos every day</h3>
-        <p>Short-form videos made and posted daily, keeping your products in front of new buyers.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>This week</span></div>
-          <div class="days"><div class="day"><span>M</span><i aria-hidden="true">✓</i></div><div class="day"><span>T</span><i aria-hidden="true">✓</i></div><div class="day"><span>W</span><i aria-hidden="true">✓</i></div><div class="day"><span>T</span><i aria-hidden="true">✓</i></div><div class="day"><span>F</span><i aria-hidden="true">✓</i></div><div class="day"><span>S</span><i aria-hidden="true">✓</i></div><div class="day"><span>S</span><i aria-hidden="true">✓</i></div></div>
-        </div></div>
-      </article>
+    </div>
 
-      <article class="tile third rv" style="--d:2">
-        <h3>Content that grows and sells</h3>
-        <p>Videos that build the audience, and videos that send it to your offer.</p>
-        <div class="shot"><div class="win">
-          <div class="win-bar"><i></i><i></i><i></i><span>Content mix</span></div>
-          <div class="rows">
-            <div class="r"><span>Growth videos</span><small class="tag">Audience</small></div>
-            <div class="r"><span>CTA videos</span><small class="tag">Sales</small></div>
-            <div class="r"><span>Best performers</span><small class="tag">Remade</small></div>
-          </div>
-        </div></div>
-      </article>
-
+    <div class="get-list">
+      <div class="rv"><h3>New videos every day</h3><p>Short-form videos made and posted daily, keeping your products in front of new buyers.</p></div>
+      <div class="rv"><h3>Content that grows and sells</h3><p>Videos that build the audience, and videos that send it to your offer.</p></div>
+      <div class="rv"><h3>One team doing the work</h3><p>Scripts, video, posting and funnels are all handled by us, so none of it lands on your team.</p></div>
     </div>
 
     <div class="promise">
