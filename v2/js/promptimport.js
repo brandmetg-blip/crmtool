@@ -2,16 +2,14 @@
 //
 // Prompt Studio is a Claude artifact on another account, and it cannot reach this
 // tool. Its Copy data button gives a project as text, and Prompts → Import files it
-// as a script under its label, so the videos of that day, brand, type and version
-// find it. Importing the same project again updates that script.
+// as a script on the day on screen. Its brand, type and version are then set by
+// hand on the script. Importing the same project again updates that script and
+// keeps those choices.
 
 import { state, forceEmit, uid, can } from './state.js';
 import { el } from './ui.js';
-import { brands } from './brands.js';
-import { findLabelled, labelTitle } from './views/mainscripts.js';
 import { overlay } from './views/accounts.js';
 
-const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const text = (v, max) => String(v == null ? '' : v).slice(0, max);
 
 class BadProject extends Error {}
@@ -19,10 +17,6 @@ class BadProject extends Error {}
 function check(p) {
   if (!p || typeof p !== 'object') throw new BadProject('That is not a Prompt Studio project.');
   if (!/^[\w-]{1,80}$/.test(String(p.projectId || ''))) throw new BadProject('The project has no id.');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.date || ''))) throw new BadProject('The project has no date.');
-  if (!['Growth', 'Product'].includes(p.type)) throw new BadProject('The project is not marked Growth or CTA.');
-  const v = +p.version;
-  if (!Number.isInteger(v) || v < 1 || v > 5) throw new BadProject('The version must be 1 to 5.');
   if (!Array.isArray(p.frames) || !Array.isArray(p.clips)) throw new BadProject('The project has no prompts.');
 }
 
@@ -67,24 +61,8 @@ function toFile(dataUrl, name) {
 // Files one project as a script. Sending it again updates the same script.
 export async function importProject(p) {
   check(p);
-  const { save, removeItem, store } = await import('./app.js');
-  const brand = brands().find(b => norm(b.name) === norm(p.brand)) || null;
-  const brandId = brand ? brand.id : '';
-  const type = p.type;
-  let version = +p.version;
-
-  const mine = state.db.scripts.find(s => s.sourceProject === p.projectId) || null;
-  let labelled = brandId ? findLabelled(p.date, brandId, type, version) : null;
-  if (labelled && labelled !== mine && labelled.sourceProject) {
-    // another project already holds this label: take the next free version
-    // rather than write over it
-    const free = [1, 2, 3, 4, 5].find(n => !findLabelled(p.date, brandId, type, n));
-    if (!free) throw new Error('All five versions of ' + labelTitle(brandId, type, version) + ' are taken on ' + p.date + '.');
-    version = free;
-    labelled = null;
-  }
-  if (mine && labelled && labelled !== mine && !(labelled.frames || []).length) removeItem('scripts', labelled.id);
-  const target = mine || labelled;
+  const { save, store } = await import('./app.js');
+  const target = state.db.scripts.find(s => s.sourceProject === p.projectId) || null;
 
   const old = new Map(((target && target.frames) || []).map(f => [f.id, f]));
   const frames = mergeShots(p);
@@ -99,14 +77,11 @@ export async function importProject(p) {
 
   const s = Object.assign({}, target || {
     id: uid('s'), notes: '', referenceVideo: '', productId: '', createdAt: Date.now(),
-    order: state.db.scripts.filter(x => x.date === p.date).length,
-  }, {
-    date: p.date, brandId, type, version, frames,
-    title: text(p.name, 80) || (brandId ? labelTitle(brandId, type, version) : 'Prompt Studio project'),
-    body: text(p.script, 40000),
-    sourceProject: p.projectId,
-    createdBy: (target && target.createdBy) || 'Prompt Studio',
-  });
+    date: state.date, brandId: '', type: 'Growth', version: 1,
+    title: text(p.name, 80) || 'Prompt Studio project',
+    order: state.db.scripts.filter(x => x.date === state.date).length,
+    createdBy: 'Prompt Studio',
+  }, { frames, body: text(p.script, 40000), sourceProject: p.projectId });
   save('scripts', s);
   forceEmit();
   return s;
@@ -117,7 +92,7 @@ export async function importProject(p) {
 // ---------------------------------------------------------------------------
 export function openImport() {
   if (!can.editScripts(state.user)) return;
-  const note = el('div', { class: 'hint' }, 'Paste what Copy data gave you in Prompt Studio.');
+  const note = el('div', { class: 'hint' }, 'Paste what Copy data gave you in Prompt Studio. It goes on ' + state.date + ', and you set its brand, type and version on the script.');
   const area = el('textarea', { class: 'input', style: 'min-height:160px;font-size:12px', placeholder: 'Paste here…', 'aria-label': 'Sync data from Prompt Studio' });
   const close = () => { state.modal = null; forceEmit(); };
   const run = async raw => {

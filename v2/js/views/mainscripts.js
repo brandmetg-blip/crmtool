@@ -48,7 +48,13 @@ function matches(s, v, a) {
 export function scriptForVideo(v) {
   if (!v.promptV && !v.promptId) return null;
   const a = byId(state.db.accounts, v.accountId);
-  return state.db.scripts.find(s => matches(s, v, a)) || null;
+  return best(state.db.scripts.filter(s => matches(s, v, a)));
+}
+
+// Two scripts can share a label: the blank one mass add made, and one with its
+// prompts imported. The one with the work in it is the real one.
+function best(list) {
+  return list.find(s => (s.frames || []).length) || list[0] || null;
 }
 
 export const typeName = t => t === 'Growth' ? 'Growth' : 'CTA';
@@ -56,8 +62,22 @@ export const labelTitle = (brandId, type, version) =>
   ((brandById(brandId) || {}).name || 'Script') + ' ' + typeName(type) + ' ' + version;
 
 export function findLabelled(date, brandId, type, version) {
-  return state.db.scripts.find(s => s.date === date && s.brandId === brandId && +s.version === +version
-    && (s.type || 'Product') === (type || 'Product')) || null;
+  return best(state.db.scripts.filter(s => s.date === date && s.brandId === brandId && +s.version === +version
+    && (s.type || 'Product') === (type || 'Product')));
+}
+
+// Labelling a script with prompts takes the place of the blank one mass add made
+// for that label, keeping the script text if this one has none.
+async function absorbBlank(id) {
+  const s = byId(state.db.scripts, id);
+  if (!s || !s.brandId || !(s.frames || []).length) return;
+  const { save, removeItem } = await import('../app.js');
+  state.db.scripts.filter(x => x.id !== s.id && !(x.frames || []).length && x.date === s.date && x.brandId === s.brandId
+    && +x.version === +(s.version || 1) && (x.type || 'Product') === (s.type || 'Product')).forEach(x => {
+    if (!(s.body || '').trim() && (x.body || '').trim()) { s.body = x.body; save('scripts', s); }
+    removeItem('scripts', x.id);
+    forceEmit();
+  });
 }
 
 // The script for a label: the one already there, or a new one. Whatever the mass
@@ -366,7 +386,7 @@ function scriptPanel(s, editing) {
       el('div', { class: 'col', style: 'gap:5px' },
         el('span', { class: 'label' }, 'TYPE'),
         el('div', { class: 'seg mini' }, TYPES.map(t =>
-          el('button', { class: s.type === t ? 'on' : '', onclick: () => loud(s.id, x => x.type = t) }, t)))),
+          el('button', { class: s.type === t ? 'on' : '', onclick: async () => { await loud(s.id, x => x.type = t); absorbBlank(s.id); } }, t)))),
       el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:150px' },
         el('span', { class: 'label' }, 'PRODUCT'),
         (() => {
@@ -380,14 +400,14 @@ function scriptPanel(s, editing) {
     // the label videos find this script by, on this day
     const brandSel = el('select', {
       class: 'input', style: 'height:32px', 'aria-label': 'Brand label',
-      onchange: e => loud(s.id, x => x.brandId = e.target.value)
+      onchange: async e => { await loud(s.id, x => x.brandId = e.target.value); absorbBlank(s.id); }
     }, el('option', { value: '' }, 'No brand, no videos match'), brands().map(b => el('option', { value: b.id }, b.name)));
     brandSel.value = s.brandId || '';
     box.appendChild(el('div', { class: 'row wrap', style: 'gap:12px' },
       el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:150px' }, el('span', { class: 'label' }, 'LABEL: BRAND'), brandSel),
       el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'VERSION'),
         el('div', { class: 'seg mini' }, [1, 2, 3, 4, 5].map(n =>
-          el('button', { class: +(s.version || 1) === n ? 'on' : '', onclick: () => loud(s.id, x => x.version = n) }, String(n)))))));
+          el('button', { class: +(s.version || 1) === n ? 'on' : '', onclick: async () => { await loud(s.id, x => x.version = n); absorbBlank(s.id); } }, String(n)))))));
   }
 
   if ((s.hook || '').trim()) box.appendChild(textBlock(s, 'hook', 'HOOK (OLDER SCRIPT)', 'The opening line…', editing, true));

@@ -223,4 +223,4 @@ put the **service_role** key in this file; it bypasses RLS entirely.
 
 ## Prompt Studio
 
-Finished projects come over from the Prompt Studio artifact by hand: **Copy data** there, then Prompts → Import here. They are filed by date, brand, Growth/CTA and version, and importing the same project again updates its script. Nothing needs setting up in Supabase.
+Finished projects come over from the Prompt Studio artifact by hand: **Copy data** there, then Prompts → Import here. A project lands on the day on screen, and its brand, type and version are set on the script. Importing the same project again updates that script and keeps those choices. Nothing needs setting up in Supabase.
