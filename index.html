@@ -176,8 +176,8 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .faces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: end; align-self: end; padding: 36px clamp(24px, 3vw, 36px) 0 0; }
 .face { position: relative; margin: 0; border-radius: 14px 14px 0 0; overflow: hidden; transition: transform .5s var(--ease); }
 .panel-ai:hover .face { transform: translateY(-6px); }
-.face div { aspect-ratio: 3 / 4; background-size: 140% auto; background-repeat: no-repeat; background-color: var(--night-2); }
-.face.up div { aspect-ratio: 3 / 4.45; background-size: 190% auto; }
+.face div { aspect-ratio: 3 / 4; background-size: cover; background-repeat: no-repeat; background-color: var(--night-2); }
+.face.up div { aspect-ratio: 3 / 4.45; }
 .face figcaption { position: absolute; left: 10px; bottom: 10px; padding: 4px 9px; border-radius: 7px; background: #fff; color: var(--ink); font-size: .8125rem; font-weight: 600; line-height: 1.3; }
 .panel-rank { display: flex; flex-direction: column; background: var(--green); color: var(--green-ink); }
 .panel-rank p { color: var(--green-ink); }
@@ -480,9 +480,9 @@ footer { border-top: 1px solid var(--night-line); }
           <p>AI creators built around your products, on camera every day with no shoots and no creator fees.</p>
         </div>
         <div class="faces">
-          <figure class="face "><div role="img" aria-label="AI creator: Health explainer" style="background-image:url(assets/video-2.webp);background-position:50% 0%"></div><figcaption>Health explainer</figcaption></figure>
-          <figure class="face up"><div role="img" aria-label="AI creator: Lifestyle creator" style="background-image:url(assets/video-3.webp);background-position:46% 27%"></div><figcaption>Lifestyle creator</figcaption></figure>
-          <figure class="face "><div role="img" aria-label="AI creator: Home and wellness" style="background-image:url(assets/video-1.webp);background-position:54% 0%"></div><figcaption>Home and wellness</figcaption></figure>
+          <figure class="face "><div role="img" aria-label="AI creator: Lifestyle creator" style="background-image:url(assets/influencer-1.webp);background-position:50% 32%"></div><figcaption>Lifestyle creator</figcaption></figure>
+          <figure class="face up"><div role="img" aria-label="AI creator: Ranch and outdoors" style="background-image:url(assets/influencer-2.webp);background-position:50% 32%"></div><figcaption>Ranch and outdoors</figcaption></figure>
+          <figure class="face "><div role="img" aria-label="AI creator: Fitness creator" style="background-image:url(assets/influencer-3.webp);background-position:50% 32%"></div><figcaption>Fitness creator</figcaption></figure>
         </div>
       </article>
 
