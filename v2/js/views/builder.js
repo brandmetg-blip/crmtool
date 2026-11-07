@@ -561,15 +561,50 @@ function sheet(a, entries, u) {
   return wrap;
 }
 
+// The rules advise, they do not stop anyone: going against one takes a yes, with
+// the pages and the reason in front of you. It sits above whatever is open, and
+// resolves to whether the answer was yes.
+function askOverride(title, pages, yes, note) {
+  return new Promise(done => {
+    const close = answer => {
+      document.removeEventListener('keydown', onKey, true);
+      box.remove();
+      done(answer);
+    };
+    const onKey = e => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      close(false);
+    };
+    const go = el('button', { class: 'btn primary', onclick: () => close(true) }, yes);
+    const box = el('div', { class: 'overlay rule-ask', onclick: e => { if (e.target === box) close(false); } },
+      el('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true', 'aria-label': title },
+        el('div', { class: 'modal-head' }, title),
+        el('div', { class: 'rule-list' }, pages.map(p => el('div', { class: 'rule-page' },
+          avatar(p.account, 38),
+          el('div', { class: 'rule-text' },
+            el('b', null, p.account.name || 'Untitled'),
+            p.reasons.map(r => el('span', { class: 'hint' }, r))))),
+          note ? el('span', { class: 'hint' }, note) : null),
+        el('div', { class: 'rule-foot' },
+          el('button', { class: 'btn', onclick: () => close(false) }, 'Cancel'),
+          go)));
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(box);
+    go.focus();
+  });
+}
+
 async function addEntry(a) {
   const type = (rampPhase(a) || {}).growing ? 'Growth' : 'Product';
   const why = rampBlock(a, type, state.date);
-  if (why) { alert((a.name || 'This page') + ': ' + why + '.'); return; }
+  if (why && !await askOverride('Add a ' + typeName(type) + ' video to ' + (a.name || 'this avatar') + '?',
+    [{ account: a, reasons: [why] }], 'Yes, add it')) return;
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
     // a page still on its first videos starts on growth
-    type, promptV: 1,
+    type, promptV: 1, ...(why ? { ruleOverride: true } : {}),
     prod: 'Assembly', assignedEditorId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
@@ -605,8 +640,9 @@ function openMassAdd(u) {
 
   const editors = assignableMembers(state.db);
 
-  // Who this batch can go to: every page that is running, whose product takes
-  // the chosen concept, and that the new-page rule allows this type on.
+  // Who a batch starts out going to: every page that is running, whose product
+  // takes the chosen concept, and that the new-page rule allows this type on. The
+  // rest can still be ticked by hand, and the add button then asks.
   const blocked = a => rampBlock(a, draft.type, draft.date);
   const eligible = a => {
     if (blocked(a)) return false;
@@ -846,9 +882,9 @@ function openMassAdd(u) {
       }
     }
 
-    const ruled = accounts.filter(blocked).length;
+    const ruled = accounts.filter(a => blocked(a) && !picked.has(a.id)).length;
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
-      + (ruled ? ' · ' + ruled + ' skipped by the first videos rule' : '')
+      + (ruled ? ' · ' + ruled + ' left out by the first videos rule, tick to add' : '')
       + (autoRemoved ? ' · ' + autoRemoved + ' dropped — their product does not use this concept' : '');
 
     // each product heading shows all / some / none of its avatars selected
@@ -925,8 +961,9 @@ function openMassAdd(u) {
     el('span', { class: 'label' }, 'GOES TO'), countLabel,
     el('span', { class: 'spacer' }),
     qualitySeg,
-    // bulk selection never sweeps in a paused page or one whose product does
-    // not take the concept; those have to be chosen one at a time, on purpose
+    // bulk selection never sweeps in a paused page, one the new-page rule is
+    // holding, or one whose product does not take the concept; those are chosen
+    // one at a time, on purpose
     el('button', {
       class: 'btn small',
       onclick: () => { accounts.filter(eligible).forEach(a => picked.add(a.id)); refresh(); }
@@ -963,8 +1000,7 @@ function openMassAdd(u) {
       style: 'border-left:3px solid ' + c,
       onclick: () => {
         const ok = g.accounts.filter(eligible).map(a => a.id);
-        const pool = ok.length ? ok : g.accounts.filter(a => !blocked(a)).map(a => a.id);
-        if (!pool.length) return;
+        const pool = ok.length ? ok : g.accounts.map(a => a.id);
         const allOn = pool.every(id => picked.has(id));
         pool.forEach(id => allOn ? picked.delete(id) : picked.add(id));
         refresh();
@@ -980,7 +1016,7 @@ function openMassAdd(u) {
       const paused = (a.status || 'Active') === 'Paused';
       pickWrap.appendChild(el('div', {
         class: 'pick-row', 'data-acct': a.id,
-        onclick: () => { if (blocked(a)) return; picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
+        onclick: () => { picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
       },
         el('span', { class: 'check' }),
         avatar(a, 26),
@@ -1005,17 +1041,26 @@ function openMassAdd(u) {
 
   // ---- footer
   addBtn.onclick = async () => {
-    const chosen = accounts.filter(a => picked.has(a.id) && !blocked(a));
+    const chosen = accounts.filter(a => picked.has(a.id));
 
-    // The deliberate confirmation: a video can go to a page whose product does
-    // not use the concept, but only after being told exactly which pages.
-    const wrongProduct = draft.bodyKind === 'concept' && draft.conceptId
-      ? chosen.filter(a => !accountAcceptsConcept(a, draft.conceptId)) : [];
-    if (wrongProduct.length) {
-      const c = conceptById(draft.conceptId);
-      if (!confirm(wrongProduct.length + ' promote a product that does not use “' + ((c && c.name) || 'this concept') + '”:\n'
-        + wrongProduct.map(a => '  • ' + (a.name || 'Untitled')).join('\n')
-        + '\n\nAdd to them anyway?')) return;
+    // The deliberate confirmation: a video can go against a rule, but only after
+    // being told exactly which pages and why.
+    const concept = draft.bodyKind === 'concept' && draft.conceptId ? conceptById(draft.conceptId) : null;
+    const held = new Set(chosen.filter(blocked).map(a => a.id));
+    const against = chosen.map(a => ({
+      account: a,
+      reasons: [
+        blocked(a),
+        draft.bodyKind === 'concept' && draft.conceptId && !accountAcceptsConcept(a, draft.conceptId)
+          ? 'Its product does not use “' + ((concept && concept.name) || 'this concept') + '”' : '',
+      ].filter(Boolean),
+    })).filter(p => p.reasons.length);
+    if (against.length) {
+      const who = against.length === 1 ? against[0].account.name || 'this avatar' : against.length + ' avatars';
+      const rest = chosen.length - against.length;
+      const ok = await askOverride('Add a ' + typeName(draft.type) + ' video to ' + who + '?', against, 'Yes, add to ' + who,
+        rest ? 'The other ' + (rest === 1 ? 'avatar you picked gets' : rest + ' avatars you picked get') + ' it either way.' : '');
+      if (!ok) return;
     }
 
     const { save } = await import('../app.js');
@@ -1043,6 +1088,7 @@ function openMassAdd(u) {
         conceptId: draft.conceptId, variationId,   // link resolved from the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
         promptV: pageBrand(a) ? version : 0,
+        ...(held.has(a.id) ? { ruleOverride: true } : {}),
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
         win: false, createdBy: state.user.name, createdAt: Date.now(),
@@ -1157,13 +1203,17 @@ function editorFor(account, mode, editors) {
   return owners.length === 1 ? owners[0].id : '';
 }
 
-function setType(en, a, type) {
+async function setType(en, a, type) {
+  if (type === (en.type || 'Product')) return;
   const p = rampPhase(a);
-  if (p && type !== 'Growth' && (p.growing || p.first.includes(en))) {
-    alert('The first ' + p.need + ' videos of a page are growth.');
-    return;
-  }
-  eLoud(en.id, x => x.type = type);
+  const against = !!p && type !== 'Growth' && (p.growing || p.first.includes(en));
+  if (against && !await askOverride('Make this a ' + typeName(type) + ' video on ' + (a.name || 'this avatar') + '?',
+    [{ account: a, reasons: ['The first ' + p.need + ' videos of a page are growth'] }], 'Yes, change it')) return;
+  eLoud(en.id, x => {
+    x.type = type;
+    if (against) x.ruleOverride = true;
+    else if (type === 'Growth') delete x.ruleOverride;
+  });
 }
 
 async function eQuiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('dailyEntries', id, fn); }

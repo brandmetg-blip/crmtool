@@ -169,7 +169,9 @@ and Instagram email), and editor. YT Shorts and Threads are optional, and the
 editor can stay unassigned. A stage must be complete to continue, finished
 stages can be reopened, and progress is saved as you go. The last stage adds the
 page to the Avatars centre and it goes Live. A new page starts in the first stage
-and moves to the second by itself after its first 3 growth videos are added. Only
+and moves to the second by itself after its first 3 growth videos are added. A video
+that goes against the first videos rule can still be added, after confirming, and
+a CTA added this way does not count as one of the first videos. Only
 the admin can see a page's stage. Pages still being set up count
 toward the roster target (the slot is spoken for) but never appear in the
 account centre.

@@ -65,11 +65,12 @@ export function videosOn(account, type, date, entries) {
 // is added, made or not. After those, the page can take any video.
 //
 // The count is read off the page's videos rather than stored, so deleting a
-// video can never leave the number wrong.
+// video can never leave the number wrong. A CTA someone added over the rule is not
+// one of the first videos, so the page still gets its growth ones.
 export function rampPhase(a) {
   const need = Math.max(0, Math.round(+getPref('firstVideosCount') || 0));
   if (!getPref('firstVideosOn') || !a || !need) return null;
-  const videos = (state.db.dailyEntries || []).filter(e => e.accountId === a.id)
+  const videos = (state.db.dailyEntries || []).filter(e => e.accountId === a.id && !(e.ruleOverride && e.type !== 'Growth'))
     .sort((x, y) => (x.date || '').localeCompare(y.date || '') || (x.createdAt || 0) - (y.createdAt || 0));
   return { have: videos.length, need, growing: videos.length < need, first: videos.slice(0, need) };
 }

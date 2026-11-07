@@ -577,6 +577,14 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .overlay { position: fixed; inset: 0; background: rgba(4,6,5,0.72); display: flex; align-items: center; justify-content: center; z-index: 40; padding: 20px; }
 .modal { width: 100%; max-width: 520px; max-height: 86vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--line2); border-radius: 16px; }
 .modal.wide { max-width: 660px; }
+.rule-ask { z-index: 70; }
+.rule-ask .modal { max-width: 460px; display: flex; flex-direction: column; }
+.rule-ask .modal-head { overflow-wrap: anywhere; line-height: 1.3; }
+.rule-list { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; overflow-y: auto; min-height: 0; }
+.rule-page { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.rule-page .avatar { flex: none; }
+.rule-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.rule-foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); }
 .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--line); font-weight: 800; }
 .modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 15px; }
 

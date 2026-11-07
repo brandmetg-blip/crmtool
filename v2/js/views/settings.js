@@ -83,7 +83,7 @@ function rampSection() {
       el('b', { style: 'font-size:14px' }, 'First videos rule'),
       el('div', { class: 'hint' },
         on
-          ? 'Every page’s first ' + need + ' videos are growth, one a day. A video counts as soon as it is added, even before it is made or posted. After that the page can take any video. Mass add skips any page the video does not belong on.'
+          ? 'Every page’s first ' + need + ' videos are growth, one a day. A video counts as soon as it is added, even before it is made or posted. After that the page can take any video. Mass add leaves out any page the video does not belong on. You can still add to one, after confirming.'
           : 'Off. Every page can take any video.')),
     el('div', { class: 'seg mini', style: 'align-self:flex-start' }, [[false, 'Off'], [true, 'On']].map(([v, label]) =>
       el('button', {
