@@ -7,10 +7,12 @@
 // Progress is kept per page on that page's entry, so two people making the same
 // script for different pages never touch each other's ticks.
 //
-// A video finds its script here by its label: same day, same brand, same type,
-// same version (Growth 1, CTA 2…). The brand comes from the video's page and the
-// version is the video's promptV. When a video has a script, the finished link
-// and the done tick are the video's own, so nobody logs them twice.
+// A video finds its script one of two ways. Connected by hand on the video, it
+// points straight at the script (promptId). Otherwise it goes by its label: same
+// day, same brand, same type, same version (Growth 1, CTA 2…), where the brand comes
+// from the video's page and the version is the video's promptV. When a video has a
+// script, the finished link and the done tick are the video's own, so nobody logs
+// them twice.
 //
 // The whole shell is rebuilt on any change, so the reference video element is
 // kept between renders. Put back in the same tick, it carries on playing.
@@ -104,6 +106,43 @@ export function videosByScript() {
     if (s) out.set(s.id, (out.get(s.id) || []).concat(v));
   });
   return out;
+}
+
+// Connect a video straight to a script, or to nothing. The label stops mattering.
+// A script with no brand yet takes the page's, on a version no other video is
+// using, so the rest of that day's videos do not get connected to it by accident.
+// The blank script mass add made goes once nothing is waiting on it, and whichever
+// script replaced it picks up its text and number.
+export async function connectVideo(video, scriptId) {
+  const { save, mutate, removeItem } = await import('../app.js');
+  const before = scriptForVideo(video);
+  const target = scriptId ? byId(state.db.scripts, scriptId) : null;
+  if ((before && before.id) === (target && target.id)) return;
+
+  if (target && !target.brandId) {
+    const b = pageBrand(byId(state.db.accounts, video.accountId));
+    if (b) {
+      const type = video.type || 'Product';
+      const used = new Set(state.db.scripts.filter(s => s.date === target.date && s.brandId === b.id && (s.type || 'Product') === type).map(s => +s.version));
+      (state.db.dailyEntries || []).filter(v => v.date === target.date && (v.type || 'Product') === type && v.promptV
+        && (pageBrand(byId(state.db.accounts, v.accountId)) || {}).id === b.id).forEach(v => used.add(+v.promptV));
+      let version = 1;
+      while (used.has(version)) version++;
+      Object.assign(target, { brandId: b.id, type, version });
+      save('scripts', target);
+    }
+  }
+  mutate('dailyEntries', video.id, v => { v.promptV = 0; v.promptId = target ? target.id : ''; });
+
+  if (target && before && !(before.frames || []).length && !(videosByScript().get(before.id) || []).length) {
+    if (!(target.body || '').trim() && (before.body || '').trim()) target.body = before.body;
+    if (!(target.referenceVideo || '').trim() && (before.referenceVideo || '').trim()) target.referenceVideo = before.referenceVideo;
+    save('scripts', target);
+    removeItem('scripts', before.id);
+    const { inheritNumber } = await import('./library.js');
+    await inheritNumber(target.id, before.id, true);
+    forceEmit();
+  }
 }
 
 // The script for a label: the one already there, or a new one. Whatever the mass

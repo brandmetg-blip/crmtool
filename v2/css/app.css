@@ -789,6 +789,7 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .sc-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .sc-player { display: block; width: 100%; max-height: 330px; aspect-ratio: 9 / 16; border: 0; border-radius: 10px; background: #000; }
 .sc-words { max-height: 300px; overflow-y: auto; scrollbar-width: thin; }
+.prompt-pick { width: auto; flex: 0 1 420px; min-width: 200px; height: 32px; font-size: 12.5px; }
 .sc-count { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 .sc-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 4px; max-height: 210px; overflow-y: auto; scrollbar-width: thin; }

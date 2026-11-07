@@ -147,6 +147,7 @@ one thing they change) and reads the analytics for those pages.
 | Captions board | ✅ | ✅ | ❌ | ✅ their pages |
 | Hooks (the day's shared hooks) | ✅ | ✅ **writes them** | ❌ cannot see | ❌ |
 | Prompts (shots, prompts) | ✅ | ❌ view + copy | ❌ view + copy | ❌ |
+| Connect a video to prompts | ✅ | ✅ | ❌ | ❌ |
 | Avatars | ✅ | ❌ view only | ❌ | ❌ |
 | Onboarding (new pages, before they join Avatars) | ✅ | ✅ **sets them up** | ❌ cannot see | ❌ |
 | Assets | ✅ | ✅ all | ✅ theirs only | ❌ |
@@ -229,4 +230,4 @@ Daily Builder → Library lists every script across all days, for anyone who can
 
 ## Prompt Studio
 
-Finished projects come over from the Prompt Studio artifact by hand: **Copy data** there, then Prompts → Import here. A project lands on the day on screen, and its brand, type and version are set on the script. Importing the same project again updates that script and keeps those choices. Nothing needs setting up in Supabase.
+Finished projects come over from the Prompt Studio artifact by hand: **Copy data** there, then Prompts → Import here. A project lands on the day on screen. The admin or a manager then opens an avatar in Daily Builder and, under **Prompts** on each video, chooses from that day's prompts. The VA gets **Open prompts** on that video. Importing the same project again updates that script and keeps its connections. Nothing needs setting up in Supabase.

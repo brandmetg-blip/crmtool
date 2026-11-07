@@ -126,6 +126,7 @@ export const can = {
   // daily builder
   editVideos: u => isAdmin(u) || granted(u, 'editVideos'),   // write the brief, assign editors
   logCompletion: u => isAdmin(u) || isEditor(u),             // main-script completion
+  connectPrompts: u => isAdmin(u) || isManager(u) || granted(u, 'editVideos'),   // choose a video's prompts
   markPosted: u => isAdmin(u) || isPoster(u) || granted(u, 'markPosted'),   // tick "posted" + platforms
   // The day's shared hooks: a marketing manager's job by default, and
   // grantable to anyone else who writes them.

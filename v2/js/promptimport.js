@@ -92,7 +92,7 @@ export async function importProject(p) {
 // ---------------------------------------------------------------------------
 export function openImport() {
   if (!can.editScripts(state.user)) return;
-  const note = el('div', { class: 'hint' }, 'Paste what Copy data gave you in Prompt Studio. It goes on ' + state.date + ', and you set its brand, type and version on the script.');
+  const note = el('div', { class: 'hint' }, 'Paste what Copy data gave you in Prompt Studio. It goes on ' + state.date + ', ready to connect from each video in Daily Builder.');
   const area = el('textarea', { class: 'input', style: 'min-height:160px;font-size:12px', placeholder: 'Paste here…', 'aria-label': 'Sync data from Prompt Studio' });
   const close = () => { state.modal = null; forceEmit(); };
   const run = async raw => {

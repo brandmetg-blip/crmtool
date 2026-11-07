@@ -26,8 +26,8 @@ import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stag
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
-import { scriptsMode, addScript, scriptForVideo, ensureScript, findLabelled, labelTitle, typeName, openPrompts, promptProgress } from './mainscripts.js';
-import { libraryMode } from './library.js';
+import { scriptsMode, addScript, scriptForVideo, ensureScript, findLabelled, labelTitle, typeName, openPrompts, promptProgress, connectVideo, scriptHasPrompts } from './mainscripts.js';
+import { libraryMode, scriptNumber } from './library.js';
 import { guarded } from '../guard.js';
 import { overlay } from './accounts.js';
 import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
@@ -1231,9 +1231,9 @@ async function setType(en, a, type) {
 async function eQuiet(id, fn) { const { mutateQuiet } = await import('../app.js'); mutateQuiet('dailyEntries', id, fn); }
 async function eLoud(id, fn) { const { mutate } = await import('../app.js'); mutate('dailyEntries', id, fn); }
 
-// Where a video meets the Prompts tab. Whoever makes it gets the button; only
-// those who add videos see the label behind it.
-function promptsRow(en, a, canEdit, u) {
+// Where a video meets the Prompts tab. Whoever makes it gets the button. The admin
+// and managers choose which of the day's prompts it is connected to.
+function promptsRow(en, a, u) {
   const s = scriptForVideo(en);
   const ready = !!s && (s.frames || []).length > 0;
   const p = ready ? promptProgress(en) : null;
@@ -1241,23 +1241,37 @@ function promptsRow(en, a, canEdit, u) {
     : ready ? el('button', { class: 'btn small primary', onclick: () => openPrompts(en) }, 'Open prompts ›')
     : s ? el('span', { class: 'hint' }, 'Prompts not ready yet') : null;
   const count = p && p.total && !isPoster(u) ? el('span', { class: 'hint sc-count' }, p.done + ' of ' + p.total + ' steps') : null;
-  if (!canEdit) return open ? el('div', { class: 'row wrap', style: 'gap:10px' }, open, count) : null;
+  if (!can.connectPrompts(u)) return open ? el('div', { class: 'row wrap', style: 'gap:10px' }, open, count) : null;
 
-  const b = pageBrand(a);
-  const setVersion = async n => {
-    await eLoud(en.id, x => { x.promptV = n; x.promptId = ''; });
-    if (n && b) {
-      await ensureScript({ date: en.date, brandId: b.id, type: en.type, version: n });
-      forceEmit();
-    }
-  };
   return el('div', { class: 'col', style: 'gap:6px' },
-    el('span', { class: 'label' }, 'PROMPTS LABEL'),
-    el('div', { class: 'row wrap', style: 'gap:10px' },
-      b ? el('span', { class: 'chip gray' }, b.name + ' ' + typeName(en.type)) : el('span', { class: 'hint' }, 'This page has no brand'),
-      b ? el('div', { class: 'seg mini' }, [[0, 'None'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']].map(([n, label]) =>
-        el('button', { class: +(en.promptV || 0) === n ? 'on' : '', onclick: () => setVersion(n) }, label))) : null,
-      open, count));
+    el('span', { class: 'label' }, 'PROMPTS'),
+    el('div', { class: 'row wrap', style: 'gap:10px' }, promptPicker(en, a, s), open, count));
+}
+
+// The prompts made for this video's day, its own brand first, and whatever it is
+// connected to now even if that is from another day or still has no prompts.
+function promptPicker(en, a, current) {
+  const name = s => {
+    const parts = [scriptNumber(s), s.title || 'Untitled', typeName(s.type)];
+    if (s.date !== en.date) parts.push(fmtDate(s.date));
+    if (!scriptHasPrompts(s)) parts.push('no prompts yet');
+    return parts.filter(Boolean).join(' · ');
+  };
+  const option = s => el('option', { value: s.id }, name(s));
+  const list = state.db.scripts.filter(s => (s.date === en.date && scriptHasPrompts(s)) || (current && s.id === current.id));
+  const b = pageBrand(a);
+  const mine = list.filter(s => b && s.brandId === b.id);
+  const others = list.filter(s => !mine.includes(s));
+
+  const sel = el('select', {
+    class: 'input prompt-pick', 'aria-label': 'Prompts for this video',
+    onchange: e => connectVideo(en, e.target.value),
+  },
+    el('option', { value: '' }, list.length ? 'Not connected' : 'No prompts on this day yet'),
+    mine.length && others.length ? el('optgroup', { label: b.name }, mine.map(option)) : mine.map(option),
+    mine.length && others.length ? el('optgroup', { label: 'Other prompts' }, others.map(option)) : others.map(option));
+  sel.value = current ? current.id : '';
+  return sel;
 }
 
 function entryRow(en, a, num, u) {
@@ -1305,7 +1319,7 @@ function entryRow(en, a, num, u) {
     card.appendChild(sourceBlock(en, 'hook', 'HOOK (OLDER VIDEO)', 'The hook / opening line…', canEdit, a));
   }
   card.appendChild(sourceBlock(en, 'body', 'SCRIPT', 'The whole script…', canEdit, a));
-  const toPrompts = promptsRow(en, a, canEdit, u);
+  const toPrompts = promptsRow(en, a, u);
   if (toPrompts) card.appendChild(toPrompts);
 
   card.appendChild(linkBlock(en, 'refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…', canEdit));

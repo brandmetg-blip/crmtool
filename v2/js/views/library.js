@@ -58,11 +58,14 @@ async function keepNumbers(map) {
   save('settings', { id: ROW, map });
 }
 
-// A script taking the place of the blank one mass add made takes its number too.
-export async function inheritNumber(id, fromId) {
+export const scriptNumber = s => numberText(s, storedNumbers());
+
+// A script taking the place of the blank one mass add made takes its number too,
+// unless it asks to keep the one it already has.
+export async function inheritNumber(id, fromId, keepOwn) {
   const map = Object.assign({}, storedNumbers());
   if (!map[fromId]) return;
-  map[id] = map[fromId];
+  if (!keepOwn || !map[id]) map[id] = map[fromId];
   delete map[fromId];
   await keepNumbers(map);
 }
