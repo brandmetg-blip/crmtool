@@ -165,14 +165,13 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .get { padding-block: clamp(64px, 8vw, 100px) 0; }
 .get-head { margin-bottom: 14px; max-width: 26ch; }
 .get-sub { color: var(--ink-soft); margin-bottom: 32px; max-width: 54ch; }
-.get-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.get-card { position: relative; padding: 26px; border-radius: 14px; background: var(--night-2); color: var(--on-night); }
-.get-card svg { width: 30px; height: 30px; margin-bottom: 22px; color: var(--green); }
-.get-n { position: absolute; top: 26px; right: 26px; font-size: .8125rem; font-weight: 600; color: var(--on-night-soft); }
-.get-card h3 { font-size: 1.125rem; letter-spacing: -.015em; margin-bottom: 8px; }
-.get-card p { font-size: .9375rem; color: var(--on-night-soft); }
-@media (max-width: 900px) { .get-grid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 600px) { .get-grid { grid-template-columns: 1fr; } }
+.get-bento { margin-top: 0; }
+.tile.half { grid-column: span 3; }
+.ava { width: 30px; height: 30px; flex: none; border-radius: 50%; background-size: 90px auto; background-repeat: no-repeat; background-color: var(--paper-2); }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; padding: 12px 12px 20px; }
+.day { display: grid; justify-items: center; gap: 8px; font-size: .8125rem; font-weight: 600; color: var(--ink-soft); }
+.day i { width: 100%; max-width: 30px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 7px; background: var(--green); color: var(--green-ink); font-style: normal; font-weight: 700; }
+@media (max-width: 920px) { .tile.half { grid-column: 1 / -1; min-height: 0; } }
 @keyframes open { from { opacity: 0; transform: translateY(12px); } }
 
 .promise { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(24px, 4vw, 48px); padding-block: 56px clamp(64px, 8vw, 100px); }
@@ -443,43 +442,69 @@ footer { border-top: 1px solid var(--night-line); }
   <div class="frame get">
     <h2 class="get-head rv" id="getH">What you get when you work with us</h2>
     <p class="get-sub rv" style="--d:1">A full organic team on your brand, with no retainer and no ad budget.</p>
-    <div class="get-grid">
-      <article class="get-card rv" style="--d:0">
-        <span class="get-n" aria-hidden="true">01</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="10" r="3"/><path d="M7.5 18c.8-2 2.4-3 4.5-3s3.700 1 4.500 3"/></svg>
-        <h3>Pages built for your brand</h3>
-        <p>Social pages set up and run by our team, built around your brand and products.</p>
+    <div class="bento get-bento">
+
+      <article class="tile half rv">
+        <h3>Realistic AI influencers for your brand</h3>
+        <p>AI creators built around your products, on camera every day with no shoots and no creator fees.</p>
+        <div class="shot"><div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><span>Your AI creators</span></div>
+          <div class="rows">
+            <div class="r"><span class="ava" style="background-image:url(assets/video-2.webp);background-position:-31px -29px"></span><span>Health explainer</span><small class="tag">Posting daily</small></div>
+            <div class="r"><span class="ava" style="background-image:url(assets/video-3.webp);background-position:-20px -52px"></span><span>Lifestyle creator</span><small class="tag">Posting daily</small></div>
+            <div class="r"><span class="ava" style="background-image:url(assets/video-1.webp);background-position:-33px -35px"></span><span>Home and wellness</span><small class="tag">Posting daily</small></div>
+          </div>
+        </div></div>
       </article>
-      <article class="get-card rv" style="--d:1">
-        <span class="get-n" aria-hidden="true">02</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.500" width="12" height="19" rx="2.500"/><path d="m10.500 9 4 3-4 3z"/></svg>
+
+      <article class="tile half rv" style="--d:1">
+        <h3>Rank your Amazon product higher</h3>
+        <p>Organic traffic that buys on your listing, giving it the sales that help it climb in search.</p>
+        <div class="shot"><div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><span>Amazon search</span></div>
+          <div class="rows">
+            <div class="r"><span class="dot">1</span><span>Other listing</span></div>
+            <div class="r"><span class="dot g">2</span><span>Your product</span><small class="tag">Climbing ↑</small></div>
+            <div class="r"><span class="dot">3</span><span>Other listing</span></div>
+          </div>
+        </div></div>
+      </article>
+
+      <article class="tile third rv">
+        <h3>Grow your brand and Amazon sales</h3>
+        <p>New buyers from social, sent straight to your Amazon listing or your own store.</p>
+        <div class="shot"><div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><span>Where buyers go</span></div>
+          <div class="rows">
+            <div class="r"><span class="dot">a</span><span>Amazon listing</span></div>
+            <div class="r"><span class="dot">S</span><span>Your own store</span></div>
+            <div class="r"><span class="dot g">↗</span><span>New customers</span></div>
+          </div>
+        </div></div>
+      </article>
+
+      <article class="tile third rv" style="--d:1">
         <h3>New videos every day</h3>
-        <p>Short-form videos made and posted daily across those pages, keeping your products in front of new buyers.</p>
+        <p>Short-form videos made and posted daily, keeping your products in front of new buyers.</p>
+        <div class="shot"><div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><span>This week</span></div>
+          <div class="days"><div class="day"><span>M</span><i aria-hidden="true">✓</i></div><div class="day"><span>T</span><i aria-hidden="true">✓</i></div><div class="day"><span>W</span><i aria-hidden="true">✓</i></div><div class="day"><span>T</span><i aria-hidden="true">✓</i></div><div class="day"><span>F</span><i aria-hidden="true">✓</i></div><div class="day"><span>S</span><i aria-hidden="true">✓</i></div><div class="day"><span>S</span><i aria-hidden="true">✓</i></div></div>
+        </div></div>
       </article>
-      <article class="get-card rv" style="--d:2">
-        <span class="get-n" aria-hidden="true">03</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5.500-5.500 4 4L21 7"/><path d="M15 7h6v6"/></svg>
+
+      <article class="tile third rv" style="--d:2">
         <h3>Content that grows and sells</h3>
-        <p>A mix of videos that build the audience and videos that send it to your offer.</p>
+        <p>Videos that build the audience, and videos that send it to your offer.</p>
+        <div class="shot"><div class="win">
+          <div class="win-bar"><i></i><i></i><i></i><span>Content mix</span></div>
+          <div class="rows">
+            <div class="r"><span>Growth videos</span><small class="tag">Audience</small></div>
+            <div class="r"><span>CTA videos</span><small class="tag">Sales</small></div>
+            <div class="r"><span>Best performers</span><small class="tag">Remade</small></div>
+          </div>
+        </div></div>
       </article>
-      <article class="get-card rv" style="--d:0">
-        <span class="get-n" aria-hidden="true">04</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
-        <h3>Testing that never stops</h3>
-        <p>We try new hooks and angles, drop what falls flat and make more of what sells.</p>
-      </article>
-      <article class="get-card rv" style="--d:1">
-        <span class="get-n" aria-hidden="true">05</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.700 0l3-3a4 4 0 0 0-5.700-5.700l-1 1"/><path d="M14 10a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1-1"/></svg>
-        <h3>Sales you can trace</h3>
-        <p>Tracked links from the video to the order, so you can see what the content brings in.</p>
-      </article>
-      <article class="get-card rv" style="--d:2">
-        <span class="get-n" aria-hidden="true">06</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.500 20c.5-3.500 2.500-5.500 5.500-5.500s5 2 5.500 5.500"/><path d="M16 5.500a3 3 0 0 1 0 5.500M18 14.800c1.500.8 2.300 2.500 2.500 5.200"/></svg>
-        <h3>One team doing the work</h3>
-        <p>Scripts, video, posting and funnels are all handled by us, so none of it lands on your team.</p>
-      </article>
+
     </div>
 
     <div class="promise">
