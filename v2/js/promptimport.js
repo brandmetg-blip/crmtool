@@ -1,11 +1,9 @@
-// promptinbox.js — brings finished projects over from Prompt Studio.
+// promptimport.js — brings finished projects over from Prompt Studio.
 //
-// Prompt Studio is a Claude artifact on another account. It cannot sign in here,
-// so it drops each project into a small inbox table it can only add to (see
-// SETUP.md §Prompt Studio sync). Whoever has the tool open picks it up, uploads
-// its images and files it as a script under its label, so the videos of that day,
-// brand, type and version find it. If the artifact cannot reach us, the same
-// project arrives as a file or pasted text through Import.
+// Prompt Studio is a Claude artifact on another account, and it cannot reach this
+// tool. Its Copy data button gives a project as text, and Prompts → Import files it
+// as a script under its label, so the videos of that day, brand, type and version
+// find it. Importing the same project again updates that script.
 
 import { state, forceEmit, uid, can } from './state.js';
 import { el } from './ui.js';
@@ -13,7 +11,6 @@ import { brands } from './brands.js';
 import { findLabelled, labelTitle } from './views/mainscripts.js';
 import { overlay } from './views/accounts.js';
 
-const CHECK_EVERY = 60000;
 const norm = t => String(t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const text = (v, max) => String(v == null ? '' : v).slice(0, max);
 
@@ -94,8 +91,10 @@ export async function importProject(p) {
   for (const f of frames) {
     const number = f.id.startsWith('pf') ? f.id.slice(2) : '';
     const file = number ? toFile((p.images || {})[number], 'studio-' + p.projectId + '-' + number) : null;
-    if (file) f.imageUrl = await store.uploadImage(file);
-    else if (old.has(f.id)) f.imageUrl = old.get(f.id).imageUrl || '';
+    const had = old.has(f.id) ? old.get(f.id).imageUrl || '' : '';
+    // a saved project's previews are small, so they only fill empty shots
+    if (file && !(p.previews && had)) f.imageUrl = await store.uploadImage(file);
+    else f.imageUrl = had;
   }
 
   const s = Object.assign({}, target || {
@@ -114,45 +113,11 @@ export async function importProject(p) {
 }
 
 // ---------------------------------------------------------------------------
-// the inbox
-// ---------------------------------------------------------------------------
-let checking = false;
-async function checkInbox() {
-  if (checking || !state.user) return;
-  checking = true;
-  try {
-    const { store } = await import('./app.js');
-    for (const id of await store.inboxIds()) {
-      const project = await store.inboxRow(id);
-      if (!project) continue;
-      try {
-        await importProject(project);
-        await store.inboxDrop(id);
-      } catch (err) {
-        // something wrong with the project itself will never get better; a
-        // failed upload might, so that one stays for the next check
-        console.warn('[prompt studio] project', id, err);
-        if (err instanceof BadProject) await store.inboxDrop(id);
-      }
-    }
-  } catch (err) {
-    console.warn('[prompt studio] inbox', err);
-  } finally {
-    checking = false;
-  }
-}
-
-export function startInbox() {
-  checkInbox();
-  setInterval(checkInbox, CHECK_EVERY);
-}
-
-// ---------------------------------------------------------------------------
-// by hand, for when the artifact cannot reach us
+// the import box
 // ---------------------------------------------------------------------------
 export function openImport() {
   if (!can.editScripts(state.user)) return;
-  const note = el('div', { class: 'hint' }, 'Choose the file Prompt Studio saved, or paste what it copied.');
+  const note = el('div', { class: 'hint' }, 'Paste what Copy data gave you in Prompt Studio.');
   const area = el('textarea', { class: 'input', style: 'min-height:160px;font-size:12px', placeholder: 'Paste here…', 'aria-label': 'Sync data from Prompt Studio' });
   const close = () => { state.modal = null; forceEmit(); };
   const run = async raw => {
@@ -171,10 +136,6 @@ export function openImport() {
   };
   state.modal = overlay('Import from Prompt Studio', el('div', { class: 'col', style: 'gap:12px;padding:18px' },
     note,
-    el('input', {
-      class: 'input', type: 'file', accept: '.json,application/json,text/plain', 'aria-label': 'Sync file from Prompt Studio', style: 'padding-top:8px',
-      onchange: async e => { const f = e.target.files[0]; if (f) run(await f.text()); }
-    }),
     area,
     el('div', { class: 'row', style: 'gap:10px;justify-content:flex-end' },
       el('button', { class: 'btn', onclick: close }, 'Cancel'),

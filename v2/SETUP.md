@@ -221,10 +221,6 @@ put the **service_role** key in this file; it bypasses RLS entirely.
 | Someone else's update overwrites what you're typing | Incoming live rows are merged one at a time and never applied to a row you have an unsaved change on. |
 | Two people type in the *same* field | Focusing a field claims it. Everyone else sees "Ana is editing" and a read-only copy until you leave. Claims expire on their own, so nothing gets stuck. |
 
-## Prompt Studio sync
+## Prompt Studio
 
-Finished projects from the Prompt Studio artifact arrive through a small inbox table, `prompt_inbox`, and are filed on the Prompts tab by date, brand, Growth/CTA and version. The artifact can only add to the inbox, through `sync_prompt_project`, which checks a sync key. The key itself is never stored here or in this repo; the SQL only holds its SHA-256 hash.
-
-The inbox table and function are created by a one-time SQL script with that hash in it. To change the key, generate a new one, run the script with the new hash and republish the artifact with the new key.
-
-If the artifact cannot reach Supabase, it offers a file or copied text instead, and Prompts → Import takes either.
+Finished projects come over from the Prompt Studio artifact by hand: **Copy data** there, then Prompts → Import here. They are filed by date, brand, Growth/CTA and version, and importing the same project again updates its script. Nothing needs setting up in Supabase.

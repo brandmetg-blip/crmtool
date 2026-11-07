@@ -87,9 +87,6 @@ async function boot() {
   if (state.user) presence.start(state.user);
   presence.onChange(() => emit());
 
-  // finished projects arriving from Prompt Studio
-  import('./promptinbox.js').then(({ startInbox }) => startInbox());
-
   store.onStatus(s => {
     const pill = document.getElementById('save-status');
     if (pill) {

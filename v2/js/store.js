@@ -96,9 +96,6 @@ class LocalStore {
   hasPending() { return false; }
   onStatus(cb) { this._statusCbs.push(cb); cb('saved'); }
   subscribe() { return () => {}; }
-  async inboxIds() { return []; }
-  async inboxRow() { return null; }
-  async inboxDrop() {}
   async uploadImage(file) {
     return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
   }
@@ -249,22 +246,6 @@ class CloudStore {
     };
     build();
     return () => { closed = true; clearTimeout(retryT); try { if (channel) this.sb.removeChannel(channel); } catch (e) {} };
-  }
-
-  // ---- prompt studio inbox -----------------------------------------------------
-  // Not part of the normal tables: nothing here is kept once it has been filed as
-  // a script. A missing table just means the sync has not been set up yet.
-  async inboxIds() {
-    const r = await this.sb.from('prompt_inbox').select('id');
-    return r.error ? [] : (r.data || []).map(x => x.id);
-  }
-  async inboxRow(id) {
-    const r = await this.sb.from('prompt_inbox').select('payload').eq('id', id).maybeSingle();
-    return r.error || !r.data ? null : r.data.payload;
-  }
-  async inboxDrop(id) {
-    const r = await this.sb.from('prompt_inbox').delete().eq('id', id);
-    if (r.error) throw r.error;
   }
 
   // ---- media ------------------------------------------------------------------

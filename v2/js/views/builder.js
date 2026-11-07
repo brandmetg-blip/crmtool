@@ -79,7 +79,7 @@ function head(u) {
   import('../app.js').then(({ statusPill }) => wrap.appendChild(statusPill()));
 
   if (scriptsOn && can.editScripts(u) && !state.openScript) {
-    wrap.appendChild(el('button', { class: 'btn', onclick: () => import('../promptinbox.js').then(m => m.openImport()) }, 'Import'));
+    wrap.appendChild(el('button', { class: 'btn', onclick: () => import('../promptimport.js').then(m => m.openImport()) }, 'Import'));
     wrap.appendChild(el('button', { class: 'btn violet', onclick: addScript }, '+ New script'));
   }
   // Write the brief once, drop it on as many avatars as you like.
