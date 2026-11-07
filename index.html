@@ -161,42 +161,19 @@ a:hover > .arrow { transform: translate(2px, -2px); }
 .flow { padding: 12px; display: grid; }
 .flow .join { width: 1px; height: 12px; background: #B8C6BE; margin-left: 21px; }
 
-/* ---- results ---- */
-.results { padding-block: clamp(64px, 8vw, 100px) 0; }
-.results-head { margin-bottom: 22px; max-width: 26ch; }
-.results-sub { color: var(--ink-soft); margin: -8px 0 22px; max-width: 54ch; }
-.case { border-bottom: 1px solid var(--line); }
-.case > h3 { font: inherit; letter-spacing: 0; }
-.case button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0; text-align: left; font-weight: 500; transition: color .2s; }
-.case button:hover { color: var(--green-deep); }
-.case button svg { width: 16px; height: 16px; flex: none; transition: transform .35s var(--ease); }
-.case button[aria-expanded="true"] svg { transform: rotate(180deg); }
-.case-card { position: relative; overflow: hidden; border-radius: 14px; aspect-ratio: 16 / 7.4; background: var(--night); margin-bottom: 22px; color: #fff; animation: open .6s var(--ease); }
+/* ---- what you get ---- */
+.get { padding-block: clamp(64px, 8vw, 100px) 0; }
+.get-head { margin-bottom: 14px; max-width: 26ch; }
+.get-sub { color: var(--ink-soft); margin-bottom: 32px; max-width: 54ch; }
+.get-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.get-card { position: relative; padding: 26px; border-radius: 14px; background: var(--night-2); color: var(--on-night); }
+.get-card svg { width: 30px; height: 30px; margin-bottom: 22px; color: var(--green); }
+.get-n { position: absolute; top: 26px; right: 26px; font-size: .8125rem; font-weight: 600; color: var(--on-night-soft); }
+.get-card h3 { font-size: 1.125rem; letter-spacing: -.015em; margin-bottom: 8px; }
+.get-card p { font-size: .9375rem; color: var(--on-night-soft); }
+@media (max-width: 900px) { .get-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .get-grid { grid-template-columns: 1fr; } }
 @keyframes open { from { opacity: 0; transform: translateY(12px); } }
-.case-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 1.4s var(--ease); }
-.case-card:hover img { transform: scale(1.03); }
-.case-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 44%, rgba(5,16,11,.94) 84%); }
-.case-card img.case-logo { position: absolute; z-index: 1; inset: auto auto auto auto; left: 24px; top: 20px; width: auto; object-fit: contain; }
-.case-card:hover img.case-logo { transform: none; }
-.case-card img.serene { height: 74px; }
-.case-card img.choice { height: 44px; }
-.case-card img.jiyu { height: 40px; }
-.case-card img.pura { height: 66px; }
-#c3::before { display: none; }
-.case-card img.rosa { height: 44px; }
-#c4 { background: radial-gradient(46% 90% at 76% 46%, rgba(226,48,140,.55), transparent 72%), radial-gradient(40% 80% at 96% 90%, rgba(52,224,138,.4), transparent 75%), #0A2A1C; }
-#c4::before, #c4::after { display: none; }
-.case-card img.bottles { inset: auto; left: auto; right: 6%; top: 50%; width: auto; height: 122%; object-fit: contain; transform: translateY(-50%); filter: drop-shadow(0 24px 28px rgba(0,0,0,.45)); animation: bob 7s ease-in-out infinite; }
-.case-card:hover img.bottles { transform: translateY(-50%); }
-@keyframes bob { 50% { transform: translateY(calc(-50% - 10px)); } }
-#c4 .metrics { grid-template-columns: 1fr 1fr; max-width: 54%; }
-#c4 .metrics p { grid-column: 1 / -1; }
-.case-card::before { content: ''; position: absolute; z-index: 1; inset: 0 0 auto; height: 150px; background: linear-gradient(rgba(5,16,11,.6), transparent); }
-.case-card .about { position: absolute; z-index: 1; top: 16px; right: 16px; background: #fff; color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: .875rem; font-weight: 600; }
-.metrics { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 24px; padding: 24px; align-items: end; }
-.metrics b { display: block; font-size: clamp(1.5rem, 1rem + 1.8vw, 2.25rem); font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: var(--green); }
-.metrics span { font-size: .875rem; color: #D4E0D9; }
-.metrics p { font-size: .9375rem; color: #E6EEE9; line-height: 1.45; }
 
 .promise { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(24px, 4vw, 48px); padding-block: 56px clamp(64px, 8vw, 100px); }
 .promise svg { width: 112px; height: 76px; margin-bottom: 14px; overflow: visible; }
@@ -287,10 +264,6 @@ footer { border-top: 1px solid var(--night-line); }
   .faq h2 { position: static; }
   .foot { grid-template-columns: 1fr 1fr; }
   .foot > div:first-child { grid-column: 1 / -1; }
-  .case-card { aspect-ratio: 4 / 3.4; }
-  .metrics { grid-template-columns: 1fr 1fr; }
-  .metrics p { grid-column: 1 / -1; }
-  .case-card img.bottles { height: 92%; top: 42%; right: 3%; }
 }
 @media (max-width: 600px) {
   .frame { border-inline: 0; }
@@ -302,15 +275,6 @@ footer { border-top: 1px solid var(--night-line); }
   .vids { grid-template-columns: repeat(2, 1fr); }
   form { grid-template-columns: 1fr; }
   .hero-cta .btn { flex: 1 1 100%; }
-  .case-card { aspect-ratio: auto; min-height: 480px; }
-  .case-card img.serene { height: 58px; }
-  .case-card img.choice { height: 36px; }
-  .case-card img.rosa { height: 30px; }
-  #c4 { min-height: 600px; background: radial-gradient(90% 44% at 50% 32%, rgba(226,48,140,.55), transparent 72%), #0A2A1C; }
-  #c4 .metrics { max-width: none; }
-  .case-card img.bottles { height: 300px; top: 60px; right: auto; left: 50%; transform: translateX(-50%); animation: none; }
-  .case-card:hover img.bottles { transform: translateX(-50%); }
-  .case-card::after { background: linear-gradient(transparent 22%, rgba(5,16,11,.95) 62%); }
   .pill { font-size: .8125rem; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -331,7 +295,7 @@ footer { border-top: 1px solid var(--night-line); }
     <nav class="links" id="links" aria-label="Main">
       <a href="#brands">Brands</a>
       <a href="#what">What we do</a>
-      <a href="#results">Results</a>
+      <a href="#get">What you get</a>
       <a href="#faq">FAQ</a>
     </nav>
     <a class="btn fill small" href="#apply">Apply to work with us</a>
@@ -351,7 +315,7 @@ footer { border-top: 1px solid var(--night-line); }
     <p class="load" style="--d:2">Remote Commerce grows your revenue with content and distribution that convert, and we work on a performance basis.</p>
     <div class="hero-cta load" style="--d:3">
       <a class="btn fill" href="#apply">Apply to work with us</a>
-      <a class="btn line" href="#results">See our results</a>
+      <a class="btn line" href="#get">See what you get</a>
     </div>
   </div>
 </section>
@@ -475,76 +439,47 @@ footer { border-top: 1px solid var(--night-line); }
   </div>
 </section>
 
-<section class="band" id="results" aria-labelledby="resH">
-  <div class="frame results">
-    <h2 class="results-head rv" id="resH">Results we’ve shipped for partners</h2>
-    <p class="results-sub rv" style="--d:1">Real brands, organic traffic and no ad spend behind it.</p>
-
-    <div class="case rv" style="--d:1">
-      <h3><button type="button" aria-expanded="true" aria-controls="c0">How Serene Herbs added six figures in revenue with $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c0">
-        <img class="photo" src="assets/case-serene-herbs.webp" width="2000" height="1185" loading="lazy" alt="Serene Herbs Soursop Bitters, digestive drops and a wellness shot cup on a wooden table" style="object-position:82% 62%">
-        <img class="case-logo serene" src="assets/logo-serene-herbs-white.png" width="757" height="429" loading="lazy" alt="Serene Herbs">
-        <span class="about">Nutra</span>
-        <div class="metrics">
-          <div><b>6-figure</b><span>Revenue added</span></div>
-          <div><b>$0</b><span>Ad spend</span></div>
-          <p>We built an organic content flywheel around the brand’s hero products and pushed traffic through optimized affiliate funnels.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="case rv" style="--d:2">
-      <h3><button type="button" aria-expanded="false" aria-controls="c1">How Physician’s Choice made $20k+ in sales from 100% organic traffic<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c1" hidden>
-        <img class="photo" src="assets/case-physicians-choice.webp" width="2000" height="848" loading="lazy" alt="A Physician’s Choice probiotic capsule being poured from the bottle into a hand" style="object-position:60% 40%">
-        <img class="case-logo choice" src="assets/logo-physicians-choice-white.png" width="162" height="56" loading="lazy" alt="Physician’s Choice">
-        <span class="about">Nutra</span>
-        <div class="metrics">
-          <div><b>$20k+</b><span>Sales generated</span></div>
-          <div><b>100%</b><span>Organic traffic</span></div>
-          <p>We scaled supplement offers through creator-style organic content, converting educational angles into consistent daily sales.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="case rv" style="--d:3">
-      <h3><button type="button" aria-expanded="false" aria-controls="c4">How Rosabella made sales from organic traffic with $0 in ad spend<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c4" hidden>
-        <img class="bottles" src="assets/case-rosabella.webp" width="765" height="788" loading="lazy" alt="Rosabella Beetroot, Moringa, Moringa Gummies and Fast Hydration supplements">
-        <img class="case-logo rosa" src="assets/logo-rosabella-white.png" width="1121" height="276" loading="lazy" alt="Rosabella">
-        <div class="metrics">
-          <div><b>100%</b><span>Organic traffic</span></div>
-          <div><b>$0</b><span>Ad spend</span></div>
-          <p>We used organic content to send buyers to Rosabella’s supplement range and turn that traffic into sales, with no paid media behind it.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="case rv" style="--d:4">
-      <h3><button type="button" aria-expanded="false" aria-controls="c2">New partner: building JIYU’s organic traffic from day one<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c2" hidden>
-        <img class="photo" src="assets/case-jiyu.webp" width="1800" height="1005" loading="lazy" alt="Three JIYU jars on a round stand against a pink and yellow backdrop" style="object-position:70% 62%">
-        <img class="case-logo jiyu" src="assets/logo-jiyu-white.svg" width="738" height="268" loading="lazy" alt="JIYU">
-        <div class="metrics">
-          <div><b>New</b><span>Partner</span></div>
-          <div><b>$0</b><span>Ad spend</span></div>
-          <p>We’ve just started working with JIYU, building organic content and traffic with no paid media behind it. Results to come.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="case rv" style="--d:5">
-      <h3><button type="button" aria-expanded="false" aria-controls="c3">Just started: bringing Pura Vida new buyers through organic content<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 6 5 5 5-5"/></svg></button></h3>
-      <div class="case-card" id="c3" hidden>
-        <img class="photo" src="assets/case-pura-vida.webp" width="800" height="582" loading="lazy" alt="A hand reaching for Pura Vida organic moringa powder, capsules and liquid extract" style="object-position:50% 58%">
-        <img class="case-logo pura" src="assets/logo-pura-vida-color.png" width="489" height="192" loading="lazy" alt="Pura Vida">
-        <div class="metrics">
-          <div><b>New</b><span>Partner</span></div>
-          <div><b>100%</b><span>Organic traffic</span></div>
-          <p>Our work with Pura Vida has just begun: organic content and funnels built to bring the brand new buyers, with no ad budget. Results to come.</p>
-        </div>
-      </div>
+<section class="band" id="get" aria-labelledby="getH">
+  <div class="frame get">
+    <h2 class="get-head rv" id="getH">What you get when you work with us</h2>
+    <p class="get-sub rv" style="--d:1">A full organic team on your brand, with no retainer and no ad budget.</p>
+    <div class="get-grid">
+      <article class="get-card rv" style="--d:0">
+        <span class="get-n" aria-hidden="true">01</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="10" r="3"/><path d="M7.5 18c.8-2 2.4-3 4.5-3s3.700 1 4.500 3"/></svg>
+        <h3>Pages built for your brand</h3>
+        <p>Social pages set up and run by our team, built around your brand and products.</p>
+      </article>
+      <article class="get-card rv" style="--d:1">
+        <span class="get-n" aria-hidden="true">02</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.500" width="12" height="19" rx="2.500"/><path d="m10.500 9 4 3-4 3z"/></svg>
+        <h3>New videos every day</h3>
+        <p>Short-form videos made and posted daily across those pages, keeping your products in front of new buyers.</p>
+      </article>
+      <article class="get-card rv" style="--d:2">
+        <span class="get-n" aria-hidden="true">03</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5.500-5.500 4 4L21 7"/><path d="M15 7h6v6"/></svg>
+        <h3>Content that grows and sells</h3>
+        <p>A mix of videos that build the audience and videos that send it to your offer.</p>
+      </article>
+      <article class="get-card rv" style="--d:0">
+        <span class="get-n" aria-hidden="true">04</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+        <h3>Testing that never stops</h3>
+        <p>We try new hooks and angles, drop what falls flat and make more of what sells.</p>
+      </article>
+      <article class="get-card rv" style="--d:1">
+        <span class="get-n" aria-hidden="true">05</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.700 0l3-3a4 4 0 0 0-5.700-5.700l-1 1"/><path d="M14 10a4 4 0 0 0-5.700 0l-3 3a4 4 0 0 0 5.700 5.700l1-1"/></svg>
+        <h3>Sales you can trace</h3>
+        <p>Tracked links from the video to the order, so you can see what the content brings in.</p>
+      </article>
+      <article class="get-card rv" style="--d:2">
+        <span class="get-n" aria-hidden="true">06</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.500 20c.5-3.500 2.500-5.500 5.500-5.500s5 2 5.500 5.500"/><path d="M16 5.500a3 3 0 0 1 0 5.500M18 14.800c1.500.8 2.300 2.500 2.500 5.200"/></svg>
+        <h3>One team doing the work</h3>
+        <p>Scripts, video, posting and funnels are all handled by us, so none of it lands on your team.</p>
+      </article>
     </div>
 
     <div class="promise">
@@ -623,7 +558,7 @@ footer { border-top: 1px solid var(--night-line); }
 <footer class="night">
   <div class="frame foot">
     <div><a class="brand" href="#top"><img src="logo.png" width="30" height="30" alt="" loading="lazy">Remote Commerce</a><p>Organic traffic that converts, for brands that want revenue without ad spend.</p></div>
-    <div><h3>Company</h3><nav aria-label="Footer"><a href="#brands">Brands</a><a href="#what">What we do</a><a href="#results">Results</a><a href="#faq">FAQ</a></nav></div>
+    <div><h3>Company</h3><nav aria-label="Footer"><a href="#brands">Brands</a><a href="#what">What we do</a><a href="#get">What you get</a><a href="#faq">FAQ</a></nav></div>
     <div><h3>Get in touch</h3><nav aria-label="Contact"><a href="#apply">Apply</a><a href="mailto:dusan@remotecommerce.net">dusan@remotecommerce.net</a></nav></div>
   </div>
   <div class="frame legal">© 2026 Remote Commerce. Interface panels are illustrations.</div>
@@ -690,7 +625,6 @@ footer { border-top: 1px solid var(--night-line); }
       });
     });
   }
-  accordion('.case button');
   accordion('.q button');
 
   // runs a drawing only while its element is on screen
