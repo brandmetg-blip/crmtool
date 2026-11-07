@@ -1,7 +1,7 @@
 // ============================================================================
 // onboarding.js — the five stages a new page goes through before it is a page.
 //
-//   1 Images    profile picture, cover photo, base image
+//   1 Images    base image (also the profile picture), cover photo
 //   2 Details   name, product, targeting, video quality
 //   3 Links     a LinkTwin and a Lens link for each placement on each platform
 //   4 Accounts  which accounts exist, their links, where they are held
@@ -35,8 +35,8 @@ export function onboardingCount() {
 
 const STAGES = [
   {
-    label: 'Images', title: 'Upload the images', note: 'The face of the page, its banner, and the image videos are built from.',
-    missing: a => [!a.avatarUrl && 'Profile picture', !a.coverUrl && 'Cover photo', !(a.baseImageLink || '').trim() && 'Base image'].filter(Boolean),
+    label: 'Images', title: 'Upload the images', note: 'The image videos are built from, which is also the profile picture, and the page\'s banner.',
+    missing: a => [!a.avatarUrl && 'Base image', !a.coverUrl && 'Cover photo'].filter(Boolean),
     body: imagesStage,
   },
   {
@@ -109,6 +109,7 @@ async function submitPage(a) {
     x.onboarding = false;
     x.onboardedAt = Date.now();
     delete x.obStage;
+    if (!(x.baseImageLink || '').trim()) x.baseImageLink = x.avatarUrl;
     // a page begun before stages were automatic joins them now
     if (!x.stageId) { x.ramp = true; syncRampStage(x); }
     if (x.status === 'Building') { x.status = 'Live'; x.wentLiveAt = x.wentLiveAt || Date.now(); }
@@ -265,14 +266,23 @@ function wizard(a) {
 
 // ---- stage 1
 function imagesStage(a, change) {
+  // One picture fills both. An older page's base images can be a Drive folder,
+  // which a new profile picture does not replace.
+  const base = {
+    get: () => a.avatarUrl || '',
+    set: url => change(x => {
+      const shared = !(x.baseImageLink || '').trim() || x.baseImageLink === x.avatarUrl;
+      x.avatarUrl = url;
+      if (shared) x.baseImageLink = url;
+    }),
+  };
+  const cover = { get: () => a.coverUrl || '', set: url => change(x => { x.coverUrl = url; }) };
   return el('div', { class: 'wiz-images' },
-    uploadTile(a, change, 'baseImageLink', 'Base image', 'tall'),
-    el('div', { class: 'col', style: 'gap:14px;min-width:0' },
-      uploadTile(a, change, 'avatarUrl', 'Profile picture', 'round'),
-      uploadTile(a, change, 'coverUrl', 'Cover photo', 'wide')));
+    uploadTile(base, 'Base image and profile picture', 'tall'),
+    uploadTile(cover, 'Cover photo', 'wide'));
 }
 
-function uploadTile(a, change, field, label, shape) {
+function uploadTile(image, label, shape) {
   const file = el('input', { class: 'sr-only', type: 'file', accept: 'image/*', 'aria-label': 'Upload ' + label });
   const shot = el('div', { class: 'up-shot ' + shape });
   const remove = el('button', { class: 'btn small danger', type: 'button' }, 'Remove');
@@ -282,15 +292,9 @@ function uploadTile(a, change, field, label, shape) {
 
   const paint = () => {
     shot.innerHTML = '';
-    const url = (a[field] || '').trim();
+    const url = image.get().trim();
     if (url) {
-      // an older page's base image can be a Drive folder rather than a picture
-      const img = el('img', { src: url, alt: label });
-      img.onerror = () => {
-        shot.innerHTML = '';
-        shot.appendChild(el('a', { href: url, target: '_blank', rel: 'noopener' }, 'Open saved link ↗'));
-      };
-      shot.appendChild(img);
+      shot.appendChild(el('img', { src: url, alt: label }));
     } else {
       shot.appendChild(el('span', { class: 'hint' }, 'Drop an image here'));
     }
@@ -310,7 +314,7 @@ function uploadTile(a, change, field, label, shape) {
     try {
       const { store } = await import('../app.js');
       const url = await store.uploadImage(f);
-      change(x => { x[field] = url; });
+      image.set(url);
     } catch (e) {
       err.textContent = 'The upload failed. Try again. ' + (e.message || '');
       err.style.display = '';
@@ -319,7 +323,7 @@ function uploadTile(a, change, field, label, shape) {
   };
 
   file.onchange = e => { upload(e.target.files && e.target.files[0]); e.target.value = ''; };
-  remove.onclick = () => { change(x => { x[field] = ''; }); paint(); };
+  remove.onclick = () => { image.set(''); paint(); };
   shot.ondragover = e => { e.preventDefault(); shot.classList.add('over'); };
   shot.ondragleave = () => shot.classList.remove('over');
   shot.ondrop = e => {

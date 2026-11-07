@@ -162,7 +162,7 @@ Use these to let one person do more without making them an admin.
 
 **Onboarding.** A new page does not go straight into Avatars. It starts in
 **Onboarding** and goes through five stages, one screen at a time: images
-(profile picture, cover photo, base image), details (name, product, targeting,
+(one base image, which is also the profile picture, and a cover photo), details (name, product, targeting,
 video quality), links (a LinkTwin and a Lens link for each placement on
 each platform), accounts (which exist, their links, the Facebook main account
 and Instagram email), and editor. YT Shorts and Threads are optional, and the
