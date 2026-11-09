@@ -10,17 +10,17 @@
 
 import { state, can } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
-import { isLive, lifecycleOf } from '../lifecycle.js';
+import { isLive } from '../lifecycle.js';
 import { captionFor, captionsNeeded, hasPlaceholder } from '../captions.js';
 import {
-  byProduct, productColor, qualityChip, targetingChip, lifecycleChip,
+  byProduct, productColor, qualityChip, targetingChip,
 } from './accounts.js';
 
-// Pages a poster posts for: live, plus reposting pages (old winners still go
-// out). Everything else is not being posted, so it is not here.
+// Only live pages. Setting up, paused, reposting and dropped pages are left out,
+// so the list is exactly the pages being posted for today.
 function postingPages() {
   return (state.db.accounts || [])
-    .filter(a => !a.onboarding && (isLive(a) || lifecycleOf(a) === 'Reposting'));
+    .filter(a => !a.onboarding && isLive(a));
 }
 
 export function renderCaptionBoard(root, u) {
@@ -36,14 +36,14 @@ export function renderCaptionBoard(root, u) {
   const head = el('div', { class: 'page-head' },
     el('div', null,
       el('h1', null, 'Captions'),
-      el('div', { class: 'sub' }, all.length + (all.length === 1 ? ' page posting' : ' pages posting'))),
+      el('div', { class: 'sub' }, all.length + (all.length === 1 ? ' live page' : ' live pages'))),
     spacer);
   import('../app.js').then(({ statusPill }) => head.insertBefore(statusPill(), spacer.nextSibling));
   root.appendChild(head);
 
   if (!all.length) {
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:36px' },
-      'No live pages yet. Pages show here once they are posting.'));
+      'No live pages yet. A page shows here once it is set to Live.'));
     return;
   }
 
@@ -92,8 +92,7 @@ function pageCard(a) {
     avatar(a, 38),
     el('div', { style: 'min-width:0;flex:1' },
       el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
-      el('div', { class: 'row wrap', style: 'gap:5px;margin-top:3px' }, qualityChip(a), targetingChip(a))),
-    lifecycleChip(a)));
+      el('div', { class: 'row wrap', style: 'gap:5px;margin-top:3px' }, qualityChip(a), targetingChip(a)))));
 
   captionsNeeded(a).forEach(t => card.appendChild(captionBlock(a, t)));
   return card;
