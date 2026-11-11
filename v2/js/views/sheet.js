@@ -30,7 +30,7 @@ const HEAD = [
   { id: 'pfp', label: 'PFP', w: 50 },
   { id: 'name', label: 'Name', w: 180 },
   { id: 'lifecycle', label: 'Status', w: 96 },
-  { id: 'stage', get label() { return can.seeStage(state.user) ? 'Stage' : 'Targeting'; }, w: 118 },
+  { id: 'stage', label: 'Targeting', w: 118 },
 ];
 // One caption column per kind of video, replacing the single one pages used to
 // share: a growth video and a product video never go out under the same words.

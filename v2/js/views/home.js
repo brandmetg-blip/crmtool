@@ -6,7 +6,7 @@
 import { state, forceEmit, todayStr, shiftDate, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { isLive, isBuilding } from '../lifecycle.js';
-import { pageStanding, dayNeeds } from '../stages.js';
+import { dayNeeds } from '../stages.js';
 import { nicheOf } from '../rules.js';
 import { ensureClicks, clicksData, avatarClicks, lastDays, strayLinks } from '../clicks.js';
 import { fmtNum, sparkline } from './analytics.js';
@@ -170,12 +170,10 @@ function pagesCard(live, today) {
   const total = rows.reduce((n, r) => n + r.total, 0);
   return card("Today's posting", live.length + ' live avatars', el('span', { class: 'dash-count' }, posted + '/' + total + ' posted'),
     el('div', { class: 'dash-list' }, rows.map(r => {
-      const st = pageStanding(r.a) || {};
       const state_ = !r.total ? ['Nothing planned', 'gray'] : r.posted === r.total ? ['Posted', 'green'] : r.made === r.total ? ['Ready to post', 'blue'] : r.made ? ['In progress', 'amber'] : ['Not started', 'red'];
       return el('button', { class: 'dash-page', onclick: () => openAvatar(r.a) },
         avatar(r.a, 32),
         el('div', { class: 'col', style: 'gap:1px;min-width:0' }, el('b', null, r.a.name || 'Untitled'), el('span', null, sub(r.a))),
-        st.label && st.label !== 'No stage set' ? el('span', { class: 'dash-stage', style: st.color ? 'color:' + st.color + ';border-color:' + st.color + '55' : '' }, st.label) : el('span'),
         el('span', { class: 'dash-progress' },
           el('i', { class: 'made', style: 'width:' + (r.total ? r.made / r.total * 100 : 0) + '%' }),
           el('i', { class: 'posted', style: 'width:' + (r.total ? r.posted / r.total * 100 : 0) + '%' })),

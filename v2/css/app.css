@@ -971,7 +971,7 @@ select.input.sc-tool-sel { width: auto; height: 26px; padding: 0 6px; font-size:
 .dash-mini b { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px !important; color: var(--text); font-variant-numeric: tabular-nums; }
 .dash-count { font-family: ui-monospace, Consolas, monospace; color: var(--green) !important; font-size: 12px !important; font-weight: 700; }
 .dash-list { display: flex; flex-direction: column; margin: 0 -20px -18px; max-height: 560px; overflow-y: auto; }
-.dash-page { display: grid; grid-template-columns: 32px minmax(120px, 1.2fr) minmax(70px, auto) minmax(60px, 1fr) 38px 104px; padding: 11px 20px; border: none; border-top: 1px solid var(--line); background: transparent; }
+.dash-page { display: grid; grid-template-columns: 32px minmax(120px, 1.2fr) minmax(60px, 1fr) 38px 104px; padding: 11px 20px; border: none; border-top: 1px solid var(--line); background: transparent; }
 .dash-page:hover { background: rgba(255,255,255,0.025); }
 .dash-stage { justify-self: start; font-size: 10.5px !important; font-weight: 700; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line2); color: var(--mut); white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
 .dash-progress { position: relative; height: 5px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }

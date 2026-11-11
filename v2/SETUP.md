@@ -170,10 +170,10 @@ and Instagram email), and editor, plus a sixth, rule, for the admin. YT Shorts a
 editor can stay unassigned. A stage must be complete to continue, finished
 stages can be reopened, and progress is saved as you go. The last stage adds the
 page to the Avatars centre and it goes Live. A new page starts in the first stage
-and moves to the second by itself after the first growth videos its rule asks for are added. A video
-that goes against a page's rule can still be added, after confirming, and
-a CTA added this way does not count as one of the first videos. Only
-the admin can see a page's stage and rule.
+and moves to the second by itself after the first growth videos its rule asks for are added. A page's rule is a hard
+stop: a video it does not allow (a CTA during the first growth videos, a second video
+the same day) cannot be added, by hand, by Mass add or by changing its type. Stages
+show only on the avatar's own preview. Only the admin can see a page's stage and rule.
 
 **Home.** The first screen for the admin and anyone who sees every page: today's posting
 progress, the last 14 days of posts or clicks, the pages furthest behind, a Needs attention

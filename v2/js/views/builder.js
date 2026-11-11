@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
-import { liveAccounts, stageGoal, videosOn, rampBlock, ruleType, dayNeeds } from '../stages.js';
+import { liveAccounts, videosOn, rampBlock, ruleType, dayNeeds } from '../stages.js';
 import { nicheOf } from '../rules.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
@@ -603,13 +603,6 @@ function sheet(a, entries, u) {
       tally.n + ' / ' + tally.d + ' ' + tally.word),
     canEdit && el('button', { class: 'btn primary', onclick: () => addEntry(a) }, '+ Add video')));
 
-  // what this page is meant to be doing right now, in front of whoever opened it
-  const goal = stageGoal(a);
-  if (goal) {
-    wrap.appendChild(el('div', { class: 'card row', style: 'gap:9px;padding:10px 13px;align-items:flex-start' },
-      el('span', { class: 'label', style: 'flex:0 0 auto;padding-top:2px' }, 'AT THIS STAGE'),
-      el('span', { class: 'ro-text', style: 'flex:1' }, goal)));
-  }
 
   if (!entries.length) {
     wrap.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:30px' },
@@ -622,9 +615,9 @@ function sheet(a, entries, u) {
   return wrap;
 }
 
-// The rules advise, they do not stop anyone: going against one takes a yes, with
-// the pages and the reason in front of you. It sits above whatever is open, and
-// resolves to whether the answer was yes.
+// Asks before doing something unusual, with the pages and the reasons in front
+// of you, and resolves to whether the answer was yes. With no yes button it only
+// tells you why something cannot happen.
 function askOverride(title, pages, yes, note) {
   return new Promise(done => {
     const close = answer => {
@@ -637,7 +630,7 @@ function askOverride(title, pages, yes, note) {
       e.stopPropagation();
       close(false);
     };
-    const go = el('button', { class: 'btn primary', onclick: () => close(true) }, yes);
+    const go = yes ? el('button', { class: 'btn primary', onclick: () => close(true) }, yes) : el('button', { class: 'btn primary', onclick: () => close(false) }, 'OK');
     const box = el('div', { class: 'overlay rule-ask', onclick: e => { if (e.target === box) close(false); } },
       el('div', { class: 'modal', role: 'alertdialog', 'aria-modal': 'true', 'aria-label': title },
         el('div', { class: 'modal-head' }, title),
@@ -648,7 +641,7 @@ function askOverride(title, pages, yes, note) {
             p.reasons.map(r => el('span', { class: 'hint' }, r))))),
           note ? el('span', { class: 'hint' }, note) : null),
         el('div', { class: 'rule-foot' },
-          el('button', { class: 'btn', onclick: () => close(false) }, 'Cancel'),
+          yes ? el('button', { class: 'btn', onclick: () => close(false) }, 'Cancel') : null,
           go)));
     document.addEventListener('keydown', onKey, true);
     document.body.appendChild(box);
@@ -658,14 +651,14 @@ function askOverride(title, pages, yes, note) {
 
 async function addEntry(a) {
   const type = ruleType(a, state.date);
+  // the page's rule is a hard stop: nothing it does not allow can be added
   const why = rampBlock(a, type, state.date);
-  if (why && !await askOverride('Add a ' + typeName(type) + ' video to ' + (a.name || 'this avatar') + '?',
-    [{ account: a, reasons: [why] }], 'Yes, add it')) return;
+  if (why) { await askOverride('Its rule does not allow another video here', [{ account: a, reasons: [why] }], null); return; }
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
     // the type the page's rule calls for next
-    type, promptV: 1, ...(why ? { ruleOverride: true } : {}),
+    type, promptV: 1,
     prod: 'Assembly', assignedEditorId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
@@ -702,8 +695,8 @@ function openMassAdd(u, preset) {
   const editors = assignableMembers(state.db);
 
   // Who a batch starts out going to: every page that is running, whose product
-  // takes the chosen concept, and that the new-page rule allows this type on. The
-  // rest can still be ticked by hand, and the add button then asks.
+  // takes the chosen concept, and that its rule allows this type on. Pages the rule
+  // keeps out cannot be ticked at all.
   const blocked = a => rampBlock(a, draft.type, draft.date);
   const eligible = a => {
     if (blocked(a)) return false;
@@ -921,6 +914,8 @@ function openMassAdd(u, preset) {
   const addBtn = el('button', { class: 'btn primary' });
 
   function refresh() {
+    // a page its rule keeps out cannot be picked, however it was ticked
+    accounts.forEach(a => { if (blocked(a)) picked.delete(a.id); });
     // ---- how many of the avatars actually have this concept set up
     paintLabel();
     const useConcept = draft.bodyKind === 'concept' && !!draft.conceptId;
@@ -947,7 +942,7 @@ function openMassAdd(u, preset) {
 
     const ruled = accounts.filter(a => blocked(a) && !picked.has(a.id)).length;
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
-      + (ruled ? ' · ' + ruled + ' left out by their rules, tick to add' : '')
+      + (ruled ? ' · ' + ruled + ' left out by their rules' : '')
       + (autoRemoved ? ' · ' + autoRemoved + ' dropped — their product does not use this concept' : '');
 
     // each product heading shows all / some / none of its avatars selected
@@ -1079,7 +1074,7 @@ function openMassAdd(u, preset) {
       const paused = (a.status || 'Active') === 'Paused';
       pickWrap.appendChild(el('div', {
         class: 'pick-row', 'data-acct': a.id,
-        onclick: () => { picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
+        onclick: () => { if (blocked(a)) return; picked.has(a.id) ? picked.delete(a.id) : picked.add(a.id); refresh(); }
       },
         el('span', { class: 'check' }),
         avatar(a, 26),
@@ -1106,14 +1101,12 @@ function openMassAdd(u, preset) {
   addBtn.onclick = async () => {
     const chosen = accounts.filter(a => picked.has(a.id));
 
-    // The deliberate confirmation: a video can go against a rule, but only after
+    // The deliberate confirmation: a video can go to a page whose product does not use the concept, but only after
     // being told exactly which pages and why.
     const concept = draft.bodyKind === 'concept' && draft.conceptId ? conceptById(draft.conceptId) : null;
-    const held = new Set(chosen.filter(blocked).map(a => a.id));
     const against = chosen.map(a => ({
       account: a,
       reasons: [
-        blocked(a),
         draft.bodyKind === 'concept' && draft.conceptId && !accountAcceptsConcept(a, draft.conceptId)
           ? 'Its product does not use “' + ((concept && concept.name) || 'this concept') + '”' : '',
       ].filter(Boolean),
@@ -1151,7 +1144,6 @@ function openMassAdd(u, preset) {
         conceptId: draft.conceptId, variationId,   // link resolved from the avatar when shown
         refVideo: draft.refVideo, notes: draft.notes,
         promptV: pageBrand(a) ? version : 0,
-        ...(held.has(a.id) ? { ruleOverride: true } : {}),
         done: false, doneAt: null, doneBy: '', videoLink: '',
         posted: false, postedAt: null, postedDate: '', platforms: [],
         win: false, createdBy: state.user.name, createdAt: Date.now(),
@@ -1269,12 +1261,10 @@ function editorFor(account, mode, editors) {
 async function setType(en, a, type) {
   if (type === (en.type || 'Product')) return;
   const why = rampBlock(a, type, en.date, en.id);
-  if (why && !await askOverride('Make this a ' + typeName(type) + ' video on ' + (a.name || 'this avatar') + '?',
-    [{ account: a, reasons: [why] }], 'Yes, change it')) return;
+  if (why) { await askOverride('Its rule does not allow a ' + typeName(type) + ' video here', [{ account: a, reasons: [why] }], null); return; }
   eLoud(en.id, x => {
     x.type = type;
-    if (why) x.ruleOverride = true;
-    else delete x.ruleOverride;
+    delete x.ruleOverride;
   });
 }
 

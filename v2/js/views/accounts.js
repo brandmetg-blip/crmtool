@@ -414,10 +414,13 @@ export function lifecycleChip(a) {
   return el('span', { class: 'chip ' + def.tone, title: def.note }, lifecycleLabel(a));
 }
 
+const STAGE_CHIPS = false;
+
 // The stage alone, never standing in for the lifecycle — used where a
 // lifecycle chip sits beside it.
 export function stageOnlyChip(a) {
-  if (!can.seeStage(state.user)) return null;
+  // Stages show only on the avatar's own preview; in lists they were noise.
+  if (!STAGE_CHIPS || !can.seeStage(state.user)) return null;
   const s = stageOf(a);
   // a new page still making its first growth videos shows how far along it is
   const r = rampPhase(a);
