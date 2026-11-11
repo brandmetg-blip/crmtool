@@ -78,13 +78,14 @@ export function renderClicks(root, u) {
     const q = (state.clkSearch || '').trim().toLowerCase();
     const shown = rows.filter(r => !q || (r.a.name || '').toLowerCase().includes(q)
       || ((byId(state.db.products, r.a.productId) || {}).name || '').toLowerCase().includes(q))
-      .sort((x, y) => y.c.total - x.c.total || (x.a.name || '').localeCompare(y.a.name || ''));
+      .sort((x, y) => y.c.total - x.c.total || allTime(y.c.links) - allTime(x.c.links) || (x.a.name || '').localeCompare(y.a.name || ''));
     wrap.innerHTML = '';
     const table = el('table', { class: 'rule-table clk-table' },
       el('thead', null, el('tr', null,
         el('th', null, 'Avatar'),
         week.map(d => el('th', { class: 'num' }, d === today ? 'Today' : dayLabel(d))),
         el('th', { class: 'num' }, range + ' days'),
+        el('th', { class: 'num' }, 'All time'),
         el('th', null, 'Best link'),
         el('th', null, 'Top countries'))));
     const body = el('tbody');
@@ -100,10 +101,11 @@ export function renderClicks(root, u) {
             el('span', { class: 'hint' }, [product && product.name, admin && nicheOf(r.a), admin && (rule ? rule.name : 'No rule')].filter(Boolean).join(' · '))))),
         r.w.perDay.map((n, i) => el('td', { class: 'num' + (n ? '' : ' zero') + (i === 6 ? ' today' : '') }, n ? fmt(n) : '–')),
         el('td', { class: 'num' }, el('b', null, fmt(r.c.total))),
+        el('td', { class: 'num' }, fmt(allTime(r.c.links))),
         el('td', null, best && best.n ? best.l.label : '–'),
         el('td', null, countries(r.c.links))));
       if (open) {
-        body.appendChild(el('tr', { class: 'clk-detail' }, el('td', { colspan: String(11) },
+        body.appendChild(el('tr', { class: 'clk-detail' }, el('td', { colspan: String(12) },
           el('div', { class: 'col', style: 'gap:6px' }, r.c.links.map(l => {
             const info = clicksData().info.get(l.key);
             return el('div', { class: 'row wrap', style: 'gap:12px' },
@@ -155,4 +157,9 @@ function countries(links) {
   });
   const top = Object.entries(sum).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
   return top.length ? top.map(([k, v]) => k + ' ' + fmt(v)).join(' · ') : '–';
+}
+
+// Every click the avatar's links have had, including from before the daily record began.
+function allTime(links) {
+  return links.reduce((n, l) => n + ((clicksData().info.get(l.key) || {}).clicks || 0), 0);
 }
