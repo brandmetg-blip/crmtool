@@ -143,6 +143,7 @@ export const can = {
   // Analytics is read-only for everyone who sees it. The admin and manager see
   // the whole roster; a poster sees it too, but scoped to their own pages.
   seeAnalytics: u => can.seesAllAccounts(u) || isPoster(u),
+  seeClicks: u => can.seesAllAccounts(u),
 };
 
 // Who may tick "video made" and paste the finished link on THIS video.
@@ -198,6 +199,7 @@ export function tabsFor(u) {
   if (!isPoster(u)) tabs.push('assets');
   if (can.seeCaptions(u)) tabs.push('captions');
   if (can.seeAnalytics(u)) tabs.push('analytics');
+  if (can.seeClicks(u)) tabs.push('clicks');
   if (can.manageTeam(u)) tabs.push('team');
   // Brands, concepts and profiles live in Settings, so anyone allowed to manage
   // pages keeps reaching them; the workspace rules stay with the admin.

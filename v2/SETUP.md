@@ -188,6 +188,14 @@ the type the rule calls for next. Pages still being set up count
 toward the roster target (the slot is spoken for) but never appear in the
 account centre.
 
+**Clicks (LinkTwin).** The Clicks tab (admin and anyone who sees every page) shows
+LinkTwin clicks per avatar per day, matched by the LinkTwin links saved on each avatar.
+The function in `supabase/functions/linktwin-sync` reads LinkTwin every hour and needs
+the secret `LINKTWIN_KEY` (optional `CLICKS_TZ`, default UTC, for when a day starts).
+`supabase/linktwin.sql` creates its two tables and the hourly schedule. LinkTwin only
+reports running totals, so day by day history starts from the first run. The Rules
+split test shows clicks per page per day over the last 14 days.
+
 **Captions and product templates.** Each product carries a caption template per
 video type (growth, product) under Avatars → Products, with a `[caption link]`
 placeholder. Every page on that product posts the template with its own caption

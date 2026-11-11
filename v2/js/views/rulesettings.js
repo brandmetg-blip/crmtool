@@ -10,6 +10,7 @@ import { sortedStages } from '../stages.js';
 import { getPref, setPref } from '../prefs.js';
 import { brands, saveBrands } from '../brands.js';
 import { isLive, pageStats } from '../lifecycle.js';
+import { ensureClicks, clicksData, avatarClicks, lastDays } from '../clicks.js';
 import {
   THEN, NONE, rules, saveRules, ruleById, defaultRuleId, ruleOf, describeRule,
   nicheOfBrand, nicheOf, niches, pagesOnRule, suggestedRule,
@@ -124,7 +125,11 @@ function resultsCard() {
       el('b', { style: 'font-size:14px' }, 'Split test'),
       el('div', { class: 'hint' },
         'Pages on each rule, compared inside their niche. Winners are the videos starred in Daily Builder. '
-        + 'Days count from when the page went live.')));
+        + 'Days count from when the page went live. Clicks are LinkTwin clicks over the last 14 days, per page per day.')));
+  ensureClicks();
+  const clk = clicksData();
+  const days14 = lastDays(14);
+  const clicksOk = clk && !clk.error && clk.info.size;
 
   let any = false;
   groups.forEach(niche => {
@@ -139,6 +144,7 @@ function resultsCard() {
       const posted = s.reduce((n, x) => n + x.posted, 0);
       const wins = s.reduce((n, x) => n + x.wins, 0);
       const r = ruleById(id);
+      const clicks = clicksOk ? pages.reduce((n, a) => n + avatarClicks(a, days14).total, 0) : null;
       return [
         el('td', null, el('b', null, r ? r.name || 'Untitled' : 'No rule'),
           r && r.testing ? el('span', { class: 'chip blue', style: 'margin-left:8px' }, 'In test') : null),
@@ -148,13 +154,14 @@ function resultsCard() {
         el('td', null, String(posted)),
         el('td', null, String(wins)),
         el('td', null, posted ? (Math.round(wins / posted * 1000) / 10) + '%' : '–'),
+        el('td', null, clicks == null || !pages.length ? '–' : String(Math.round(clicks / pages.length / 14 * 10) / 10)),
       ];
     });
     card.appendChild(el('div', { class: 'col', style: 'gap:8px' },
       el('b', { style: 'font-size:13px' }, niche || 'No niche'),
       el('div', { class: 'rule-table-wrap' },
         el('table', { class: 'rule-table' },
-          el('thead', null, el('tr', null, ['Rule', 'Pages', 'Still live', 'Avg days', 'Posted', 'Winners', 'Win rate'].map(t => el('th', null, t)))),
+          el('thead', null, el('tr', null, ['Rule', 'Pages', 'Still live', 'Avg days', 'Posted', 'Winners', 'Win rate', 'Clicks / page / day'].map(t => el('th', null, t)))),
           el('tbody', null, rows.map(cells => el('tr', null, cells)))))));
   });
   if (!any) card.appendChild(el('div', { class: 'hint' }, 'No pages yet.'));
