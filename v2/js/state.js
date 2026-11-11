@@ -199,7 +199,6 @@ export function tabsFor(u) {
   if (!isPoster(u)) tabs.push('assets');
   if (can.seeCaptions(u)) tabs.push('captions');
   if (can.seeAnalytics(u)) tabs.push('analytics');
-  if (can.seeClicks(u)) tabs.push('clicks');
   if (can.manageTeam(u)) tabs.push('team');
   // Brands, concepts and profiles live in Settings, so anyone allowed to manage
   // pages keeps reaching them; the workspace rules stay with the admin.

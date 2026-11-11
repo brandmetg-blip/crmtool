@@ -13,6 +13,7 @@
 import { state, forceEmit, todayStr, shiftDate, fmtDate, byId, can, builderAccounts, assignableMembers } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { productColor } from './accounts.js';
+import { renderClicks } from './clicks.js';
 
 const GROUPS = [['day', 'Day'], ['week', 'Week'], ['month', 'Month']];
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -48,6 +49,20 @@ export function renderAnalytics(root) {
   // and manager, only their assigned pages for a poster. Entries on a page
   // outside that set — or one that no longer exists — are dropped here, once,
   // so every number on the page counts the same videos.
+  // Videos and Clicks share the tab; Clicks is for those who see every page.
+  const tabs = can.seeClicks(u) ? el('div', { class: 'seg an-tabs' },
+    [['videos', 'Videos'], ['clicks', 'Clicks']].map(([k, label]) => el('button', {
+      class: (state.anTab === 'clicks' ? 'clicks' : 'videos') === k ? 'on' : '',
+      onclick: () => { state.anTab = k; forceEmit(); },
+    }, label))) : null;
+  if (tabs && state.anTab === 'clicks') {
+    const wrap = el('div', { class: 'an' });
+    wrap.appendChild(head('Clicks from LinkTwin, matched to each avatar by its links', tabs));
+    renderClicks(wrap, u);
+    root.appendChild(wrap);
+    return;
+  }
+
   const scope = can.seesAllAccounts(u) ? state.db.accounts : builderAccounts(u, state.db);
   const live = new Set(scope.map(a => a.id));
   const entries = (state.db.dailyEntries || []).filter(e => live.has(e.accountId));
@@ -72,7 +87,7 @@ export function renderAnalytics(root) {
   const before = prev ? count(prev.from, prev.to) : null;
 
   const wrap = el('div', { class: 'an' });
-  wrap.appendChild(head(scope.length));
+  wrap.appendChild(head('Planned, made, posted and won across ' + scope.length + (scope.length === 1 ? ' page' : ' pages'), tabs));
   wrap.appendChild(controls(from, to, group, earliest));
 
   if (!entries.length) {
@@ -130,10 +145,11 @@ export function renderAnalytics(root) {
   root.appendChild(wrap);
 }
 
-function head(n) {
+function head(sub, tabs) {
   const wrap = el('div', { class: 'page-head' },
     el('div', null, el('h1', null, 'Analytics'),
-      el('div', { class: 'sub' }, 'Planned, made, posted and won across ' + n + (n === 1 ? ' page' : ' pages'))),
+      el('div', { class: 'sub' }, sub)),
+    tabs,
     el('span', { class: 'spacer' }));
   import('../app.js').then(({ statusPill }) => wrap.appendChild(statusPill()));
   return wrap;
@@ -204,7 +220,7 @@ function sideCard(title, icon, value, prevValue, sub, series, colour) {
 
 // Change against the previous window of the same length. Nothing is shown
 // for "all time", which has no window before it.
-function delta(now, then) {
+export function delta(now, then) {
   if (then == null) return null;
   if (!then && !now) return el('span', { class: 'an-delta flat' }, '—');
   if (!then) return el('span', { class: 'an-delta up', title: 'None in the previous period' }, 'new');
@@ -330,7 +346,7 @@ function smoothPath(pts) {
   return d;
 }
 
-function sparkline(series, colour) {
+export function sparkline(series, colour) {
   const W = 300, H = 46, n = series.length;
   const max = Math.max(1, ...series);
   const pts = series.map((v, i) => [n === 1 ? W / 2 : i / (n - 1) * W, H - 4 - v / max * (H - 10)]);
@@ -352,7 +368,7 @@ function cssColour(c) {
   return c;
 }
 
-function niceMax(v) {
+export function niceMax(v) {
   if (v <= 5) return Math.max(1, Math.ceil(v));
   const p = Math.pow(10, Math.floor(Math.log10(v)));
   const f = v / p;
@@ -565,4 +581,4 @@ function buildBuckets(from, to, group) {
   return out;
 }
 
-function fmtNum(n) { return (n || 0).toLocaleString(); }
+export function fmtNum(n) { return (n || 0).toLocaleString(); }
