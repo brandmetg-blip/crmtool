@@ -22,7 +22,14 @@ const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 const norm = (u: string) => String(u || '').trim().toLowerCase()
   .replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
 const dayIn = (tz: string) => new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+// The tool's Update now button calls this from the browser, which only lets the
+// call through when the answer says it may.
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
 async function linktwin(path: string, tries = 3): Promise<any> {
   const r = await fetch(API + path, { headers: { Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json' } });
@@ -40,7 +47,8 @@ async function upsert(table: string, rows: unknown[], onConflict: string) {
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   try {
     if (!KEY) return json({ ok: false, error: 'The LINKTWIN_KEY secret is not set.' }, 500);
 
