@@ -3,8 +3,8 @@
 //   VIDEOS  — one card per avatar showing how many of that day's videos are
 //             made. Open a card to get that avatar's sheet: a row per video
 //             with the brief (concept/hook/body/reference/notes), what kind it
-//             is (Growth or Product), how it's produced (Assembly, Scratch or
-//             Repost), which video editor it belongs to, whether it's made
+//             is (Growth or Product), which video editor it belongs to,
+//             whether it's made
 //             (+ the finished link), and whether it's posted (+ platforms).
 //
 //   SCRIPTS — the Prompts tab, the copy-paste workspace. See mainscripts.js.
@@ -34,7 +34,6 @@ import { overlay } from './accounts.js';
 import { brands, productsOf, pageBrand, brandById, brandArt } from '../brands.js';
 
 const TYPES = ['Growth', 'Product'];
-const PROD = ['Assembly', 'Scratch', 'Repost'];
 const PLATFORMS = [['facebook', 'FB', 'blue'], ['instagram', 'IG', 'pink']];
 
 // ---------------------------------------------------------------------------
@@ -659,7 +658,7 @@ async function addEntry(a) {
     id: uid('de'), date: state.date, accountId: a.id,
     // the type the page's rule calls for next
     type, promptV: 1,
-    prod: 'Assembly', assignedEditorId: '',
+    assignedEditorId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
     refVideo: '', notes: '',
@@ -713,7 +712,7 @@ function openMassAdd(u, preset) {
   let autoRemoved = 0;   // dropped by a type change, reported once
 
   const draft = {
-    date: state.date, type: 'Product', prod: 'Assembly', assign: 'auto',
+    date: state.date, type: 'Product', assign: 'auto',
     brandId: '', productId: '',
     concept: '',
     body: '', bodyKind: 'text', bodyLink: '',
@@ -814,23 +813,6 @@ function openMassAdd(u, preset) {
           }
         }, t);
         b.dataset.seg = 'type'; b.dataset.val = t; return b;
-      }))),
-    el('div', { class: 'col', style: 'gap:5px' }, el('span', { class: 'label' }, 'PRODUCTION'),
-      el('div', { class: 'seg mini' }, PROD.map(p => {
-        const b = el('button', {
-          class: draft.prod === p ? 'on' : '',
-          onclick: () => {
-            draft.prod = p;
-            // Assembly means the body is already made, so reach for the
-            // pre-made folders by default — unless something was typed.
-            if (p === 'Assembly' && draft.bodyKind === 'text' && !draft.body) {
-              draft.bodyKind = 'concept';
-              bodyField.repaint();
-            }
-            repaintSegs(); refresh();
-          }
-        }, p);
-        b.dataset.seg = 'prod'; b.dataset.val = p; return b;
       })))));
 
   function repaintSegs() {
@@ -1137,7 +1119,7 @@ function openMassAdd(u, preset) {
         : draft.variationId;
       save('dailyEntries', {
         id: uid('de'), date: draft.date, accountId: a.id,
-        type: draft.type, prod: draft.prod,
+        type: draft.type,
         assignedEditorId: editorFor(a, draft.assign, editors),
         concept: draft.concept,
         body: draft.body, bodyKind: draft.bodyKind, bodyLink: draft.bodyLink,
@@ -1324,11 +1306,10 @@ function entryRow(en, a, num, u) {
     class: 'card col entry' + (en.win ? ' win' : done ? ' done' : ''), style: 'gap:13px',
   });
 
-  // ---- top row: number, type, production, win, delete
+  // ---- top row: number, type, win, delete
   const top = el('div', { class: 'row wrap' },
     el('span', { class: 'num' }, String(num)),
     seg(TYPES, en.type || 'Product', canEdit, v => setType(en, a, v), en.type === 'Growth' ? 'blue' : 'green'),
-    seg(PROD, en.prod || 'Assembly', canEdit, v => eLoud(en.id, x => x.prod = v), 'violet'),
     el('span', { class: 'spacer' }));
 
   if (canEdit) {

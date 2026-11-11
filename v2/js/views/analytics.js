@@ -121,15 +121,10 @@ export function renderAnalytics(root) {
 
   wrap.appendChild(el('div', { class: 'an-section' }, 'Breakdown'));
   const posts = cur.posted;
-  wrap.appendChild(el('div', { class: 'an-grid3' },
+  wrap.appendChild(el('div', { class: 'an-grid3', style: 'grid-template-columns:repeat(auto-fit,minmax(260px,1fr))' },
     splitCard('Video type', 'posted', posts, [
       ['Product', '#34e08a', e => (e.type || 'Product') === 'Product'],
       ['Growth', '#4f8cff', e => e.type === 'Growth'],
-    ]),
-    splitCard('Production', 'posted', posts, [
-      ['Assembly', '#9a7bff', e => (e.prod || 'Assembly') === 'Assembly'],
-      ['Scratch', '#5bd5ef', e => e.prod === 'Scratch'],
-      ['Repost', '#f0b341', e => e.prod === 'Repost'],
     ]),
     splitCard('Platform', 'tagged', posts, [
       ['Facebook', '#4f8cff', e => (e.platforms || []).includes('facebook')],
