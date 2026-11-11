@@ -500,17 +500,36 @@ function allAssets(s, editing) {
 }
 
 // A shot's own Drive link, for when it needs an image that already exists.
+// A shot can have several links; older shots saved just one, as text.
+const assetLinks = f => Array.isArray(f.assets) ? f.assets : (f.assets ? [f.assets] : []);
+
 function shotAssets(s, f, editing, set) {
-  const url = driveUrl(f.assets);
-  return el('div', { class: 'sc-cell' },
-    el('div', { class: 'row', style: 'min-height:26px' }, el('span', { class: 'label' }, 'ADDITIONAL ASSETS')),
-    editing
-      ? guarded('frame:' + s.id + ':' + f.id + ':assets',
-          () => el('input', { class: 'input', placeholder: 'Google Drive link…', value: f.assets || '', oninput: e => set('assets', e.target.value), onchange: () => emit() }),
-          () => el('div', { class: 'ro-text' }, (f.assets || '').trim() || '—'))
-      : url
-        ? el('a', { class: 'btn sc-copy', href: url, target: '_blank', rel: 'noopener', style: 'justify-content:center' }, 'Open assets ↗')
+  const head = el('div', { class: 'row', style: 'min-height:26px' }, el('span', { class: 'label' }, 'ADDITIONAL ASSETS'));
+  const links = assetLinks(f);
+  if (!editing) {
+    const urls = links.map(driveUrl).filter(Boolean);
+    return el('div', { class: 'sc-cell' }, head,
+      urls.length
+        ? urls.map((url, k) => el('a', { class: 'btn sc-copy', href: url, target: '_blank', rel: 'noopener', style: 'justify-content:center' },
+            'Open assets' + (urls.length > 1 ? ' ' + (k + 1) : '') + ' ↗'))
         : el('div', { class: 'ro-text sc-prompt none' }, 'None for this shot.'));
+  }
+  const fields = links.length ? links.slice() : [''];
+  const change = (k, value) => { fields[k] = value; set('assets', fields.slice()); };
+  return el('div', { class: 'sc-cell' }, head,
+    fields.map((v, k) => guarded('frame:' + s.id + ':' + f.id + ':assets:' + k,
+      () => el('div', { class: 'row', style: 'gap:6px' },
+        el('input', { class: 'input', style: 'flex:1;min-width:0', placeholder: 'Google Drive link…', value: v || '', 'aria-label': 'Google Drive link ' + (k + 1), oninput: e => change(k, e.target.value), onchange: () => emit() }),
+        k > 0 ? el('button', {
+          class: 'iconbtn danger', title: 'Remove this link', 'aria-label': 'Remove link ' + (k + 1),
+          onclick: () => loud(s.id, x => { const fr = x.frames.find(y => y.id === f.id); if (fr) fr.assets = fields.filter((_, j) => j !== k); })
+        }, '✕') : null),
+      () => el('div', { class: 'ro-text' }, (v || '').trim() || '—'))),
+    el('button', {
+      class: 'btn small', style: 'align-self:flex-start;min-width:34px;justify-content:center;font-size:16px',
+      title: 'Add another link', 'aria-label': 'Add another Google Drive link',
+      onclick: () => loud(s.id, x => { const fr = x.frames.find(y => y.id === f.id); if (fr) fr.assets = fields.concat(''); })
+    }, '+'));
 }
 
 function scriptPanel(s, editing) {
