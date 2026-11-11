@@ -22,7 +22,8 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
-import { liveAccounts, stageGoal, videosOn, rampBlock, ruleType } from '../stages.js';
+import { liveAccounts, stageGoal, videosOn, rampBlock, ruleType, dayNeeds } from '../stages.js';
+import { nicheOf } from '../rules.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -229,7 +230,9 @@ function videosMode(root, u) {
 
   // The admin gets a standing overview of what each editor still owes.
   if (u.role === 'admin') {
-    root.appendChild(el('div', { class: 'with-aside' }, main, outstandingPanel(day, all)));
+    const aside = outstandingPanel(day, all);
+    if (can.seeRules(u)) aside.insertBefore(needsPanel(all, u), aside.firstChild);
+    root.appendChild(el('div', { class: 'with-aside' }, main, aside));
   } else {
     root.appendChild(main);
   }
@@ -321,6 +324,51 @@ function builderFilters(all) {
 }
 
 // ---- admin-only: what each editor still has open ----------------------------
+// What the day still needs, from every live page's rule: one line per niche and
+// type, which is one script to write, with the pages it goes to. A button per
+// brand opens Mass add already aimed at it. Admin only, like the rules.
+function needsPanel(all, u) {
+  const groups = new Map();
+  all.forEach(a => dayNeeds(a, state.date).forEach(t => {
+    const brand = pageBrand(a);
+    const niche = nicheOf(a) || (brand ? brand.name : 'No brand');
+    const key = niche + '|' + t;
+    if (!groups.has(key)) groups.set(key, { niche, type: t, pages: [] });
+    groups.get(key).pages.push(a);
+  }));
+  const order = { Growth: 0, Product: 1, Any: 2 };
+  const list = [...groups.values()].sort((x, y) => x.niche.localeCompare(y.niche) || order[x.type] - order[y.type]);
+  const word = t => (t === 'Growth' ? 'growth' : t === 'Product' ? 'CTA' : 'video, any type');
+
+  const card = el('div', { class: 'card col needs', style: 'gap:10px;padding:12px 13px;margin-bottom:12px' },
+    el('div', { class: 'row' },
+      el('span', { class: 'label' }, 'STILL TO ADD'),
+      el('span', { class: 'spacer' }),
+      el('span', { class: 'hint' }, list.length ? list.length + (list.length === 1 ? ' script' : ' scripts') : '')));
+  if (!list.length) {
+    card.appendChild(el('div', { class: 'hint', style: 'text-align:center;padding:4px 0' },
+      'Every live page has what its rule asks for on this day.'));
+    return card;
+  }
+  list.forEach(g => {
+    const byBrand = new Map();
+    g.pages.forEach(a => { const b = pageBrand(a); const k = b ? b.id : ''; if (!byBrand.has(k)) byBrand.set(k, { b, n: 0 }); byBrand.get(k).n++; });
+    card.appendChild(el('div', { class: 'col needs-line', style: 'gap:5px' },
+      el('div', { class: 'row', style: 'gap:6px' },
+        el('b', { style: 'font-size:12.5px' }, '1× ' + g.niche + ' ' + word(g.type)),
+        el('span', { class: 'spacer' }),
+        el('span', { class: 'chip ' + (g.type === 'Growth' ? 'blue' : g.type === 'Product' ? 'green' : 'gray') },
+          g.pages.length + (g.pages.length === 1 ? ' page' : ' pages'))),
+      el('span', { class: 'hint', style: 'font-size:11.5px' }, g.pages.map(a => a.name || 'Untitled').join(', ')),
+      el('div', { class: 'row wrap', style: 'gap:5px' }, [...byBrand.values()].filter(x => x.b).map(({ b, n }) =>
+        el('button', {
+          class: 'btn small', title: 'Mass add for ' + b.name,
+          onclick: () => openMassAdd(u, { brandId: b.id, type: g.type === 'Growth' ? 'Growth' : 'Product' }),
+        }, '+ ' + b.name + (byBrand.size > 1 ? ' (' + n + ')' : ''))))));
+  });
+  return card;
+}
+
 function outstandingPanel(dayAll, all) {
   const editors = assignableMembers(state.db);
   const aside = el('div', { class: 'aside' },
@@ -632,7 +680,7 @@ async function addEntry(a) {
 // ---------------------------------------------------------------------------
 // Mass add — write the brief once, create one video per selected avatar.
 // ---------------------------------------------------------------------------
-function openMassAdd(u) {
+function openMassAdd(u, preset) {
   // Everything eligible today, and the slice of it this batch is aimed at.
   // A batch is usually meant for one kind of page — assembly work goes to the
   // low-quality pages, a new concept to the high-quality ones — so the picker
@@ -679,6 +727,8 @@ function openMassAdd(u) {
     conceptId: '', variationId: '', rotate: false,
     refVideo: '', notes: '',
   };
+  // opened from Still to add: aimed at that brand and type already
+  if (preset) { Object.assign(draft, preset); applyQuality(); }
 
   const body = el('div', { class: 'ma-left' });
   const side = el('div', { class: 'ma-right' });

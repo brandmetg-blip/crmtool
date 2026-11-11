@@ -115,6 +115,24 @@ export function ruleType(a, date) {
   return ['Product', 'Growth'].find(t => !rampBlock(a, t, date)) || 'Product';
 }
 
+// What a page still needs on `date`, by its rule: some of 'Growth', 'Product', or
+// 'Any' for a page whose rule lets it take either. A type it already has a video
+// of that day, or that its rule holds back, is not needed.
+export function dayNeeds(a, date) {
+  const have = { Growth: 0, Product: 0 };
+  (state.db.dailyEntries || []).forEach(e => {
+    if (e.accountId === a.id && e.date === date) have[e.type === 'Growth' ? 'Growth' : 'Product']++;
+  });
+  const p = rampPhase(a);
+  const then = p ? (p.growing ? 'first' : p.rule.then) : 'any';
+  const open = t => !have[t] && !rampBlock(a, t, date);
+  if (then === 'first') return !have.Growth && !have.Product && open('Growth') ? ['Growth'] : [];
+  if (then === 'cta') return open('Product') ? ['Product'] : [];
+  if (then === 'mix') return ['Product', 'Growth'].filter(open);
+  // any: one video a day, whichever type
+  return have.Growth || have.Product || (p && rampBlock(a, 'Product', date) && rampBlock(a, 'Growth', date)) ? [] : ['Any'];
+}
+
 // A page starts in the first stage and moves to the second once it has its
 // growth videos, and back if a deleted video takes it under again. Nobody picks
 // this: Settings can name other stages for the two, otherwise it is the first

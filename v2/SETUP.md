@@ -184,7 +184,7 @@ fewest pages in the page's niche. Brands are grouped into niches (Skincare, Gut
 health…) on the same tab, and the Split test table compares each rule's pages
 inside a niche: pages, still live, average days, posted, winners and win rate.
 Daily Builder holds back videos a rule does not allow, and a new video starts as
-the type the rule calls for next. Pages still being set up count
+the type the rule calls for next. On Daily Builder → Videos, the admin's side panel opens with **Still to add**: what the open day still needs from every live page's rule, one line per niche and type (one script each), with the pages and a button per brand that opens Mass add aimed at it. Pages still being set up count
 toward the roster target (the slot is spoken for) but never appear in the
 account centre.
 
