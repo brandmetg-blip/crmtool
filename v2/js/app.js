@@ -15,6 +15,7 @@ import { renderBuilder } from './views/builder.js';
 import { renderAccounts } from './views/accounts.js';
 import { renderTeam } from './views/team.js';
 import { renderAnalytics } from './views/analytics.js';
+import { renderHome } from './views/home.js';
 import { renderAssets } from './views/assets.js';
 import { renderSettings } from './views/settings.js';
 import { renderOnboarding, onboardingCount } from './views/onboarding.js';
@@ -65,7 +66,7 @@ async function boot() {
 
   // There is no sign-up. You are either the admin from config.js, or someone
   // the admin added under Team. Anyone else lands on the sign-in screen.
-  if (state.user) state.route = 'builder';
+  if (state.user) state.route = tabsFor(state.user)[0];
   else {
     state.route = 'login';
     if (b.authEmail) state.loginError = 'Signed in, but you are not on the team yet. Ask the admin to add you.';
@@ -100,6 +101,7 @@ async function boot() {
 
 // ---- shell + router -----------------------------------------------------------
 const NAV = [
+  ['home', 'Home', 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z'],
   ['builder', 'Daily Builder', 'M3 4.5h18M3 12h18M3 19.5h12'],
   ['accounts', 'Avatars', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8'],
   ['onboarding', 'Onboarding', 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'],
@@ -171,7 +173,8 @@ function renderShell(mode) {
         el('span', { html: icon('M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9') }))));
 
   const main = el('div', { class: 'main' });
-  if (state.route === 'builder') renderBuilder(main);
+  if (state.route === 'home') renderHome(main, state.user);
+  else if (state.route === 'builder') renderBuilder(main);
   else if (state.route === 'accounts') renderAccounts(main);
   else if (state.route === 'onboarding') renderOnboarding(main, state.user);
   else if (state.route === 'assets') renderAssets(main);

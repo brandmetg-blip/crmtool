@@ -191,7 +191,8 @@ export function builderAccounts(u, db) {
 // granting someone a permission would leave the tab it applies to hidden.
 export function tabsFor(u) {
   if (!u) return [];
-  const tabs = ['builder'];
+  // Home first for whoever oversees every page, so it is where they land.
+  const tabs = can.seesAllAccounts(u) ? ['home', 'builder'] : ['builder'];
   if (can.editAccounts(u) || can.seesAllAccounts(u)) tabs.push('accounts');
   if (can.seeOnboarding(u)) tabs.push('onboarding');
   // Assets is for whoever cuts a video, not whoever posts one — a poster never

@@ -175,6 +175,11 @@ that goes against a page's rule can still be added, after confirming, and
 a CTA added this way does not count as one of the first videos. Only
 the admin can see a page's stage and rule.
 
+**Home.** The first screen for the admin and anyone who sees every page: today's posting
+progress, the last 14 days of posts or clicks, the pages furthest behind, a Needs attention
+list (nothing planned, scripts still to add, no editor, waiting to post, onboarding, links
+not counted), top clicks and the latest winners. Every row opens where the work is.
+
 **Rules (split testing).** Settings → Rules, admin only. A rule says how many
 growth videos a page starts with, one a day (0 for none), and what it takes after:
 any video, 1 CTA + 1 growth a day, or CTA only. Each page gets one as the last step

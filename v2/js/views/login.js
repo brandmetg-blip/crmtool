@@ -1,7 +1,7 @@
 // login.js — the sign-in screen. There is no sign-up: you are either the admin
 // set in config.js, or someone the admin added under Team.
 
-import { state, forceEmit } from '../state.js';
+import { state, forceEmit, tabsFor } from '../state.js';
 import { el } from '../ui.js';
 
 // The sign-in screens are rendered before app.js finishes wiring the shell, so
@@ -27,7 +27,7 @@ export function renderLogin() {
         if (res.error) { state.loginError = res.error; forceEmit(); return; }
         state.loginError = null;
         if (res.db) state.db = res.db;                 // cloud mode could only read once signed in
-        state.user = res.user; state.route = 'builder'; forceEmit();
+        state.user = res.user; state.route = tabsFor(res.user)[0]; forceEmit();
       }
     },
       mark(),
