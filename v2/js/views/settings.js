@@ -11,6 +11,7 @@ import { PRODUCT_COLORS } from './accounts.js';
 import { openColumns } from './sheet.js';
 import { conceptsPanel, profilesPanel } from './accounts.js';
 import { brandsPanel } from './brandsettings.js';
+import { rulesPanel } from './rulesettings.js';
 
 export function renderSettings(root, u) {
   if (!can.manageSettings(u) && !can.editAccounts(u)) {
@@ -20,13 +21,13 @@ export function renderSettings(root, u) {
   }
 
   const head = el('div', { class: 'page-head' },
-    el('div', null, el('h1', null, 'Settings'), el('div', { class: 'sub' }, 'Brands, concepts, profiles and workspace rules')),
+    el('div', null, el('h1', null, 'Settings'), el('div', { class: 'sub' }, 'Brands, concepts, profiles, rules and the workspace')),
     el('span', { class: 'spacer' }));
   import('../app.js').then(({ statusPill }) => head.appendChild(statusPill()));
   root.appendChild(head);
 
   const tabs = [['brands', 'Brands'], ['concepts', 'Concepts'], ['profiles', 'Profiles']];
-  if (can.manageSettings(u)) tabs.push(['workspace', 'Workspace']);
+  if (can.manageSettings(u)) tabs.push(['rules', 'Rules'], ['workspace', 'Workspace']);
   const tab = tabs.some(t => t[0] === state.settingsTab) ? state.settingsTab : 'brands';
   root.appendChild(el('div', { class: 'seg settings-tabs' }, tabs.map(([k, label]) =>
     el('button', { class: tab === k ? 'on' : '', onclick: () => { state.settingsTab = k; state.settingsBrand = null; forceEmit(); } }, label))));
@@ -34,9 +35,9 @@ export function renderSettings(root, u) {
   if (tab === 'brands') root.appendChild(brandsPanel());
   else if (tab === 'concepts') root.appendChild(conceptsPanel());
   else if (tab === 'profiles') root.appendChild(profilesPanel());
+  else if (tab === 'rules') root.appendChild(rulesPanel());
   else {
     root.appendChild(sheetSection());
-    root.appendChild(rampSection());
     root.appendChild(stagesSection());
   }
 }
@@ -60,52 +61,6 @@ function sheetSection() {
       el('span', { class: 'spacer' }),
       // the editor lives with the sheet, where the columns are actually seen
       el('button', { class: 'btn small', onclick: openColumns }, 'Edit columns')));
-}
-
-// Every page's first videos are growth, one a day.
-function rampSection() {
-  const on = !!getPref('firstVideosOn');
-  const need = getPref('firstVideosCount');
-  const stagePick = (key, label, hint, auto) => el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
-    el('span', { class: 'label' }, label),
-    (() => {
-      const sel = el('select', {
-        class: 'input', style: 'height:34px',
-        onchange: async e => { await setPref(key, e.target.value); forceEmit(); }
-      }, [el('option', { value: '' }, auto)].concat(sortedStages().map(s => el('option', { value: s.id }, s.name || 'Untitled'))));
-      sel.value = getPref(key) || '';
-      return sel;
-    })(),
-    el('span', { class: 'hint' }, hint));
-
-  return el('div', { class: 'card col', style: 'gap:12px;margin-bottom:22px' },
-    el('div', null,
-      el('b', { style: 'font-size:14px' }, 'First videos rule'),
-      el('div', { class: 'hint' },
-        on
-          ? 'Every page’s first ' + need + ' videos are growth, one a day. A video counts as soon as it is added, even before it is made or posted. After that the page can take any video. Mass add leaves out any page the video does not belong on. You can still add to one, after confirming.'
-          : 'Off. Every page can take any video.')),
-    el('div', { class: 'seg mini', style: 'align-self:flex-start' }, [[false, 'Off'], [true, 'On']].map(([v, label]) =>
-      el('button', {
-        class: on === v ? 'on' : '',
-        onclick: async () => { await setPref('firstVideosOn', v); forceEmit(); }
-      }, label))),
-    !on ? null : el('div', { class: 'row wrap', style: 'gap:20px;align-items:flex-start' },
-      el('div', { class: 'col', style: 'gap:5px;flex:1;min-width:200px' },
-        el('span', { class: 'label' }, 'FIRST VIDEOS'),
-        el('input', {
-          class: 'input', type: 'number', min: '1', max: '100', value: String(need),
-          style: 'width:110px;height:34px;font-size:15px;font-weight:800;text-align:center',
-          onchange: async e => {
-            const v = Math.max(1, Math.min(100, Math.round(+e.target.value || 1)));
-            e.target.value = String(v);
-            await setPref('firstVideosCount', v);
-            forceEmit();
-          }
-        }),
-        el('span', { class: 'hint' }, 'All growth, one a day.')),
-      stagePick('rampGrowthStage', 'STARTS IN STAGE', 'Where a new page begins.', 'First on the list'),
-      stagePick('rampCtaStage', 'MOVES TO STAGE', 'Where it goes after its first growth videos.', 'Second on the list')));
 }
 
 // ---------------------------------------------------------------------------

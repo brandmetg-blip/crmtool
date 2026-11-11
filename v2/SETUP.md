@@ -166,14 +166,25 @@ Use these to let one person do more without making them an admin.
 (one base image, which is also the profile picture, and a cover photo), details (name, product, targeting,
 video quality), links (a LinkTwin and a Lens link for each placement on
 each platform), accounts (which exist, their links, the Facebook main account
-and Instagram email), and editor. YT Shorts and Threads are optional, and the
+and Instagram email), and editor, plus a sixth, rule, for the admin. YT Shorts and Threads are optional, and the
 editor can stay unassigned. A stage must be complete to continue, finished
 stages can be reopened, and progress is saved as you go. The last stage adds the
 page to the Avatars centre and it goes Live. A new page starts in the first stage
-and moves to the second by itself after its first 3 growth videos are added. A video
-that goes against the first videos rule can still be added, after confirming, and
+and moves to the second by itself after the first growth videos its rule asks for are added. A video
+that goes against a page's rule can still be added, after confirming, and
 a CTA added this way does not count as one of the first videos. Only
-the admin can see a page's stage. Pages still being set up count
+the admin can see a page's stage and rule.
+
+**Rules (split testing).** Settings → Rules, admin only. A rule says how many
+growth videos a page starts with, one a day (0 for none), and what it takes after:
+any video, 1 CTA + 1 growth a day, or CTA only. Each page gets one as the last step
+of onboarding, or under Edit avatar; a page with none picked follows the default.
+Rules marked *In test* are dealt out evenly: onboarding suggests the one with the
+fewest pages in the page's niche. Brands are grouped into niches (Skincare, Gut
+health…) on the same tab, and the Split test table compares each rule's pages
+inside a niche: pages, still live, average days, posted, winners and win rate.
+Daily Builder holds back videos a rule does not allow, and a new video starts as
+the type the rule calls for next. Pages still being set up count
 toward the roster target (the slot is spoken for) but never appear in the
 account centre.
 

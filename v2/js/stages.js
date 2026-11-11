@@ -19,6 +19,7 @@
 import { state, byId, can, uid } from './state.js';
 import { takesDailyVideos, isDropped, lifecycleOf, lifecycleDef } from './lifecycle.js';
 import { getPref } from './prefs.js';
+import { ruleOf } from './rules.js';
 
 // The kinds of video a page can be given.
 export const VIDEO_TYPES = ['Growth', 'Product'];
@@ -59,34 +60,59 @@ export function videosOn(account, type, date, entries) {
 }
 
 // ---------------------------------------------------------------------------
-// the first videos rule
+// the page's rule (see rules.js)
 // ---------------------------------------------------------------------------
-// Every page's first videos are growth, one a day. A video counts the moment it
-// is added, made or not. After those, the page can take any video.
+// A page's first videos are growth, one a day, as many as its rule says. A video
+// counts the moment it is added, made or not. After those, the rule says what
+// it takes: any video, one CTA and one growth a day, or CTA only.
 //
 // The count is read off the page's videos rather than stored, so deleting a
 // video can never leave the number wrong. A CTA someone added over the rule is not
 // one of the first videos, so the page still gets its growth ones.
 export function rampPhase(a) {
-  const need = Math.max(0, Math.round(+getPref('firstVideosCount') || 0));
-  if (!getPref('firstVideosOn') || !a || !need) return null;
+  const rule = ruleOf(a);
+  if (!rule) return null;
+  const need = Math.max(0, Math.round(+rule.first || 0));
   const videos = (state.db.dailyEntries || []).filter(e => e.accountId === a.id && !(e.ruleOverride && e.type !== 'Growth'))
     .sort((x, y) => (x.date || '').localeCompare(y.date || '') || (x.createdAt || 0) - (y.createdAt || 0));
-  return { have: videos.length, need, growing: videos.length < need, first: videos.slice(0, need) };
+  return { rule, have: Math.min(videos.length, need), need, growing: videos.length < need, first: videos.slice(0, need) };
 }
 
+const kind = t => (t === 'Growth' ? 'growth' : 'CTA');
+
 // Why this page cannot take a video of `type` on `date`, or '' if it can.
-export function rampBlock(a, type, date) {
+// `skipId` is a video being changed, so it does not count against itself.
+export function rampBlock(a, type, date, skipId) {
   const p = rampPhase(a);
   if (!p) return '';
-  if (p.growing) {
-    if (type !== 'Growth') return 'First videos are growth, ' + p.have + ' of ' + p.need;
-    return p.first.some(v => v.date === date) ? 'Already has a video that day' : '';
+  const inFirst = !!skipId && p.first.some(v => v.id === skipId);
+  if (p.growing || inFirst) {
+    if (type !== 'Growth') return 'Its first ' + p.need + ' videos are growth' + (p.growing ? ', ' + p.have + ' of ' + p.need + ' so far' : '');
+    if (p.first.some(v => v.date === date && v.id !== skipId)) return 'Already has a video that day';
+    return '';
   }
   // those days belong to the first videos. Pages that started before the rule
   // never ran it this way, so they are left alone.
-  const ranIt = p.first.every(v => v.type === 'Growth') && new Set(p.first.map(v => v.date)).size === p.need;
-  return ranIt && date <= p.first[p.need - 1].date ? 'Still on its first ' + p.need + ' days' : '';
+  if (p.need) {
+    const ranIt = p.first.every(v => v.type === 'Growth') && new Set(p.first.map(v => v.date)).size === p.need;
+    if (ranIt && date <= p.first[p.need - 1].date && !inFirst) return 'Still on its first ' + p.need + ' days';
+  }
+  const then = p.rule.then;
+  if (then === 'cta' && type === 'Growth') return 'Takes CTA videos only';
+  if (then === 'mix') {
+    const same = (state.db.dailyEntries || []).filter(e => e.accountId === a.id && e.date === date
+      && e.id !== skipId && (e.type || 'Product') === type).length;
+    if (same) return 'Already has its ' + kind(type) + ' video that day';
+  }
+  return '';
+}
+
+// The type a new video on this page should start as.
+export function ruleType(a, date) {
+  const p = rampPhase(a);
+  if (!p) return 'Product';
+  if (p.growing) return 'Growth';
+  return ['Product', 'Growth'].find(t => !rampBlock(a, t, date)) || 'Product';
 }
 
 // A page starts in the first stage and moves to the second once it has its
@@ -110,7 +136,9 @@ function nextStage() {
 
 export function syncRampStage(a) {
   if (!a || !a.ramp) return false;   // pages that began before this existed
-  const need = Math.max(1, Math.round(+getPref('firstVideosCount') || 1));
+  const rule = ruleOf(a);
+  if (!rule) return false;
+  const need = Math.max(0, Math.round(+rule.first || 0));
   const growth = (state.db.dailyEntries || []).filter(e => e.accountId === a.id && e.type === 'Growth').length;
   const start = startStage(), next = nextStage();
   const want = growth >= need ? next : start;

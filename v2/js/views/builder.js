@@ -22,7 +22,7 @@ import {
 } from '../state.js';
 import { el, copyText, avatar } from '../ui.js';
 import { productChip, productColor, stageChip, qualityBadge, byProduct, QUALITY } from './accounts.js';
-import { liveAccounts, stageGoal, videosOn, rampPhase, rampBlock } from '../stages.js';
+import { liveAccounts, stageGoal, videosOn, rampBlock, ruleType } from '../stages.js';
 import { sortedConcepts, conceptById, conceptLabel, bodyLinkFor, hasBodies, accountAcceptsConcept } from '../concepts.js';
 import { renderPosting, outstandingCount, postingCalendar } from './posting.js';
 import { renderHooks, hooksForDate } from './hooks.js';
@@ -609,14 +609,14 @@ function askOverride(title, pages, yes, note) {
 }
 
 async function addEntry(a) {
-  const type = (rampPhase(a) || {}).growing ? 'Growth' : 'Product';
+  const type = ruleType(a, state.date);
   const why = rampBlock(a, type, state.date);
   if (why && !await askOverride('Add a ' + typeName(type) + ' video to ' + (a.name || 'this avatar') + '?',
     [{ account: a, reasons: [why] }], 'Yes, add it')) return;
   const { save } = await import('../app.js');
   save('dailyEntries', {
     id: uid('de'), date: state.date, accountId: a.id,
-    // a page still on its first videos starts on growth
+    // the type the page's rule calls for next
     type, promptV: 1, ...(why ? { ruleOverride: true } : {}),
     prod: 'Assembly', assignedEditorId: '',
     concept: '',
@@ -897,7 +897,7 @@ function openMassAdd(u) {
 
     const ruled = accounts.filter(a => blocked(a) && !picked.has(a.id)).length;
     countLabel.textContent = picked.size + ' of ' + accounts.length + ' selected'
-      + (ruled ? ' · ' + ruled + ' left out by the first videos rule, tick to add' : '')
+      + (ruled ? ' · ' + ruled + ' left out by their rules, tick to add' : '')
       + (autoRemoved ? ' · ' + autoRemoved + ' dropped — their product does not use this concept' : '');
 
     // each product heading shows all / some / none of its avatars selected
@@ -1218,14 +1218,13 @@ function editorFor(account, mode, editors) {
 
 async function setType(en, a, type) {
   if (type === (en.type || 'Product')) return;
-  const p = rampPhase(a);
-  const against = !!p && type !== 'Growth' && (p.growing || p.first.includes(en));
-  if (against && !await askOverride('Make this a ' + typeName(type) + ' video on ' + (a.name || 'this avatar') + '?',
-    [{ account: a, reasons: ['The first ' + p.need + ' videos of a page are growth'] }], 'Yes, change it')) return;
+  const why = rampBlock(a, type, en.date, en.id);
+  if (why && !await askOverride('Make this a ' + typeName(type) + ' video on ' + (a.name || 'this avatar') + '?',
+    [{ account: a, reasons: [why] }], 'Yes, change it')) return;
   eLoud(en.id, x => {
     x.type = type;
-    if (against) x.ruleOverride = true;
-    else if (type === 'Growth') delete x.ruleOverride;
+    if (why) x.ruleOverride = true;
+    else delete x.ruleOverride;
   });
 }
 

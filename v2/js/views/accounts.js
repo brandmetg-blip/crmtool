@@ -22,6 +22,7 @@ import { renderSheet, openColumns } from './sheet.js';
 import { startNewPage } from './onboarding.js';
 import { openAvatarPreview } from './avatarpreview.js';
 import { linkFieldsInto, accountFieldsInto } from '../pagelinks.js';
+import { ruleField } from './rulesettings.js';
 
 // [stored id, tone, what a person reads]
 const STATUSES = LIFECYCLE.map(l => [l.id, l.tone, l.label]);
@@ -657,6 +658,7 @@ export function openAccount(existing, seed) {
   paintLife();
   body.appendChild(reasonWrap);
   if (can.seeStage(state.user)) body.appendChild(stageNote);
+  if (can.seeRules(state.user)) body.appendChild(ruleField(a));
 
   // What goes out with this page's videos, following its product by default.
   // Declared before the links so the caption-link field can refresh it.

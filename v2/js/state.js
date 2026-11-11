@@ -122,6 +122,7 @@ export const can = {
   manageTeam: isAdmin,
   manageSettings: isAdmin,
   seeStage: isAdmin,      // a page's stage is the admin's own tracking
+  seeRules: isAdmin,      // which rule a page is tested on, likewise
   seesAllAccounts: u => isAdmin(u) || isManager(u) || granted(u, 'seesAllAccounts'),
   // daily builder
   editVideos: u => isAdmin(u) || granted(u, 'editVideos'),   // write the brief, assign editors

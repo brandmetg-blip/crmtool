@@ -6,6 +6,7 @@
 //   3 Links     a LinkTwin and a Lens link for each placement on each platform
 //   4 Accounts  which accounts exist, their links, where they are held
 //   5 Editor    who works on it (can stay unassigned)
+//   6 Rule      which rule its videos follow (admin only; see rules.js)
 //
 // One stage fills the screen at a time. Continue is locked until the stage is
 // complete, and any finished stage can be reopened to change it. Every change is
@@ -24,6 +25,8 @@ import { rampSeed, syncRampStage, ensureRampStages } from '../stages.js';
 import { QUALITY, TARGETING, profileSelect } from './accounts.js';
 import { productOptions } from '../brands.js';
 import { linkFieldsInto, accountFieldsInto, missingLinks, missingAccounts } from '../pagelinks.js';
+import { ruleChoices } from './rulesettings.js';
+import { suggestedRule } from '../rules.js';
 
 export function onboardingPages(db) {
   return ((db || state.db).accounts || []).filter(a => a.onboarding);
@@ -64,12 +67,20 @@ const STAGES = [
   },
 ];
 
-const LAST = STAGES.length;
+// The rule is the admin's to pick, so only the admin gets the step. A page someone
+// else finishes takes the suggested rule, which can be changed under Edit avatar.
+const RULE_STAGE = {
+  label: 'Rule', title: 'Pick its rule', note: 'How this page’s first videos go. Only you see this.',
+  missing: () => [],
+  body: (a, change) => ruleChoices(a, change),
+};
+const stagesNow = () => (can.seeRules(state.user) ? STAGES.concat([RULE_STAGE]) : STAGES);
+const lastStage = () => stagesNow().length;
 
 // The first stage with something left to do, which is as far as a page can go.
 function furthestStage(a) {
-  const i = STAGES.findIndex(s => s.missing(a).length);
-  return i < 0 ? LAST : i + 1;
+  const i = stagesNow().findIndex(s => s.missing(a).length);
+  return i < 0 ? lastStage() : i + 1;
 }
 
 function currentStage(a) {
@@ -102,7 +113,7 @@ export async function startNewPage(seed) {
 // Everything is filled in, so the page exists and is ready to run, which is what
 // Live means.
 async function submitPage(a) {
-  if (furthestStage(a) < LAST) return;
+  if (furthestStage(a) < lastStage()) return;
   await ensureRampStages();
   const { mutate } = await import('../app.js');
   mutate('accounts', a.id, x => {
@@ -111,6 +122,7 @@ async function submitPage(a) {
     delete x.obStage;
     if (!(x.baseImageLink || '').trim()) x.baseImageLink = x.avatarUrl;
     // a page begun before stages were automatic joins them now
+    if (!x.ruleId) x.ruleId = suggestedRule(x);
     if (!x.stageId) { x.ramp = true; syncRampStage(x); }
     if (x.status === 'Building') { x.status = 'Live'; x.wentLiveAt = x.wentLiveAt || Date.now(); }
   });
@@ -141,7 +153,7 @@ export function renderOnboarding(root, u) {
 
   if (!pages.length) {
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:40px' },
-      'No pages being set up. Start one and it works through its five stages here, ',
+      'No pages being set up. Start one and it works through its stages here, ',
       'then joins the Avatars centre.'));
     return;
   }
@@ -169,7 +181,7 @@ function head(n) {
 
 function pageCard(a) {
   const at = furthestStage(a);
-  const ready = at === LAST;
+  const ready = at === lastStage();
   return el('div', {
     class: 'card col click', style: 'gap:12px',
     onclick: () => { state.onboardAvatar = a.id; forceEmit(); },
@@ -179,12 +191,12 @@ function pageCard(a) {
       el('div', { style: 'min-width:0;flex:1' },
         el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' },
           (a.name || '').trim() || 'Untitled page'),
-        el('span', { class: 'hint' }, 'Stage ' + at + ' of ' + LAST + ': ' + STAGES[at - 1].label)),
+        el('span', { class: 'hint' }, 'Stage ' + at + ' of ' + lastStage() + ': ' + stagesNow()[at - 1].label)),
       ready
         ? el('span', { class: 'chip green' }, 'Ready')
         : el('span', { class: 'chip amber' }, 'In progress')),
     el('div', { class: 'bar' },
-      el('i', { style: 'width:' + Math.round((at - 1) / (LAST - 1) * 100) + '%;background:' + (ready ? 'var(--green)' : 'var(--amber)') })));
+      el('i', { style: 'width:' + Math.round((at - 1) / (lastStage() - 1) * 100) + '%;background:' + (ready ? 'var(--green)' : 'var(--amber)') })));
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +204,7 @@ function pageCard(a) {
 // ---------------------------------------------------------------------------
 function wizard(a) {
   const stage = currentStage(a);
-  const def = STAGES[stage - 1];
+  const def = stagesNow()[stage - 1];
   const wrap = el('div', { class: 'wiz' });
 
   const go = async n => {
@@ -218,9 +230,9 @@ function wizard(a) {
   function paint() {
     steps.innerHTML = '';
     const reach = furthestStage(a);
-    STAGES.forEach((s, i) => {
+    stagesNow().forEach((s, i) => {
       const n = i + 1;
-      const done = n !== stage && !s.missing(a).length && n !== LAST;
+      const done = n !== stage && !s.missing(a).length && n !== lastStage();
       steps.appendChild(el('button', {
         class: 'wiz-step' + (n === stage ? ' on' : '') + (done ? ' done' : ''), type: 'button',
         disabled: n > reach && n !== stage,
@@ -229,12 +241,12 @@ function wizard(a) {
       }, el('span', { class: 'wiz-num' }, done ? '✓' : String(n)), el('span', { class: 'wiz-name' }, s.label)));
     });
     const left = def.missing(a);
-    next.disabled = stage === LAST ? reach < LAST : left.length > 0;
+    next.disabled = stage === lastStage() ? reach < lastStage() : left.length > 0;
     todo.textContent = left.length ? 'Still needed: ' + left.join(', ') + '.' : '';
   }
 
-  next.textContent = stage === LAST ? 'Add to the account centre' : 'Continue to stage ' + (stage + 1);
-  next.onclick = () => (stage === LAST ? submitPage(a) : go(stage + 1));
+  next.textContent = stage === lastStage() ? 'Add to the account centre' : 'Continue to stage ' + (stage + 1);
+  next.onclick = () => (stage === lastStage() ? submitPage(a) : go(stage + 1));
 
   wrap.appendChild(el('div', { class: 'row wrap', style: 'gap:10px' },
     el('button', { class: 'btn small', type: 'button', onclick: () => { state.onboardAvatar = null; forceEmit(); } }, '‹ All pages'),
@@ -250,7 +262,7 @@ function wizard(a) {
     }, 'Discard')));
   wrap.appendChild(steps);
   wrap.appendChild(el('div', { class: 'wiz-head' },
-    el('span', { class: 'label' }, 'STAGE ' + stage + ' OF ' + LAST),
+    el('span', { class: 'label' }, 'STAGE ' + stage + ' OF ' + lastStage()),
     el('h1', null, def.title),
     el('div', { class: 'sub' }, def.note)));
   wrap.appendChild(def.body(a, change));

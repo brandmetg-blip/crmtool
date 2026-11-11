@@ -7,6 +7,7 @@ import { state, forceEmit, byId, can } from '../state.js';
 import { el, avatar } from '../ui.js';
 import { brandOf } from '../brands.js';
 import { stageOf, rampPhase } from '../stages.js';
+import { ruleOf } from '../rules.js';
 import { lifecycleOf, isDropped, pageStats, lineageNote } from '../lifecycle.js';
 import { PLATFORMS, social } from '../pagelinks.js';
 import { openAccount, lifecycleChip, productColor, qualityOf, targetingOf } from './accounts.js';
@@ -44,6 +45,7 @@ function details(a) {
     const r = rampPhase(a);
     if (s) rows.push(['Stage', s.name + (r && r.growing ? ' · ' + r.have + ' of ' + r.need + ' first videos' : '')]);
   }
+  if (can.seeRules(state.user)) rows.push(['Rule', (ruleOf(a) || { name: 'No rule' }).name || 'Untitled']);
   return el('div', { class: 'ap-details' }, rows.map(([k, v]) => el('div', null,
     el('span', { class: 'label' }, k.toUpperCase()), el('span', null, v))));
 }
