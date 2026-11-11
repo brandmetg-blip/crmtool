@@ -471,7 +471,46 @@ function referencePanel(s, editing) {
       onchange: () => emit()
     }),
     () => el('span', { class: 'ro-text' }, url || '—')));
+  if (editing) box.appendChild(el('label', { class: 'row', style: 'gap:8px;font-size:12.5px;color:var(--mut);cursor:pointer' },
+    el('input', { type: 'checkbox', checked: !!s.hasAssets, onchange: e => loud(s.id, x => x.hasAssets = e.target.checked) }),
+    el('span', null, 'Additional assets (Google Drive links)')));
+  if (s.hasAssets) box.appendChild(allAssets(s, editing));
   return box;
+}
+
+const driveUrl = v => /^https?:\/\//.test((v || '').trim()) ? v.trim() : '';
+
+// The one link to the folder that holds every frame's images.
+function allAssets(s, editing) {
+  const url = driveUrl(s.assetsLink);
+  return el('div', { class: 'col', style: 'gap:8px;padding-top:10px;border-top:1px solid var(--line2)' },
+    el('div', { class: 'row' },
+      el('span', { class: 'label' }, 'ADDITIONAL ASSETS'),
+      el('span', { class: 'spacer' }),
+      url ? el('a', { class: 'sc-link', href: url, target: '_blank', rel: 'noopener' }, 'Open ↗') : null),
+    editing
+      ? guarded('script:' + s.id + ':assetsLink',
+          () => el('input', {
+            class: 'input', placeholder: 'Google Drive link to all the images…', value: s.assetsLink || '',
+            oninput: e => quiet(s.id, x => x.assetsLink = e.target.value),
+            onchange: () => emit()
+          }),
+          () => el('span', { class: 'ro-text' }, (s.assetsLink || '').trim() || '—'))
+      : url ? null : el('span', { class: 'hint' }, 'No link yet.'));
+}
+
+// A shot's own Drive link, for when it needs an image that already exists.
+function shotAssets(s, f, editing, set) {
+  const url = driveUrl(f.assets);
+  return el('div', { class: 'sc-cell' },
+    el('div', { class: 'row', style: 'min-height:26px' }, el('span', { class: 'label' }, 'ADDITIONAL ASSETS')),
+    editing
+      ? guarded('frame:' + s.id + ':' + f.id + ':assets',
+          () => el('input', { class: 'input', placeholder: 'Google Drive link…', value: f.assets || '', oninput: e => set('assets', e.target.value), onchange: () => emit() }),
+          () => el('div', { class: 'ro-text' }, (f.assets || '').trim() || '—'))
+      : url
+        ? el('a', { class: 'btn sc-copy', href: url, target: '_blank', rel: 'noopener', style: 'justify-content:center' }, 'Open assets ↗')
+        : el('div', { class: 'ro-text sc-prompt none' }, 'None for this shot.'));
 }
 
 function scriptPanel(s, editing) {
@@ -657,13 +696,14 @@ function shotRow(s, f, i, shots, a, en, next) {
       el('span', { class: 'spacer' }),
       isNext ? el('span', { class: 'chip green' }, 'Next') : null,
       done ? el('span', { class: 'chip gray' }, 'Done') : null),
-    el('div', { class: 'sc-shot-body' },
+    el('div', { class: 'sc-shot-body' + (s.hasAssets ? ' assets' : '') },
       f.imageUrl
         ? el('button', { class: 'sc-ref', title: 'Make it bigger', 'aria-label': 'Open the reference image for shot ' + (i + 1), onclick: () => lightbox(shots, i) },
             el('img', { src: f.imageUrl, alt: 'Reference for shot ' + (i + 1), loading: 'lazy' }))
         : el('div', { class: 'sc-ref empty' }, 'No image'),
       promptCell(s, f, 'image', 'IMAGE PROMPT', null, a, en, isNext && next.step === 'image'),
-      promptCell(s, f, 'video', 'VIDEO PROMPT', toolName(f), a, en, isNext && next.step === 'video')));
+      promptCell(s, f, 'video', 'VIDEO PROMPT', toolName(f), a, en, isNext && next.step === 'video'),
+      s.hasAssets ? shotAssets(s, f, false) : null));
 }
 
 const toolName = f => { const t = TOOLS.find(x => x[0] === f.tool); return t ? t[1] : null; };
@@ -797,14 +837,15 @@ function shotEditor(s, f, i, count) {
           loud(s.id, x => { x.frames = x.frames.filter(y => y.id !== f.id); x.frames.forEach((y, k) => y.order = k); });
         }
       }, '✕')),
-    el('div', { class: 'sc-shot-body' },
+    el('div', { class: 'sc-shot-body' + (s.hasAssets ? ' assets' : '') },
       imageSlot(s, f),
       el('div', { class: 'sc-cell' },
         el('div', { class: 'row', style: 'min-height:26px' }, el('span', { class: 'label' }, 'IMAGE PROMPT')),
         area('imagePrompt', 'The prompt for this image…')),
       el('div', { class: 'sc-cell' },
         el('div', { class: 'row', style: 'min-height:26px;gap:8px' }, el('span', { class: 'label' }, 'VIDEO PROMPT'), el('span', { class: 'spacer' }), toolSel),
-        area('videoPrompt', 'The prompt for this clip…'))));
+        area('videoPrompt', 'The prompt for this clip…')),
+      s.hasAssets ? shotAssets(s, f, true, set) : null));
 }
 
 function imageSlot(s, f) {

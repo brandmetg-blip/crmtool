@@ -839,6 +839,7 @@ textarea.input { height: auto; min-height: 76px; padding: 9px 12px; resize: vert
 .sc-line { min-width: 0; font-size: 13px; color: #cfd0d4; }
 .sc-line-in { flex: 1; min-width: 0; height: 32px; }
 .sc-shot-body { display: grid; grid-template-columns: 118px minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.sc-shot-body.assets { grid-template-columns: 118px minmax(0, 1fr) minmax(0, 1fr) minmax(150px, 0.6fr); }
 .sc-ref { position: relative; display: block; width: 118px; aspect-ratio: 9 / 16; padding: 0; overflow: hidden; border: 1px solid var(--line2); border-radius: 10px; background: #0e0e11; cursor: pointer; align-self: start; }
 .sc-ref img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .sc-ref:hover { border-color: rgba(255,255,255,0.35); }
@@ -871,7 +872,7 @@ select.input.sc-tool-sel { width: auto; height: 26px; padding: 0 6px; font-size:
 }
 @media (max-width: 720px) {
   .sc-list { grid-template-columns: minmax(0, 1fr); }
-  .sc-shot-body { grid-template-columns: minmax(0, 1fr); }
+  .sc-shot-body, .sc-shot-body.assets { grid-template-columns: minmax(0, 1fr); }
   .sc-ref { width: 130px; }
   .sc-copy { height: 42px; }
   .sc-prompt { max-height: none; }

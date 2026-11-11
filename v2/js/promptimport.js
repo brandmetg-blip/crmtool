@@ -59,7 +59,7 @@ function toFile(dataUrl, name) {
 }
 
 // Files one project as a script. Sending it again updates the same script.
-export async function importProject(p) {
+export async function importProject(p, opts = {}) {
   check(p);
   const { save, store } = await import('./app.js');
   const target = state.db.scripts.find(s => s.sourceProject === p.projectId) || null;
@@ -73,6 +73,8 @@ export async function importProject(p) {
     // a saved project's previews are small, so they only fill empty shots
     if (file && !(p.previews && had)) f.imageUrl = await store.uploadImage(file);
     else f.imageUrl = had;
+    // a shot's Drive link is typed here, not in Prompt Studio, so it survives a resend
+    if (old.has(f.id) && old.get(f.id).assets) f.assets = old.get(f.id).assets;
   }
 
   const s = Object.assign({}, target || {
@@ -82,6 +84,7 @@ export async function importProject(p) {
     order: state.db.scripts.filter(x => x.date === state.date).length,
     createdBy: 'Prompt Studio',
   }, { frames, body: text(p.script, 40000), sourceProject: p.projectId });
+  if (opts.assets) s.hasAssets = true;
   save('scripts', s);
   forceEmit();
   return s;
@@ -94,10 +97,13 @@ export function openImport() {
   if (!can.editScripts(state.user)) return;
   const note = el('div', { class: 'hint' }, 'Paste what Copy data gave you in Prompt Studio. It goes on ' + state.date + ', ready to connect from each video in Daily Builder.');
   const area = el('textarea', { class: 'input', style: 'min-height:160px;font-size:12px', placeholder: 'Paste here…', 'aria-label': 'Sync data from Prompt Studio' });
+  const assets = el('input', { type: 'checkbox' });
+  const assetsBox = el('label', { class: 'row', style: 'gap:8px;font-size:13px;cursor:pointer' },
+    assets, el('span', null, 'Additional assets: add a Google Drive link to each shot and to the whole script'));
   const close = () => { state.modal = null; forceEmit(); };
   const run = async raw => {
     try {
-      const s = await importProject(JSON.parse(raw));
+      const s = await importProject(JSON.parse(raw), { assets: assets.checked });
       state.modal = null;
       state.date = s.date;
       state.openScript = s.id;
@@ -112,6 +118,7 @@ export function openImport() {
   state.modal = overlay('Import from Prompt Studio', el('div', { class: 'col', style: 'gap:12px;padding:18px' },
     note,
     area,
+    assetsBox,
     el('div', { class: 'row', style: 'gap:10px;justify-content:flex-end' },
       el('button', { class: 'btn', onclick: close }, 'Cancel'),
       el('button', { class: 'btn primary', onclick: () => run(area.value) }, 'Import'))));
