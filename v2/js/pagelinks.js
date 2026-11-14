@@ -95,6 +95,25 @@ export function accountCreated(a, platform) {
   return platform === 'facebook' ? !!a.pageCreated : !!social(a, platform).created;
 }
 
+// Small marks for each platform, lit when its account exists, faint when not.
+const ICONS = {
+  facebook: '<path fill="currentColor" d="M13.6 21v-7.2h2.5l.4-2.9h-2.9V9.1c0-.8.3-1.4 1.4-1.4h1.6V5.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.1H8v2.9h2.5V21z"/>',
+  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.8" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.2" fill="currentColor"/>',
+  youtube: '<path fill="currentColor" fill-rule="evenodd" d="M6.5 5.5h11a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4h-11a4 4 0 0 1-4-4v-5a4 4 0 0 1 4-4zM10 9v6l5.2-3z"/>',
+  threads: '<g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.4"/><path d="M15.4 12v1.3a2.4 2.4 0 0 0 4.8 0V12a8.2 8.2 0 1 0-3.3 6.6"/></g>',
+};
+
+export function accountIcons(a) {
+  return el('span', { class: 'plat-icons' }, PLATFORMS.map(p => {
+    const on = accountCreated(a, p.id);
+    return el('span', {
+      class: 'plat-icon' + (on ? ' on' : ''), title: p.label + (on ? ': account made' : ': no account yet'),
+      'aria-label': p.label + (on ? ' account made' : ' no account yet'),
+      html: '<svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">' + ICONS[p.id] + '</svg>',
+    });
+  }));
+}
+
 function setSocial(a, platform, patch) {
   a.socials = Object.assign({}, a.socials, { [platform]: Object.assign({}, social(a, platform), patch) });
 }

@@ -51,12 +51,12 @@ const STAGES = [
     body: detailsStage,
   },
   {
-    label: 'Links', title: 'Create the links', note: 'A LinkTwin and a Lens link for each placement.',
+    label: 'Links', title: 'Create the links', note: 'A LinkTwin and a Lens link for each placement. You can skip these and add them later under Edit avatar.', later: true,
     missing: a => { const n = missingLinks(a); return n ? [n + (n === 1 ? ' Instagram or Facebook link' : ' Instagram and Facebook links')] : []; },
     body: linksStage,
   },
   {
-    label: 'Accounts', title: 'Create the accounts', note: 'Tick each one once it exists. YT Shorts and Threads are optional.',
+    label: 'Accounts', title: 'Create the accounts', note: 'Tick each one once it exists. You can skip these and add them later under Edit avatar.', later: true,
     missing: missingAccounts,
     body: accountsStage,
   },
@@ -79,7 +79,8 @@ const lastStage = () => stagesNow().length;
 
 // The first stage with something left to do, which is as far as a page can go.
 function furthestStage(a) {
-  const i = stagesNow().findIndex(s => s.missing(a).length);
+  // Stages that can wait (links, accounts) never hold a page back.
+  const i = stagesNow().findIndex(s => !s.later && s.missing(a).length);
   return i < 0 ? lastStage() : i + 1;
 }
 
@@ -241,8 +242,8 @@ function wizard(a) {
       }, el('span', { class: 'wiz-num' }, done ? '✓' : String(n)), el('span', { class: 'wiz-name' }, s.label)));
     });
     const left = def.missing(a);
-    next.disabled = stage === lastStage() ? reach < lastStage() : left.length > 0;
-    todo.textContent = left.length ? 'Still needed: ' + left.join(', ') + '.' : '';
+    next.disabled = stage === lastStage() ? reach < lastStage() : (left.length > 0 && !def.later);
+    todo.textContent = !left.length ? '' : (def.later ? 'Not done yet, can be added later: ' : 'Still needed: ') + left.join(', ') + '.';
   }
 
   next.textContent = stage === lastStage() ? 'Add to the account centre' : 'Continue to stage ' + (stage + 1);

@@ -21,7 +21,7 @@ import { LIFECYCLE, lifecycleOf, lifecycleLabel, lifecycleDef, isLive, inRoster,
 import { renderSheet, openColumns } from './sheet.js';
 import { startNewPage } from './onboarding.js';
 import { openAvatarPreview } from './avatarpreview.js';
-import { linkFieldsInto, accountFieldsInto } from '../pagelinks.js';
+import { linkFieldsInto, accountFieldsInto, accountIcons } from '../pagelinks.js';
 import { ruleField } from './rulesettings.js';
 
 // [stored id, tone, what a person reads]
@@ -389,7 +389,9 @@ function card(a, canEdit) {
     // the page's cover photo, faint, under a dark gradient so the text stays readable
     a.coverUrl ? el('div', { class: 'av-cover', style: 'background-image:url(' + JSON.stringify(a.coverUrl) + ')' }) : null,
     avatar(a, 52),
-    el('b', { style: 'flex:1;min-width:0;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+    el('div', { class: 'col', style: 'flex:1;min-width:0;gap:6px' },
+      el('b', { style: 'font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
+      accountIcons(a)),
     lifecycleChip(a));
 }
 

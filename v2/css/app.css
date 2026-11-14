@@ -1021,3 +1021,9 @@ select.input.sc-tool-sel { width: auto; height: 26px; padding: 0 6px; font-size:
   .dash-page .dash-stage, .dash-page .dash-progress { display: none; }
   .dash-row3 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* which platform accounts a page has */
+.plat-icons { display: flex; gap: 7px; align-items: center; }
+.plat-icon { display: inline-flex; color: var(--dim); opacity: .35; }
+.plat-icon.on { color: var(--text); opacity: .9; }
+.plat-icon svg { display: block; }
