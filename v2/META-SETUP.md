@@ -53,6 +53,27 @@ In the app's dashboard:
 You don't need to fill in privacy policy pages or submit anything for review
 yet.
 
+## Pages on your personal profile (no Business Manager)
+
+If the avatar pages belong to your own Facebook profile rather than a business,
+skip steps 4 and 5 and do this instead:
+
+1. **developers.facebook.com/tools/explorer.** On the right: **Meta App** →
+   your app. **User or Page** → **User Token**.
+2. **Add a permission** → add `pages_show_list`, `pages_read_engagement`,
+   `pages_manage_posts`, `read_insights`, `instagram_basic`,
+   `instagram_content_publish`, `instagram_manage_insights`.
+3. **Generate Access Token.** In the Facebook window, choose all the avatar
+   Pages and all their Instagram accounts, and allow everything.
+4. That token lasts about an hour. Click the blue **ⓘ** next to it → **Open in
+   Access Token Tool** → **Extend Access Token** at the bottom. Copy the new,
+   long token.
+5. Go to step 6 and save it as `META_TOKEN`.
+
+The tool swaps it for one token per Page, which don't expire. You need to do
+this again if you change your Facebook password or Facebook logs you out
+everywhere; the tool will tell you when.
+
 ## 4. Make a system user
 
 A system user is a "robot" login that belongs to your business, not to a
