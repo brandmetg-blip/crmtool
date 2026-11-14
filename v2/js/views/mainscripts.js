@@ -378,6 +378,7 @@ function detailHead(s, canEdit, editing) {
     copyAll('videoPrompt', 'Copy all video prompts'),
     canEdit ? el('div', { class: 'seg mini' }, [['edit', 'Edit'], ['va', 'VA view']].map(([k, label]) =>
       el('button', { class: (editing ? 'edit' : 'va') === k ? 'on' : '', onclick: () => { state.scriptView = k; forceEmit(); } }, label))) : null,
+    canEdit ? el('button', { class: 'btn small', title: 'Make a copy of this script on the same day', onclick: () => duplicate(s) }, 'Duplicate') : null,
     canEdit ? el('button', { class: 'btn small', onclick: () => copyToDay(s) }, 'Copy to another day') : null,
     canEdit ? el('button', {
       class: 'btn small danger', onclick: async () => {
@@ -410,6 +411,32 @@ function backButton(s) {
       forceEmit();
     }
   }, '‹ Back to ' + (a.name || 'videos'));
+}
+
+// A copy on the same day, shots, prompts, pictures and links included, but
+// nobody's progress. It can't share the original's label, or the two would
+// fight over the same videos, so it takes the next free version of that brand
+// and type; with none free it has no brand until one is picked.
+async function duplicate(s) {
+  const { save } = await import('../app.js');
+  const copy = JSON.parse(JSON.stringify(s));
+  copy.id = uid('s');
+  copy.frames = shotsOf(copy).map((f, i) => Object.assign(f, { id: uid('f'), order: i }));
+  const sameLabel = s.brandId && (s.title || '') === labelTitle(s.brandId, s.type, s.version);
+  if (s.brandId) {
+    const used = new Set(state.db.scripts.filter(x => x.date === s.date && x.brandId === s.brandId
+      && (x.type || 'Product') === (s.type || 'Product')).map(x => +(x.version || 1)));
+    const free = [1, 2, 3, 4, 5].find(n => !used.has(n));
+    if (free) copy.version = free; else { copy.brandId = ''; copy.version = 1; }
+  }
+  copy.title = sameLabel && copy.brandId ? labelTitle(copy.brandId, copy.type, copy.version) : (s.title || 'Untitled') + ' (copy)';
+  copy.order = state.db.scripts.filter(x => x.date === s.date).length;
+  copy.createdBy = state.user.name;
+  copy.createdAt = Date.now();
+  save('scripts', copy);
+  state.openScript = copy.id;
+  state.scriptView = 'edit';
+  forceEmit();
 }
 
 // A winning script gets used again, so it can be sent to another day whole.
