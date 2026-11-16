@@ -711,9 +711,12 @@ function openMassAdd(u, preset) {
   };
 
   // Mixing: the day's scripts are shared out between the pages instead of every
-  // page getting all of them. Each brand's running pages are put
-  // in an order that changes every day, then dealt script 1, 2, 3, 1, 2, 3…
-  // The order depends only on the day, so the separate adds fit together.
+  // page getting all of them. Each brand's running pages sit in a fixed order,
+  // laid out in rows of `mix`: row q, column r. On day d a page gets script
+  // (r + (q + 1) · d) mod mix + 1. Pages in one row never share a script, and
+  // with 2, 3 or 5 scripts any two pages that share one today are on different
+  // scripts for the next days, so the same pages don't keep posting together.
+  // It depends only on the day, so the separate adds fit together.
   let mix = 0;
   try { mix = +localStorage.getItem('rc.mix') || 0; } catch (e) { mix = 0; }
   const mixHash = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
@@ -722,9 +725,12 @@ function openMassAdd(u, preset) {
     if (!mix || chosenVersion() > mix) return 0;
     const group = allAccounts
       .filter(x => brandKey(x) === brandKey(a) && (x.status || 'Active') !== 'Paused')
-      .sort((x, y) => mixHash(draft.date + x.id) - mixHash(draft.date + y.id));
+      .sort((x, y) => mixHash(x.id) - mixHash(y.id) || (x.id < y.id ? -1 : 1));
     const i = group.findIndex(x => x.id === a.id);
-    return i < 0 ? 0 : (i % mix) + 1;
+    if (i < 0) return 0;
+    const day = Math.round(Date.parse(draft.date + 'T00:00:00Z') / 864e5) || 0;
+    const q = Math.floor(i / mix), r = i % mix;
+    return ((r + (q + 1) * day) % mix + mix) % mix + 1;
   };
 
   const picked = new Set();
