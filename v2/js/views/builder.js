@@ -705,7 +705,26 @@ function openMassAdd(u, preset) {
   };
   const reselect = () => {
     picked.clear();
-    accounts.filter(eligible).forEach(a => picked.add(a.id));
+    accounts.filter(eligible)
+      .filter(a => { const n = mixSlot(a); return !n || n === chosenVersion(); })
+      .forEach(a => picked.add(a.id));
+  };
+
+  // Mixing: the day's scripts are shared out between the pages instead of every
+  // page getting all of them. Each brand's running pages are put
+  // in an order that changes every day, then dealt script 1, 2, 3, 1, 2, 3…
+  // The order depends only on the day, so the separate adds fit together.
+  let mix = 0;
+  try { mix = +localStorage.getItem('rc.mix') || 0; } catch (e) { mix = 0; }
+  const mixHash = str => { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const brandKey = a => { const b = pageBrand(a); return b ? b.id : ''; };
+  const mixSlot = a => {
+    if (!mix || chosenVersion() > mix) return 0;
+    const group = allAccounts
+      .filter(x => brandKey(x) === brandKey(a) && (x.status || 'Active') !== 'Paused')
+      .sort((x, y) => mixHash(draft.date + x.id) - mixHash(draft.date + y.id));
+    const i = group.findIndex(x => x.id === a.id);
+    return i < 0 ? 0 : (i % mix) + 1;
   };
 
   const picked = new Set();
@@ -870,12 +889,29 @@ function openMassAdd(u, preset) {
       el('span', { class: 'chip gray' }, draft.brandId ? (brandById(draft.brandId) || {}).name || 'Brand' : 'Each page’s brand'),
       el('span', { class: 'chip ' + (draft.type === 'Growth' ? 'blue' : 'green') }, typeName(draft.type)),
       el('div', { class: 'seg mini' }, [1, 2, 3, 4, 5].map(n => el('button', {
-        class: v === n ? 'on' : '', onclick: () => { draft.version = n; paintLabel(); }
+        class: v === n ? 'on' : '', onclick: () => { draft.version = n; if (mix) { reselect(); autoRemoved = 0; } refresh(); }
       }, String(n))))));
     labelBox.appendChild(el('span', { class: 'hint' }, !draft.brandId
       ? 'One script per brand in Prompts, version ' + v + ', on this day.'
       : hit ? 'Uses “' + (hit.title || 'Untitled') + '”, already in Prompts on this day.'
         : 'Creates “' + labelTitle(draft.brandId, draft.type, v) + '” in Prompts on this day.'));
+
+    labelBox.appendChild(el('span', { class: 'label', style: 'margin-top:8px' }, 'MIX ACROSS PAGES'));
+    labelBox.appendChild(el('div', { class: 'seg mini' }, [[0, 'Off'], [2, '2 scripts'], [3, '3 scripts'], [4, '4 scripts'], [5, '5 scripts']]
+      .map(([n, l]) => el('button', {
+        class: mix === n ? 'on' : '',
+        onclick: () => {
+          mix = n;
+          try { localStorage.setItem('rc.mix', String(n)); } catch (e) { /* only a convenience */ }
+          reselect(); autoRemoved = 0; refresh();
+        }
+      }, l))));
+    labelBox.appendChild(el('span', { class: 'hint' }, !mix
+      ? 'Off: every ticked page gets this script.'
+      : v > mix
+        ? 'Script ' + v + ' is past the ' + mix + ' being mixed, so every page is ticked for it.'
+        : 'This day has ' + mix + ' scripts of this type. Only the pages dealt script ' + v + ' are ticked. Add scripts 1 to ' + mix
+          + ' the same way and each page gets one of them. The split changes every day.'));
   }
   body.appendChild(field('refVideo', 'REFERENCE VIDEO', 'Paste the reference video link…'));
   body.appendChild(field('notes', 'NOTES', 'Anything the editors should know…', 'textarea'));
@@ -967,6 +1003,10 @@ function openMassAdd(u, preset) {
       // flag only the avatars MISSING bodies — a tick on all the rest is noise
       const cover = row.querySelector('.cover');
       cover.textContent = (useConcept && acct && !has(acct)) ? 'no bodies' : '';
+
+      // with mixing on, which of the day's scripts this page is dealt
+      const slot = acct ? mixSlot(acct) : 0;
+      row.querySelector('.already').textContent = slot ? 'script ' + slot : '';
 
       // and the ones whose product does not take the chosen concept
       const off = row.querySelector('.offstage');
