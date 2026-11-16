@@ -1,5 +1,5 @@
 // ============================================================================
-// captionboard.js — every live page's captions in one place, to copy and post.
+// captionboard.js — every page's captions in one place, live or archived.
 //
 // The posting job is repetitive: open a page, copy its caption, post, next
 // page. This is that list — every live page, grouped by product, with the full
@@ -8,19 +8,20 @@
 // end of that, built for someone posting on a phone.
 // ============================================================================
 
-import { state, can } from '../state.js';
+import { state, can, forceEmit } from '../state.js';
 import { el, avatar, copyText } from '../ui.js';
-import { isLive } from '../lifecycle.js';
+import { isLive, inRoster } from '../lifecycle.js';
 import { captionFor, captionsNeeded, hasPlaceholder } from '../captions.js';
 import {
-  byProduct, productColor, qualityChip, targetingChip,
+  byProduct, productColor, qualityChip, targetingChip, lifecycleChip,
 } from './accounts.js';
 
-// Only live pages. Setting up, paused, reposting and dropped pages are left out,
-// so the list is exactly the pages being posted for today.
-function postingPages() {
+// Live: exactly the pages being posted for today. Archived: paused, reposting
+// and dropped pages, the same ones as the Archive on Avatars, for when an old
+// caption is wanted. Pages still being set up are in neither.
+function postingPages(archived) {
   return (state.db.accounts || [])
-    .filter(a => !a.onboarding && isLive(a));
+    .filter(a => !a.onboarding && (archived ? !inRoster(a) : isLive(a)));
 }
 
 export function renderCaptionBoard(root, u) {
@@ -30,20 +31,26 @@ export function renderCaptionBoard(root, u) {
     return;
   }
 
-  const all = postingPages();
+  const archived = state.capView === 'archived';
+  const all = postingPages(archived);
+  const otherCount = postingPages(!archived).length;
+  const switcher = el('div', { class: 'seg' }, [['live', 'Live', archived ? otherCount : all.length], ['archived', 'Archived', archived ? all.length : otherCount]].map(([k, label, n]) =>
+    el('button', { class: (archived ? 'archived' : 'live') === k ? 'on' : '', onclick: () => { state.capView = k; forceEmit(); } },
+      label + ' ', el('span', { class: 'hint' }, String(n)))));
 
   const spacer = el('span', { class: 'spacer' });
   const head = el('div', { class: 'page-head' },
     el('div', null,
       el('h1', null, 'Captions'),
-      el('div', { class: 'sub' }, all.length + (all.length === 1 ? ' live page' : ' live pages'))),
+      el('div', { class: 'sub' }, all.length + (archived ? (all.length === 1 ? ' archived page' : ' archived pages') : (all.length === 1 ? ' live page' : ' live pages')))),
     spacer);
   import('../app.js').then(({ statusPill }) => head.insertBefore(statusPill(), spacer.nextSibling));
   root.appendChild(head);
 
   if (!all.length) {
+    root.appendChild(el('div', { class: 'row wrap', style: 'gap:10px;margin-bottom:16px' }, switcher));
     root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:36px' },
-      'No live pages yet. A page shows here once it is set to Live.'));
+      archived ? 'No archived pages. Pages you pause or drop show here.' : 'No live pages yet. A page shows here once it is set to Live.'));
     return;
   }
 
@@ -53,7 +60,7 @@ export function renderCaptionBoard(root, u) {
     class: 'input', style: 'max-width:280px', placeholder: 'Find a page…', value: state.capSearch || '',
     oninput: e => { state.capSearch = e.target.value; paint(); },
   });
-  root.appendChild(el('div', { class: 'row wrap', style: 'gap:10px;margin-bottom:16px' }, search));
+  root.appendChild(el('div', { class: 'row wrap', style: 'gap:10px;margin-bottom:16px' }, switcher, search));
   root.appendChild(list);
 
   function paint() {
@@ -92,7 +99,7 @@ function pageCard(a) {
     avatar(a, 38),
     el('div', { style: 'min-width:0;flex:1' },
       el('b', { style: 'display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis' }, a.name || 'Untitled'),
-      el('div', { class: 'row wrap', style: 'gap:5px;margin-top:3px' }, qualityChip(a), targetingChip(a)))));
+      el('div', { class: 'row wrap', style: 'gap:5px;margin-top:3px' }, isLive(a) ? null : lifecycleChip(a), qualityChip(a), targetingChip(a)))));
 
   captionsNeeded(a).forEach(t => card.appendChild(captionBlock(a, t)));
   return card;
