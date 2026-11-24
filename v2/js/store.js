@@ -51,6 +51,7 @@ export const TABLES = {
   entries: 'script_entries',
   dailyEntries: 'daily_entries',
   dailyHooks: 'daily_hooks',
+  savedScripts: 'saved_scripts',   // the admin's own, see supabase/saved_scripts.sql
 };
 const KEYS = Object.keys(TABLES); // app-side collection names
 

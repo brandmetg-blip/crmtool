@@ -9,8 +9,8 @@
 // a delete. They live in one row of their own rather than on the scripts, because
 // handing out numbers should not mean rewriting every script and its images.
 
-import { state, forceEmit, byId } from '../state.js';
-import { el, avatar } from '../ui.js';
+import { state, forceEmit, byId, uid } from '../state.js';
+import { el, avatar, copyText } from '../ui.js';
 import { brands, brandById, brandArt } from '../brands.js';
 import { typeName, videosByScript, scriptHasPrompts } from './mainscripts.js';
 
@@ -105,6 +105,17 @@ function shortDate(d) {
 // the page
 // ---------------------------------------------------------------------------
 export function libraryMode(root) {
+  // the admin's own shelf of scripts for later; nobody else has the switch
+  const admin = state.user && state.user.role === 'admin';
+  if (admin) {
+    const shelf = state.libShelf === 'saved' ? 'saved' : 'all';
+    const n = (state.db.savedScripts || []).length;
+    root.appendChild(el('div', { class: 'seg', style: 'margin-bottom:14px' },
+      el('button', { class: shelf === 'all' ? 'on' : '', onclick: () => { state.libShelf = 'all'; forceEmit(); } }, 'All scripts'),
+      el('button', { class: shelf === 'saved' ? 'on' : '', title: 'Only you can see these', onclick: () => { state.libShelf = 'saved'; forceEmit(); } },
+        'Saved for later', n ? el('span', { class: 'seg-count' }, String(n)) : null)));
+    if (shelf === 'saved') return savedMode(root);
+  }
   const numbers = currentNumbers();
   const uses = videosByScript();
   const list = el('div', { class: 'col', style: 'gap:18px' });
@@ -208,4 +219,83 @@ function row(s, numbers, videos) {
             el('span', { class: 'lib-name' }, names),
             el('span', { class: 'hint' }, made + ' of ' + pages.length + ' made')))
       : el('span', { class: 'hint lib-pages' }, 'No pages yet'));
+}
+
+// ---------------------------------------------------------------------------
+// Saved for later — the admin's own scripts and reference videos, kept by brand
+// until they're wanted. They live in their own table that only the admin's login
+// can read (supabase/saved_scripts.sql), so the team never sees them.
+// ---------------------------------------------------------------------------
+function savedMode(root) {
+  const all = state.db.savedScripts || [];
+  const brandId = state.savedBrand && brandById(state.savedBrand) ? state.savedBrand : '';
+  const draft = state.savedDraft || (state.savedDraft = { body: '', ref: '', note: '' });
+  const refresh = () => forceEmit();
+
+  root.appendChild(el('div', { class: 'hint', style: 'margin-bottom:10px' },
+    'Only you can see this. Pick a brand, then save a script or a reference video to use later.'));
+
+  root.appendChild(el('div', { class: 'ma-brands lib-brands', style: 'margin-bottom:14px' },
+    el('button', { type: 'button', class: 'ma-brand all' + (brandId ? '' : ' on'), onclick: () => { state.savedBrand = ''; refresh(); } },
+      el('span', { class: 'ba-name' }, 'All brands')),
+    brands().map(b => el('button', {
+      type: 'button', class: 'ma-brand' + (brandId === b.id ? ' on' : ''), title: b.name, 'aria-label': b.name,
+      onclick: () => { state.savedBrand = b.id; refresh(); },
+    }, brandArt(b)))));
+
+  // the form shows once a brand is picked, so nothing is saved without one
+  if (brandId) {
+    const brand = brandById(brandId);
+    const name = brand ? brand.name : 'this brand';
+    const body = el('textarea', { class: 'input', rows: 5, placeholder: 'Paste the script…', oninput: e => { draft.body = e.target.value; } }, draft.body);
+    const ref = el('input', { class: 'input', placeholder: 'Reference video link (optional)', value: draft.ref, oninput: e => { draft.ref = e.target.value; } });
+    const note = el('input', { class: 'input', placeholder: 'Note to yourself (optional)', value: draft.note, oninput: e => { draft.note = e.target.value; } });
+    const add = el('button', {
+      class: 'btn primary',
+      onclick: async () => {
+        if (!draft.body.trim() && !draft.ref.trim()) { body.focus(); return; }
+        const { save } = await import('../app.js');
+        save('savedScripts', {
+          id: uid('sv'), brandId, body: draft.body.trim(), refVideo: draft.ref.trim(), note: draft.note.trim(),
+          createdAt: Date.now(),
+        });
+        state.savedDraft = { body: '', ref: '', note: '' };
+        refresh();
+      },
+    }, 'Save for ' + name);
+    root.appendChild(el('div', { class: 'card col', style: 'gap:9px;margin-bottom:18px' },
+      el('span', { class: 'label' }, 'SAVE FOR ' + name.toUpperCase()),
+      body, ref, note,
+      el('div', { class: 'row' }, el('span', { class: 'hint' }, 'A script, a reference video, or both.'), el('span', { class: 'spacer' }), add)));
+  }
+
+  const shown = all.filter(x => !brandId || x.brandId === brandId).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  if (!shown.length) {
+    root.appendChild(el('div', { class: 'card', style: 'text-align:center;color:var(--dim);padding:34px' },
+      brandId ? 'Nothing saved for this brand yet.' : 'Nothing saved yet. Pick a brand above to save a script.'));
+    return;
+  }
+  const list = el('div', { class: 'col', style: 'gap:10px' });
+  shown.forEach(x => {
+    const b = brandById(x.brandId);
+    list.appendChild(el('div', { class: 'card col saved-item', style: 'gap:8px' },
+      el('div', { class: 'row wrap', style: 'gap:8px' },
+        b && b.logoUrl ? el('img', { class: 'lib-logo', src: b.logoUrl, alt: b.name, title: b.name, loading: 'lazy' }) : el('b', null, b ? b.name : 'No brand'),
+        el('span', { class: 'hint' }, 'Saved ' + new Date(x.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })),
+        x.note ? el('span', { class: 'chip gray' }, x.note) : null,
+        el('span', { class: 'spacer' }),
+        x.body ? el('button', { class: 'btn small', onclick: e => copyText(x.body, e.currentTarget) }, 'Copy script') : null,
+        el('button', {
+          class: 'btn small danger',
+          onclick: async () => {
+            if (!confirm('Delete this saved script? This cannot be undone.')) return;
+            const { removeItem } = await import('../app.js');
+            removeItem('savedScripts', x.id);
+            refresh();
+          },
+        }, 'Delete')),
+      x.body ? el('div', { style: 'white-space:pre-wrap;font-size:13px;line-height:1.5' }, x.body) : null,
+      x.refVideo ? el('a', { href: x.refVideo, target: '_blank', rel: 'noopener', style: 'font-size:12.5px;word-break:break-all' }, '▶ ' + x.refVideo) : null));
+  });
+  root.appendChild(list);
 }
